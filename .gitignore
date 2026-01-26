@@ -1,0 +1,20 @@
+# .NET build outputs
+bin/
+obj/
+node_modules/
+.vs/
+.env/
+
+# Blazor published output
+_publish_admin/
+**/wwwroot/admin/
+
+# User-specific
+*.user
+*.suo
+*.cache
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

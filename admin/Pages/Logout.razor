@@ -1,0 +1,10 @@
+@inject AuthServices Auth
+@inject NavigationManager Nav
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        await Auth.Logout();
+        Nav.NavigateTo("/auth/login", forceLoad: true);
+    }
+}
