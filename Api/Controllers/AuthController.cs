@@ -14,11 +14,13 @@ public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
     private readonly IPasswordHasher<User> _hasher;
+    private readonly IConfiguration _config;
 
-    public AuthController(AppDbContext db, IPasswordHasher<User> hasher)
+    public AuthController(AppDbContext db, IPasswordHasher<User> hasher, IConfiguration config)
     {
         _db = db;
         _hasher = hasher;
+        _config = config;
     }
 
     public record LoginRequest(string Username, string Password);
@@ -48,6 +50,9 @@ public class AuthController : ControllerBase
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Username),
+
+            // ✅ Add role claim (adjust how you detect admin)
+            new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
         };
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
@@ -63,7 +68,17 @@ public class AuthController : ControllerBase
                 AllowRefresh = true
             });
 
-        return Ok(new { ok = true, user = new { user.Id, user.Username } });
+       var isAdmin = user.IsAdmin; // or: user.Role == "Admin"
+
+       // ✅ Admin stays in this app
+       if (isAdmin)
+       {
+           return Redirect("/admin/");
+       }
+
+       // ✅ User goes to client app (external redirect)
+       var clientApp = _config["ClientApp:Origin"]; // e.g. "http://localhost:3000"
+       return Redirect($"{clientApp}/"); // or your specific client route
     }
 
     // POST /auth/api/logout

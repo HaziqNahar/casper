@@ -10,4 +10,5 @@ public class User
     public DateTime UpdateTimeUtc { get; set; } = DateTime.UtcNow;
     public List<RealmUser> RealmUsers { get; set; } = new();
     public List<AppUser> AppUsers { get; set; } = new();
+    public bool IsAdmin { get; set; } = false;
 }

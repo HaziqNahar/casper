@@ -4,10 +4,11 @@ obj/
 node_modules/
 .vs/
 .env/
+admin/wwwroot/lib/
+admin/wwwroot/sample-data/
 
 # Blazor published output
 _publish_admin/
-**/wwwroot/admin/
 
 # User-specific
 *.user

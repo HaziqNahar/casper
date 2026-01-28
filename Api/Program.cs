@@ -79,6 +79,45 @@ app.UseStaticFiles(new StaticFileOptions
     ContentTypeProvider = provider
 });
 
+app.Use(async (ctx, next) =>
+{
+    if (ctx.Request.Path.StartsWithSegments("/admin"))
+    {
+        // Allow React static assets
+        if (
+            ctx.Request.Path.StartsWithSegments("/admin/assets") ||
+            ctx.Request.Path.Value!.EndsWith(".js") ||
+            ctx.Request.Path.Value!.EndsWith(".css") ||
+            ctx.Request.Path.Value!.EndsWith(".png") ||
+            ctx.Request.Path.Value!.EndsWith(".jpg") ||
+            ctx.Request.Path.Value!.EndsWith(".svg") ||
+            ctx.Request.Path.Value!.EndsWith(".ico") ||
+            ctx.Request.Path.Value!.EndsWith(".map")
+        )
+        {
+            await next();
+            return;
+        }
+
+        // Not logged in → redirect to login
+        if (!(ctx.User?.Identity?.IsAuthenticated ?? false))
+        {
+            var returnUrl = ctx.Request.Path + ctx.Request.QueryString;
+            ctx.Response.Redirect($"/auth/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+            return;
+        }
+
+        // Logged in but NOT admin
+        if (!ctx.User.IsInRole("Admin"))
+        {
+            ctx.Response.Redirect("http://localhost:3000/");
+            return;
+        }
+    }
+
+    await next();
+});
+
 app.UseRouting();
 app.UseCors("frontend");
 
@@ -89,7 +128,7 @@ app.UseAuthorization();
 app.MapControllers();
 app.MapRazorPages();
 
-// ✅ Protect the SPA itself (pages under /admin/*)
+// Protect the SPA itself (pages under /admin/*)
 app.MapFallbackToFile("/admin/{*path:nonfile}", "admin/index.html")
    .RequireAuthorization("AdminOnly");
 

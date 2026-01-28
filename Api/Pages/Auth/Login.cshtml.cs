@@ -14,11 +14,13 @@ public class LoginModel : PageModel
 {
     private readonly AppDbContext _db;
     private readonly IPasswordHasher<User> _hasher;
+    private readonly IConfiguration _config;
 
-    public LoginModel(AppDbContext db, IPasswordHasher<User> hasher)
+    public LoginModel(AppDbContext db, IPasswordHasher<User> hasher, IConfiguration config)
     {
         _db = db;
         _hasher = hasher;
+        _config = config;
     }
 
     [BindProperty]
@@ -74,6 +76,7 @@ public class LoginModel : PageModel
         {
             new(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new(ClaimTypes.Name, user.Username),
+            new(ClaimTypes.Role, user.IsAdmin ? "Admin" : "User"),
         };
 
         var principal = new ClaimsPrincipal(
@@ -89,8 +92,27 @@ public class LoginModel : PageModel
                 AllowRefresh = true
             });
 
-        // only allow local returnUrl (avoid open redirect)
-        var target = (ReturnUrl != null && Url.IsLocalUrl(ReturnUrl)) ? ReturnUrl : "/admin/";
-        return Redirect(target);
+        if (user.IsAdmin)
+        {
+            // only allow local returnUrl (avoid open redirect)
+            var target = (ReturnUrl != null && Url.IsLocalUrl(ReturnUrl)) ? ReturnUrl : "/admin/";
+            return Redirect(target);
+        }
+
+        // safe local return
+        var safeReturn =
+            !string.IsNullOrEmpty(ReturnUrl) && Url.IsLocalUrl(ReturnUrl)
+                ? ReturnUrl
+                : null;
+
+        // Admin → Admin SPA
+        if (user.IsAdmin)
+        {
+            return Redirect(safeReturn ?? "/admin/");
+        }
+
+        // User → Client app
+        var clientApp = _config["ClientApp:Origin"] ?? "http://localhost:3000";
+        return Redirect(clientApp);
     }
 }

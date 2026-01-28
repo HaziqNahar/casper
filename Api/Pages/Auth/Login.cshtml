@@ -10,41 +10,194 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Casper Login</title>
+    <link rel="icon" type="image/png" href="/certis_logo.png" />
     <style>
-        body { font-family: system-ui; background:#f4f5f7; margin:0; }
-        .wrap { min-height:100vh; display:flex; align-items:center; justify-content:center; }
-        .card { width:360px; background:#fff; border-radius:12px; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,.08); }
-        .title { font-size:20px; font-weight:700; margin:0 0 12px; }
-        .field { margin:12px 0; }
-        input { width:100%; padding:10px 12px; border:1px solid #ddd; border-radius:10px; }
-        button { width:100%; padding:10px 12px; border:0; border-radius:10px; background:#2563eb; color:#fff; font-weight:600; cursor:pointer; }
-        .err { color:#b91c1c; margin-top:8px; font-size:13px; }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --muted: #64748b;
+            --border: #e5e7eb;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #b91c1c;
+            --shadow: 0 10px 30px rgba(0,0,0,.08);
+            --radius: 14px;
+        }
+
+        body {
+            margin: 0;
+            font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+            background: var(--bg);
+            color: var(--text);
+        }
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 8px;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            object-fit: contain;
+        }
+
+        .brand-text h1 {
+            font-size: 18px;
+            margin: 0;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .wrap {
+            min-height: 100vh;
+            display: grid;
+            place-items: center;
+            padding: 24px;
+        }
+
+        .card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            padding: 24px 24px 8px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .card-body {
+            padding: 16px 24px 24px;
+        }
+
+        .field {
+            margin: 12px 0;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+        }
+
+        input, button {
+            width: 100%;
+            display: block;
+            box-sizing: border-box;
+        }
+
+        input {
+            padding: 12px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            font-size: 14px;
+            background: #fff;
+            outline: none;
+            transition: border .15s, box-shadow .15s;
+        }
+
+        button {
+            margin-top: 14px;
+            padding: 12px 14px;
+            border-radius: 12px;          /* match input */
+            border: 1px solid transparent;/* makes sizing feel identical */
+            background: #FF9229;
+            color: #fff;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .error {
+            margin-top: 14px;
+            padding: 10px 12px;
+            border-radius: 12px;
+            background: rgba(185, 28, 28, .08);
+            border: 1px solid rgba(185, 28, 28, .25);
+            color: var(--danger);
+            font-size: 13px;
+        }
     </style>
+
 </head>
 <body>
-<div class="wrap">
-    <div class="card">
-        <div class="title">Welcome</div>
-
-        <form method="post" asp-antiforgery="true">
-            <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
-
-            <div class="field">
-                <input asp-for="Input.Username" placeholder="Username" autocomplete="username" />
+    <div class="wrap">
+        <div class="card">
+            <div class="card-header">
+                <div class="brand">
+                    <img src="/images/logo.jpeg" alt="Casper" class="logo" />
+                    <div class="brand-text">
+                        <h1>Welcome</h1>
+                        <div class="subtitle">Sign in to continue to all applications</div>
+                    </div>
+                </div>
             </div>
 
-            <div class="field">
-                <input asp-for="Input.Password" placeholder="Password" type="password" autocomplete="current-password" />
+            <div class="card-body">
+                <form method="post" asp-antiforgery="true">
+                    <input type="hidden" name="returnUrl" value="@Model.ReturnUrl" />
+
+                    <div class="field">
+                        <label>Username</label>
+                        <input asp-for="Input.Username" placeholder="Username" autocomplete="username" />
+                    </div>
+
+                    <div class="field">
+                        <label>Password</label>
+                        <input asp-for="Input.Password" placeholder="Password" type="password" autocomplete="current-password" />
+                    </div>
+
+                    <button type="submit">Continue</button>
+
+                    @if (!string.IsNullOrWhiteSpace(Model.Error))
+                    {
+                        <div class="error">@Model.Error</div>
+                    }
+
+                </form>
             </div>
-
-            <button type="submit">Continue</button>
-
-            @if (!string.IsNullOrWhiteSpace(Model.Error))
-            {
-                <div class="err">@Model.Error</div>
-            }
-        </form>
+        </div>
     </div>
-</div>
 </body>
 </html>
