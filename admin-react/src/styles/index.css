@@ -1,7 +1,7 @@
 /* Import all stylesheets */
-@import './styles/globals.css';
-@import './styles/components.css';
-@import './styles/utilities.css';
+@import './global.css';
+@import './component.css';
+@import './utilities.css';
 
 /* Root CSS Variables */
 :root {

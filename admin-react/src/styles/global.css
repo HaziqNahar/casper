@@ -1,184 +1,486 @@
-/* Global styles for BOS Admin Dashboard */
-
-/* CSS Reset and Base Styles */
-* {
+/* =========================================================
+   0) RESET + ROOT
+   ========================================================= */
+*,
+*::before,
+*::after {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
-html {
-    height: 100%;
-    font-size: 16px;
-}
-
-body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
-    line-height: 1.6;
-    color: #1f2937;
-    background-color: #f9fafb;
-    height: 100%;
-    overflow-x: hidden;
-}
-
+html,
+body,
 #root {
-    height: 100vh;
-    width: 100vw;
+    height: 100%;
 }
 
-/* Typography */
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+:root {
+    /* Typography */
+    --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Brand */
+    --brand-orange: #ff9229;
+    --brand-navy: #1b3045;
+    --focus-cyan: rgba(125, 211, 252, 0.65);
+
+    /* Text on dark glass (sidebar) */
+    --on-dark: rgba(255, 255, 255, 0.92);
+    --on-dark-muted: rgba(255, 255, 255, 0.72);
+    --on-dark-faint: rgba(255, 255, 255, 0.56);
+
+    /* Hairlines / borders */
+    --hairline: rgba(255, 255, 255, 0.18);
+    --hairline-strong: rgba(255, 255, 255, 0.28);
+
+    /* Radii */
+    --r-sm: 10px;
+    --r-md: 12px;
+    --r-lg: 16px;
+    --r-xl: 18px;
+
+    /* Shadows */
+    --shadow-1: 0 10px 26px rgba(0, 0, 0, 0.18);
+    --shadow-2: 0 16px 40px rgba(0, 0, 0, 0.22);
+    --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.22);
+    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.14);
+
+    /* Sidebar readable defaults */
+    --nav-text-primary: rgba(255, 255, 255, 0.95);
+    --nav-text-secondary: rgba(255, 255, 255, 0.74);
+    --nav-icon: rgba(255, 255, 255, 0.95);
+
+    /* Surface = content cards like Quick Actions / Recent Activity */
+    --surface-bg: rgba(255, 255, 255, 0.7);
+    --surface-blur: 20px;
+    --surface-sat: 180%;
+    --surface-border: rgba(255, 255, 255, 0.3);
+
+    --sidebar-bg: linear-gradient(180deg, rgba(17, 31, 48, 0.78), rgba(14, 27, 44, 0.70));
+    --sidebar-border: rgba(255, 255, 255, 0.18);
+    --sidebar-blur: 22px;
+    --sidebar-sat: 140%;
+
+    --acrylic-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.55), rgba(255, 255, 255, 0.30));
+    --acrylic-border: rgba(255, 255, 255, 0.45);
+    --acrylic-blur: 26px;
+    --acrylic-sat: 180%;
+}
+
+/* Base page */
+body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: var(--font-family-sans);
+    color: #0f172a;
+}
+
+/* =========================================================
+   1) APP BACKGROUND (your dashboard wallpaper)
+   ========================================================= */
+.app-bg {
+    position: fixed;
+    inset: 0;
+    background-image: url("../assets/backgrounds/certis-paya-lebar-green.jpg");
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+/* Soft wash to keep glass readable */
+.app-bg::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg,
+            rgba(15, 23, 42, 0.25),
+            rgba(15, 23, 42, 0.06));
+}
+
+/* =========================================================
+   2) MATERIAL SWITCH (Mica vs Acrylic)
+   Apply to a wrapper: <div class="app-glass-root" data-material="mica|acrylic">
+   ========================================================= */
+.app-glass-root {
+    position: relative;
+    z-index: 1;
+    /* above .app-bg */
+
+    /* Brand tint knobs */
+    --mica-tint: rgba(27, 48, 69, 0.38);
+    --mica-border: rgba(255, 255, 255, 0.22);
+    --mica-highlight: rgba(255, 255, 255, 0.38);
+
+    --acrylic-border: rgba(255, 255, 255, 0.45);
+    --acrylic-highlight: rgba(255, 255, 255, 0.70);
+}
+
+/* MICA: lower blur, calmer */
+.app-glass-root[data-material="mica"] {
+    --surface-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.06)),
+        var(--mica-tint);
+    --surface-border: var(--mica-border);
+    --surface-blur: 10px;
+    --surface-sat: 130%;
+
+    --sidebar-bg:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.10), rgba(255, 255, 255, 0.05)),
+        rgba(27, 48, 69, 0.48);
+    --sidebar-border: rgba(255, 255, 255, 0.18);
+    --sidebar-blur: 12px;
+    --sidebar-sat: 130%;
+}
+
+/* ACRYLIC: higher blur + frosted */
+.app-glass-root[data-material="acrylic"] {
+    --surface-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.20));
+    --surface-border: rgba(255, 255, 255, 0.32);
+    --surface-blur: 22px;
+    --surface-sat: 170%;
+
+    --sidebar-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.30), rgba(255, 255, 255, 0.14));
+    --sidebar-border: rgba(255, 255, 255, 0.30);
+    --sidebar-blur: 26px;
+    --sidebar-sat: 180%;
+}
+
+/* =========================================================
+   3) GLASS PRIMITIVES (reusable)
+   ========================================================= */
+
+/* Big panels, cards, sections */
+.glass-surface {
+    position: relative;
+    background: var(--surface-bg);
+    backdrop-filter: blur(var(--surface-blur)) saturate(var(--surface-sat));
+    -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--surface-sat));
+    border: 1px solid var(--surface-border);
+    border-radius: var(--r-lg);
+    box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    overflow: hidden;
+}
+
+/* Highlight sheen */
+.glass-surface::before {
+    background: radial-gradient(120% 80% at 20% 0%,
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0.00) 60%);
+}
+
+.glass-surface--soft {
+    --surface-bg: rgba(255, 255, 255, 0.55);
+    --surface-blur: 18px;
+    --surface-sat: 160%;
+}
+
+/* Menus / flyouts */
+.glass-acrylic {
+    position: relative;
+    background: var(--acrylic-bg);
+    backdrop-filter: blur(var(--acrylic-blur)) saturate(var(--acrylic-sat));
+    -webkit-backdrop-filter: blur(var(--acrylic-blur)) saturate(var(--acrylic-sat));
+    border: 1px solid var(--acrylic-border);
+    border-radius: var(--r-xl);
+    box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+    overflow: hidden;
+}
+
+/* =========================================================
+   4) SIDEBAR (Windows-ish)
+   ========================================================= */
+
+/* =========================================================
+   5) SIDEBAR INPUT (Search)
+   ========================================================= */
+.sidebar .glass-input {
+    width: 100%;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.92);
+
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.10));
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 0.45rem;
+
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 18px rgba(0, 0, 0, 0.12);
+    transition: background 180ms ease, border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.sidebar .glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+}
+
+.sidebar .glass-input:focus {
+    outline: none;
+    border-color: var(--focus-cyan);
+    box-shadow: 0 0 0 3px rgba(125, 211, 252, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+    background: rgba(255, 255, 255, 0.22);
+}
+
+/* =========================================================
+   7) STAT CARDS (Home page)
+   ========================================================= */
+.stat-card {
+    position: relative;
+    background: rgba(245, 246, 248, 0.88);
+    backdrop-filter: blur(18px) saturate(120%);
+    -webkit-backdrop-filter: blur(18px) saturate(120%);
+    border-radius: var(--r-xl);
+    border: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        0 6px 20px rgba(0, 0, 0, 0.12);
+    overflow: hidden;
+}
+
+.stat-card::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(120% 80% at 20% 0%, rgba(255, 255, 255, 0.35), transparent 60%);
+}
+
+.stat-icon {
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
+        0 4px 10px rgba(0, 0, 0, 0.12);
+    border-radius: var(--r-sm);
+}
+
+/* =========================================================
+   8) MENUS / OVERLAYS
+   ========================================================= */
+.menu-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 9998;
+    background: transparent;
+}
+
+.glass-menu {
+    padding: 8px;
+}
+
+.glass-menu-item:active {
+    transform: scale(0.99);
+    background: rgba(255, 255, 255, 0.24);
+}
+
+.glass-menu-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 0.85rem;
+    font-size: 0.85rem;
+    color: #0f172a;
+
+    background: transparent;
+    border: 0;
+    border-radius: 12px;
+
+    cursor: pointer;
+    text-align: left;
+
+    outline: none;
+    box-shadow: none;
+}
+
+.glass-menu-item:hover {
+    background: rgba(255, 255, 255, 0.22) !important;
+}
+
+.glass-menu-divider {
+    height: 1px;
+    margin: 6px 6px;
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.glass-menu-item.danger {
+    color: #dc2626;
+}
+
+.glass-menu-item.danger:hover {
+    background: rgba(239, 68, 68, 0.12) !important;
+}
+
+/* Optional pop animation */
+.glass-menu-floating {
+    transform-origin: bottom right;
+    animation: glassMenuPop 160ms ease-out;
+}
+
+/* Glossy icon button */
+.glossy-icon-btn {
+    padding: 0.35rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(255, 255, 255, 0.14);
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45),
+        0 6px 16px rgba(0, 0, 0, 0.18);
+
+    transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
+    color: #0f172a;
+}
+
+.glossy-icon-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+.glossy-icon-btn:active {
+    transform: scale(0.96);
+}
+
+/* Acrylic icon button (opaque glass) */
+.glass-icon-btn {
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.55),
+            rgba(255, 255, 255, 0.32));
+    backdrop-filter: blur(22px) saturate(180%);
+    -webkit-backdrop-filter: blur(22px) saturate(180%);
+
+    border: 1px solid rgba(255, 255, 255, 0.45);
+    border-radius: 0.5rem;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.65),
+        0 10px 30px rgba(0, 0, 0, 0.22);
+
+    color: #0f172a;
+
+    width: 2.25rem;
+    height: 2.25rem;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    transition: background 180ms ease, transform 120ms ease;
+}
+
+.glass-icon-btn:hover {
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.65),
+            rgba(255, 255, 255, 0.38));
+}
+
+.glass-icon-btn:active {
+    transform: scale(0.96);
+}
+
+/* =========================================================
+   9) GENERAL UI (kept from your old file)
+   ========================================================= */
+
+/* Buttons */
+.btn-primary {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
     font-weight: 600;
-    line-height: 1.25;
-    color: #111827;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
-    font-size: 2.25rem;
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 8px -1px rgba(0, 0, 0, 0.15);
 }
 
-h2 {
-    font-size: 1.875rem;
+.btn-secondary {
+    background-color: #f8fafc;
+    color: #475569;
+    border: 1px solid #e2e8f0;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
-h3 {
-    font-size: 1.5rem;
+/* Data table */
+.data-table {
+    background: white;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border: 1px solid #e2e8f0;
 }
 
-h4 {
-    font-size: 1.25rem;
+.data-table thead th {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    color: #475569;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 1rem 1.5rem;
+    border-bottom: 2px solid #e2e8f0;
 }
 
-h5 {
-    font-size: 1.125rem;
+/* Form input */
+.form-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    transition: all 0.2s ease-in-out;
+    background-color: white;
 }
 
-h6 {
-    font-size: 1rem;
+.form-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
-p {
-    margin-bottom: 1rem;
-    color: #4b5563;
+/* Status badge */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
 
-/* Links */
-a {
-    color: #2563eb;
-    text-decoration: none;
-    transition: color 0.2s ease-in-out;
-}
+/* Responsive */
+@media (max-width: 1024px) {
 
-a:hover {
-    color: #1d4ed8;
-    text-decoration: underline;
-}
-
-/* Focus styles for accessibility */
-*:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-button:focus,
-input:focus,
-select:focus,
-textarea:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* Scrollbar styling */
-::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-::-webkit-scrollbar-track {
-    background: #f1f5f9;
-}
-
-::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
-}
-
-/* Loading and transition states */
-.fade-in {
-    animation: fadeIn 0.3s ease-in-out;
-}
-
-.fade-out {
-    animation: fadeOut 0.3s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
+    .data-table thead th,
+    .data-table tbody td {
+        padding: 0.75rem;
     }
 }
 
-@keyframes fadeOut {
-    from {
-        opacity: 1;
-        transform: translateY(0);
-    }
-
-    to {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-}
-
-/* Selection styles */
-::selection {
-    background-color: #bfdbfe;
-    color: #1e40af;
-}
-
-::-moz-selection {
-    background-color: #bfdbfe;
-    color: #1e40af;
-}
-
-/* Print styles */
-@media print {
-    * {
-        background: white !important;
-        color: black !important;
-        box-shadow: none !important;
-        text-shadow: none !important;
-    }
-
-    .no-print {
-        display: none !important;
-    }
-
-    a,
-    a:visited {
-        text-decoration: underline;
-    }
-
-    a[href]:after {
-        content: " (" attr(href) ")";
-    }
-
-    .page-break {
-        page-break-before: always;
+@media (max-width: 768px) {
+    .data-table thead {
+        display: none;
     }
 }

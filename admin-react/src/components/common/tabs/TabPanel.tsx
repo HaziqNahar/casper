@@ -94,7 +94,12 @@ export const TabPanel: React.FC<TabPanelProps> = ({
             <div
                 className={`browser-tabs-content ${contentClassName}`}
                 role="tabpanel"
-                style={{ minHeight }}
+                // style={{ minHeight }}
+                style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflow: 'hidden'
+                }}
             >
                 {/* Key forces re-mount on tab change, triggering animation */}
                 <div

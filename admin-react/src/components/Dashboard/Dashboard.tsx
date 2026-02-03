@@ -27,7 +27,7 @@ interface PlaceholderPageProps {
 
 const PlaceholderPage: React.FC<PlaceholderPageProps> = ({ title, description }) => (
     <div style={{
-        background: 'white',
+        background: 'transparent',
         borderRadius: '0.5rem',
         boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
         padding: '1.5rem',
@@ -93,7 +93,7 @@ const Dashboard: React.FC = () => {
                             marginBottom: '1.5rem',
                         }}>
                             <div style={{
-                                background: 'white',
+                                background: 'transparent',
                                 borderRadius: '0.5rem',
                                 boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
                                 padding: '1.5rem',
@@ -263,7 +263,7 @@ const Dashboard: React.FC = () => {
 
     return (
         <>
-            <div style={{ display: 'flex', height: '100vh', backgroundColor: '#f3f4f6', fontFamily: FONT_FAMILY }}>
+            <div style={{ display: 'flex', height: '100vh', backgroundColor: 'transparent', fontFamily: FONT_FAMILY }}>
                 <Sidebar
                     activeTab={activeTab}
                     setActiveTab={handleTabChange}

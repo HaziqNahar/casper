@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header, { BreadcrumbItem } from './Header';
@@ -16,6 +16,31 @@ const FONT_FAMILY = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Ro
 const DashboardLayout: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
     const location = useLocation();
+
+    // Track sidebar width from CSS variable
+    const [sidebarWidth, setSidebarWidth] = useState('256px');
+
+    // Listen to CSS variable changes
+    useEffect(() => {
+        const updateSidebarWidth = () => {
+            const width = getComputedStyle(document.documentElement)
+                .getPropertyValue('--sidebar-width')
+                .trim();
+            setSidebarWidth(width || '256px');
+        };
+
+        // Initial update
+        updateSidebarWidth();
+
+        // Create observer for CSS variable changes
+        const observer = new MutationObserver(updateSidebarWidth);
+        observer.observe(document.documentElement, {
+            attributes: true,
+            attributeFilter: ['style']
+        });
+
+        return () => observer.disconnect();
+    }, []);
 
     // Get route config based on current path
     const routeConfig = getRouteConfig(location.pathname);
@@ -37,39 +62,33 @@ const DashboardLayout: React.FC = () => {
     };
 
     return (
-        <div style={{
-            display: 'flex',
-            height: '100vh',
-            backgroundColor: '#f3f4f6',
-            fontFamily: FONT_FAMILY
-        }}>
-            {/* Sidebar - now handles navigation internally */}
-            <Sidebar
-                isOpen={sidebarOpen}
-                setIsOpen={handleSidebarClose}
-            />
+        <div
+            className="app-shell"
+            style={{
+                display: "flex",
+                height: "100vh",
+                backgroundColor: "transparent", // IMPORTANT
+                fontFamily: FONT_FAMILY,
+            }}
+        >
+            <Sidebar isOpen={sidebarOpen} setIsOpen={handleSidebarClose} />
 
-            {/* Main Content Area */}
-            <div style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                marginLeft: 'var(--sidebar-width, 16rem)',
-                transition: 'margin-left 0.3s ease-in-out'
-            }}>
-                {/* Header - now handles breadcrumb navigation internally */}
+            <div
+                style={{
+                    flex: 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    marginLeft: 'var(--sidebar-width, 16rem)',
+                    transition: 'margin-left 0.3s ease-in-out',
+                }}
+            >
                 <Header
                     title={routeConfig.title}
                     breadcrumbs={getBreadcrumbs()}
                     onMenuClick={handleSidebarToggle}
                 />
 
-                {/* Page Content - Outlet renders the matched child route */}
-                <main style={{
-                    flex: 1,
-                    padding: '1.5rem',
-                    overflowY: 'auto',
-                }}>
+                <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
                     <div style={{ maxWidth: 'none', margin: 0, width: '100%' }}>
                         <Outlet />
                     </div>

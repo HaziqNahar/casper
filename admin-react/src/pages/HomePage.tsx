@@ -4,11 +4,12 @@ import {
     FileText,
     Users,
     AlertTriangle,
-    ArrowUpRight,
-    ArrowDownRight,
     Activity,
     Globe,
-    UserPlus
+    UserPlus,
+    PlusCircle,
+    SquarePlus,
+    ScrollText,
 } from 'lucide-react';
 import { useData } from '../context/DataContext';
 import { ROUTES } from '../config/routes';
@@ -20,8 +21,6 @@ import { ROUTES } from '../config/routes';
 interface StatCardProps {
     title: string;
     value: string | number;
-    change?: number;
-    changeLabel?: string;
     icon: React.ReactNode;
     color: string;
     bgColor: string;
@@ -31,35 +30,30 @@ interface StatCardProps {
 const StatCard: React.FC<StatCardProps> = ({
     title,
     value,
-    change,
-    changeLabel,
     icon,
     color,
-    bgColor,
     onClick
 }) => {
-    const isPositive = change !== undefined && change > 0;
     return (
         <div
+            className="stat-card"
             onClick={onClick}
             style={{
-                background: 'white',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                borderRadius: '1rem',
                 padding: '1.25rem',
                 cursor: onClick ? 'pointer' : 'default',
-                transition: 'all 0.2s ease',
-                border: '1px solid #e5e7eb',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             }}
             onMouseEnter={(e) => {
-                if (onClick) {
-                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-                    e.currentTarget.style.transform = 'translateY(-2px)';
-                }
+                if (!onClick) return;
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow =
+                    '0 14px 40px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.45)';
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
                 e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow =
+                    '0 10px 30px rgba(0,0,0,0.14), inset 0 1px 0 rgba(255,255,255,0.35)';
             }}
         >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -82,40 +76,19 @@ const StatCard: React.FC<StatCardProps> = ({
                     }}>
                         {value}
                     </p>
-                    {change !== undefined && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.25rem',
-                            marginTop: '0.5rem'
-                        }}>
-                            {isPositive ? (
-                                <ArrowUpRight size={14} color="#10b981" />
-                            ) : (
-                                <ArrowDownRight size={14} color="#ef4444" />
-                            )}
-                            <span style={{
-                                fontSize: '0.75rem',
-                                fontWeight: 500,
-                                color: isPositive ? '#10b981' : '#ef4444'
-                            }}>
-                                {Math.abs(change)}%
-                            </span>
-                            <span style={{ fontSize: '0.75rem', color: '#000000' }}>
-                                {changeLabel || 'vs last week'}
-                            </span>
-                        </div>
-                    )}
                 </div>
                 <div style={{
                     width: '3rem',
                     height: '3rem',
-                    borderRadius: '0.5rem',
-                    backgroundColor: bgColor,
+                    borderRadius: '0.75rem',
+                    background: 'rgba(255,255,255,0.22)',
+                    backdropFilter: 'blur(10px) saturate(140%)',
+                    WebkitBackdropFilter: 'blur(10px) saturate(140%)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: color
+                    color,
+                    boxShadow: '0 8px 18px rgba(0,0,0,0.16), inset 0 1px 0 rgba(255,255,255,0.35)',
                 }}>
                     {icon}
                 </div>
@@ -185,21 +158,31 @@ const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onClick, color, 
             alignItems: 'center',
             gap: '0.5rem',
             padding: '1rem',
-            backgroundColor: 'white',
-            border: '1px solid #e5e7eb',
-            borderRadius: '0.5rem',
+            background: 'rgba(255, 255, 255, 0.8)',
+            backdropFilter: 'blur(15px)',
+            WebkitBackdropFilter: 'blur(15px)',
+            border: '1px solid rgba(229, 231, 235, 0.4)',
+            borderRadius: '0.75rem',
             cursor: 'pointer',
-            transition: 'all 0.2s ease',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
             minWidth: '100px',
             fontFamily: 'inherit',
         }}
         onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = bgColor;
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
+            e.currentTarget.style.backdropFilter = 'blur(20px)';
+            e.currentTarget.style.WebkitBackdropFilter = 'blur(20px)';
             e.currentTarget.style.borderColor = color;
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.12)';
         }}
         onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'white';
-            e.currentTarget.style.borderColor = '#e5e7eb';
+            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
+            e.currentTarget.style.backdropFilter = 'blur(15px)';
+            e.currentTarget.style.WebkitBackdropFilter = 'blur(15px)';
+            e.currentTarget.style.borderColor = 'rgba(229, 231, 235, 0.4)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
         }}
     >
         <div style={{
@@ -226,49 +209,28 @@ const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onClick, color, 
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const { totalUsers, totalRealms, totalApps, loading } = useData();
+    const { totalUsers, totalRealms, loading } = useData();
 
     // Mock activity data
     const recentActivity: ActivityItem[] = [
         {
             id: '1',
             type: 'case',
-            title: 'New LifeSG Case Received',
-            description: 'Case #LSG-2024-0156 assigned to Zone A',
+            title: 'App Created',
+            description: 'App Created in Realm 1',
             time: '5 mins ago'
         },
         {
             id: '2',
             type: 'warden',
-            title: 'Warden Status Update',
-            description: 'PW003 completed patrol in Sector B',
+            title: 'User Status Update',
+            description: 'User granted access to App 1',
             time: '12 mins ago'
-        },
-        {
-            id: '3',
-            type: 'alert',
-            title: 'SLA Warning',
-            description: 'Case #CPG-2024-0089 approaching deadline',
-            time: '25 mins ago'
-        },
-        {
-            id: '4',
-            type: 'system',
-            title: 'HDB Batch Processed',
-            description: '45 records submitted successfully',
-            time: '1 hour ago'
-        },
-        {
-            id: '5',
-            type: 'case',
-            title: 'Case Resolved',
-            description: 'Case #LSG-2024-0142 marked as completed',
-            time: '2 hours ago'
         },
     ];
 
     return (
-        <div>
+        <div style={{ width: '100%', maxWidth: '100%' }}>
             {/* Stats Grid */}
             <div style={{
                 display: 'grid',
@@ -279,7 +241,6 @@ const HomePage: React.FC = () => {
                 <StatCard
                     title="Total Users"
                     value={loading ? '...' : totalUsers.length}
-                    change={24}
                     icon={<Users size={24} />}
                     color="#2563eb"
                     bgColor="#dbeafe"
@@ -288,27 +249,15 @@ const HomePage: React.FC = () => {
                 <StatCard
                     title="Total Realms"
                     value={loading ? '...' : totalRealms.length}
-                    change={4}
                     icon={<Globe size={24} />}
                     color="#d97706"
                     bgColor="#fef3c7"
                     onClick={() => navigate(ROUTES.REALMS_ALL)}
                 />
                 <StatCard
-                    title="Total Apps"
-                    value={loading ? '...' : totalApps.length}
-                    change={10}
-                    icon={<AlertTriangle size={24} />}
-                    color="#dc2626"
-                    bgColor="#fee2e2"
-                    onClick={() => navigate(ROUTES.APPS_ALL)}
-                />
-                <StatCard
                     title="Audit Logs"
                     value={8}
-                    change={0}
-                    changeLabel="same as yesterday"
-                    icon={<Users size={24} />}
+                    icon={<ScrollText size={24} />}
                     color="#059669"
                     bgColor="#d1fae5"
                     onClick={() => navigate(ROUTES.AUDIT_LOGS)}
@@ -318,19 +267,14 @@ const HomePage: React.FC = () => {
             {/* Main Content Grid */}
             <div style={{
                 display: 'grid',
-                gridTemplateColumns: '1fr 350px',
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 400px)',
                 gap: '1.5rem',
+                width: '100%',
             }}>
-                {/* Left Column - Activity & Charts */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* Left Column - Quick Actions */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                     {/* Quick Actions */}
-                    <div style={{
-                        background: 'white',
-                        borderRadius: '0.75rem',
-                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                        padding: '1.25rem',
-                        border: '1px solid #e5e7eb',
-                    }}>
+                    <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
                         <h3 style={{
                             fontSize: '0.875rem',
                             fontWeight: 600,
@@ -343,37 +287,30 @@ const HomePage: React.FC = () => {
                             <QuickAction
                                 icon={<UserPlus size={20} />}
                                 label="Create User"
-                                onClick={() => navigate(ROUTES.CREATE_USERS)}
+                                onClick={() => navigate(ROUTES.CREATE_USER)}
                                 color="#2563eb"
                                 bgColor="#dbeafe"
                             />
                             <QuickAction
-                                icon={<UserPlus size={20} />}
-                                label="Create Application"
-                                onClick={() => navigate(ROUTES.CREATE_APPS)}
+                                icon={<SquarePlus size={20} />}
+                                label="Register Application"
+                                onClick={() => navigate(ROUTES.REGISTER_APPS)}
                                 color="#7c3aed"
                                 bgColor="#ede9fe"
                             />
                             <QuickAction
-                                icon={<UserPlus size={20} />}
-                                label="Create Realm"
-                                onClick={() => navigate(ROUTES.CREATE_REALMS)}
-                                color="#059669"
-                                bgColor="#d1fae5"
+                                icon={<PlusCircle size={20} />}
+                                label="Manage Realms"
+                                onClick={() => navigate(ROUTES.MANAGE_REALMS)}
+                                color="#d97706"
+                                bgColor="#fef3c7"
                             />
                         </div>
                     </div>
                 </div>
 
                 {/* Right Column - Recent Activity */}
-                <div style={{
-                    background: 'white',
-                    borderRadius: '0.75rem',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    padding: '1.25rem',
-                    border: '1px solid #e5e7eb',
-                    height: 'fit-content',
-                }}>
+                <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
                     <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -413,13 +350,24 @@ const HomePage: React.FC = () => {
                                         display: 'flex',
                                         gap: '0.75rem',
                                         padding: '0.75rem',
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: '#f9fafb',
+                                        borderRadius: '0.75rem',
+                                        background: 'rgba(255, 255, 255, 0.82)',
+                                        border: '1px solid rgba(255, 255, 255, 0.35)',
+                                        backdropFilter: 'blur(10px)',
+                                        WebkitBackdropFilter: 'blur(10px)',
                                         cursor: 'pointer',
-                                        transition: 'background-color 0.2s',
+                                        transition: 'all 0.2s ease',
                                     }}
-                                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
-                                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = 'rgba(243, 244, 246, 0.8)';
+                                        e.currentTarget.style.backdropFilter = 'blur(12px)';
+                                        e.currentTarget.style.WebkitBackdropFilter = 'blur(12px)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = 'rgba(249, 250, 251, 0.6)';
+                                        e.currentTarget.style.backdropFilter = 'blur(10px)';
+                                        e.currentTarget.style.WebkitBackdropFilter = 'blur(10px)';
+                                    }}
                                 >
                                     <div style={{
                                         width: '2rem',
