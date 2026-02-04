@@ -80,7 +80,7 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
         breadcrumbs: [
             { label: 'Home', path: ROUTES.HOME },
             { label: 'All Users' },
-            { label: 'Users' },
+            { label: 'Users', path: ROUTES.USERS },
         ],
     },
 

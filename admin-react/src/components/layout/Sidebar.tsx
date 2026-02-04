@@ -72,7 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         id: "realms-all",
                         label: "All Realms",
                         description: "View all realms",
-                        path: ROUTES.REALMS_ALL,
+                        path: ROUTES.REALMS
                     },
                 ],
             },
@@ -87,19 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         id: "users-all",
                         label: "All Users",
                         description: "View all users",
-                        path: ROUTES.USERS_ALL,
-                    },
-                    {
-                        id: "users-active",
-                        label: "Active Users",
-                        description: "View active users",
-                        path: ROUTES.USERS_ACTIVE,
-                    },
-                    {
-                        id: "users-inactive",
-                        label: "Inactive Users",
-                        description: "View inactive users",
-                        path: ROUTES.USERS_INACTIVE,
+                        path: ROUTES.USERS
                     },
                 ],
             },
@@ -398,22 +386,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                             {/* logo text */}
                             <span
                                 style={{
-                                    fontSize: "1.5rem",
-                                    fontFamily: LOGO_FONT_FAMILY,
-                                    fontWeight: 400,
-                                    background:
-                                        "linear-gradient(135deg, #ffffff 0%, #e0e7ff 50%, #ffffff 100%)",
-                                    WebkitBackgroundClip: "text",
-                                    WebkitTextFillColor: "transparent",
-                                    backgroundClip: "text",
-                                    letterSpacing: "0.08em",
-                                    whiteSpace: "nowrap",
+                                    fontSize: '1.8rem',
+                                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                                    fontWeight: 400, /* Bold weight to match CERTIS reference */
+                                    color: '#ffffff',
+                                    letterSpacing: '0.03em',
+                                    whiteSpace: 'nowrap',
                                     opacity: isCollapsed ? 0 : 1,
-                                    maxWidth: isCollapsed ? 0 : "180px",
-                                    overflow: "hidden",
-                                    transition: "opacity 0.2s ease-in-out, max-width 0.3s ease-in-out",
-                                    pointerEvents: isCollapsed ? "none" : "auto",
-                                    lineHeight: 1,
+                                    maxWidth: isCollapsed ? 0 : '200px',
+                                    overflow: 'hidden',
+                                    transition: 'opacity 0.2s ease-in-out, max-width 0.3s ease-in-out',
+                                    pointerEvents: isCollapsed ? 'none' : 'auto',
+                                    lineHeight: 1
                                 }}
                             >
                                 CASPER

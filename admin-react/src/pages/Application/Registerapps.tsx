@@ -1,4 +1,4 @@
-export default function ManageApps() {
+export default function RegisterApps() {
 
-    return <div>ManageApps</div>;
+    return <div>RegisterApps</div>;
 }
