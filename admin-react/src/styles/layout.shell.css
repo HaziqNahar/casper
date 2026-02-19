@@ -89,7 +89,6 @@
 }
 
 .sidebar-search {
-    padding: 0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.18);
 }
 
@@ -209,6 +208,8 @@
     border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
+
+
 /* ---------------------------
    DROPDOWN MENUS (shell only)
 --------------------------- */
@@ -271,4 +272,360 @@
 
 .sidebar .sidebar-nav-item.active svg {
     color: var(--sidebar-active-accent) !important;
+}
+
+/* =========================================================
+   SIDEBAR BOTTOM (Tabs + Profile)
+   Goes into layout.shell.css
+   ========================================================= */
+
+.sidebar-bottom {
+    flex-shrink: 0;
+    padding: 0.75rem 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+/* Glass tabs container */
+.sidebar-tabs-glass {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.35rem;
+    border-radius: 0.85rem;
+
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.20),
+            rgba(255, 255, 255, 0.12));
+    border: 1px solid rgba(255, 255, 255, 0.22);
+
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 8px 20px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-tab {
+    flex: 1;
+    height: 34px;
+    border: 0;
+    border-radius: 0.75rem;
+    cursor: pointer;
+
+    background: transparent;
+    color: rgba(255, 255, 255, 0.78);
+
+    font-size: 0.8rem;
+    font-weight: 520;
+    font-family: inherit;
+
+    transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+
+.sidebar-tab:hover {
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-tab:active {
+    transform: translateY(0.5px);
+}
+
+.sidebar-tab.active {
+    background: rgba(255, 255, 255, 0.22);
+    color: rgba(15, 23, 42, 0.92);
+    font-weight: 700;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 6px 14px rgba(0, 0, 0, 0.14);
+}
+
+/* Profile row */
+.sidebar-profile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+
+    padding: 0.55rem 0.55rem;
+    border-radius: 0.95rem;
+
+    background: linear-gradient(180deg,
+            rgba(0, 0, 0, 0.20),
+            rgba(0, 0, 0, 0.12));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.sidebar-profile.is-collapsed {
+    flex-direction: column;
+    justify-content: center;
+    padding: 0.6rem 0.4rem;
+}
+
+/* Avatar + text */
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    flex: 1;
+}
+
+.sidebar-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+    background: #3b82f6;
+    color: #fff;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+    flex-shrink: 0;
+}
+
+.sidebar-avatar.is-clickable {
+    cursor: pointer;
+}
+
+.sidebar-userMeta {
+    margin-left: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.sidebar-userName {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 650;
+    color: rgba(255, 255, 255, 0.92);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-userEmail {
+    margin: 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.65);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Right side actions */
+.sidebar-profileActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    /* anchors dropdown */
+}
+
+.sidebar-profileMenu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 180px;
+    z-index: 10001;
+}
+
+.sidebar-profileMenu.is-collapsed {
+    right: auto;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+/* =========================================================
+   Sidebar Footer (Tabs + Profile) - authoritative
+   Put this at the BOTTOM of layout.shell.css
+   ========================================================= */
+
+.sidebar-footer {
+    flex-shrink: 0;
+    padding: 0.75rem 0.75rem 0.85rem;
+    display: grid;
+    gap: 0.65rem;
+}
+
+/* Tabs container (glass pill) */
+.sidebar-tabs-glass {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.35rem;
+
+    padding: 0.25rem;
+    border-radius: 0.8rem;
+
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.25),
+        0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-tab {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+
+    height: 2.1rem;
+    border-radius: 0.65rem;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    font-size: 0.82rem;
+    font-weight: 500;
+
+    color: rgba(255, 255, 255, 0.82);
+    background: transparent;
+
+    transition: background 160ms ease, color 160ms ease, transform 120ms ease;
+}
+
+.sidebar-tab:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+.sidebar-tab:active {
+    transform: translateY(1px);
+}
+
+.sidebar-tab.active {
+    background: rgba(255, 255, 255, 0.32);
+    color: #0b1f3a;
+    font-weight: 700;
+}
+
+/* Profile row (glass card) */
+.sidebar-profileCard {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+
+    padding: 0.55rem 0.55rem;
+    border-radius: 0.95rem;
+
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.20), rgba(0, 0, 0, 0.12));
+    border: 1px solid rgba(255, 255, 255, 0.18);
+
+    backdrop-filter: blur(16px) saturate(150%);
+    -webkit-backdrop-filter: blur(16px) saturate(150%);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.22),
+        0 10px 22px rgba(0, 0, 0, 0.16);
+}
+
+.sidebar-profileCard.is-collapsed {
+    flex-direction: column;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 0.6rem 0.4rem;
+}
+
+.sidebar-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.sidebar-profileCard.is-collapsed .sidebar-user {
+    justify-content: center;
+    flex: none;
+}
+
+.sidebar-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 999px;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    background: #3b82f6;
+    color: #fff;
+
+    font-size: 0.8rem;
+    font-weight: 700;
+
+    border: 0;
+    cursor: pointer;
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.35),
+        0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.sidebar-user-meta {
+    min-width: 0;
+    display: grid;
+    gap: 0.1rem;
+}
+
+.sidebar-user-name {
+    margin: 0;
+    font-size: 0.82rem;
+    font-weight: 650;
+    color: rgba(255, 255, 255, 0.92);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-user-email {
+    margin: 0;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.70);
+    line-height: 1.15;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.sidebar-profile-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    /* anchor dropdown */
+}
+
+/* Optional: a consistent square icon button helper */
+.icon-btn-square {
+    width: 2.25rem;
+    height: 2.25rem;
+}
+
+/* Dropdown positioning helper (if you stop using fixed) */
+.sidebar-profile-menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 10px);
+    width: 180px;
+    z-index: 10001;
 }

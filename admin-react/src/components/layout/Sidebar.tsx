@@ -277,14 +277,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         const el = kebabBtnRef.current;
         if (!el) return;
 
-        const r = el.getBoundingClientRect();
-        const width = 180;
-        const gap = 8;
+        const rect = el.getBoundingClientRect();
+        const menuWidth = 200;
 
-        const left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8));
-        const top = r.top - gap;
+        setMenuPos({
+            top: rect.top - 8, // menu will sit above (we'll translate in CSS)
+            left: Math.max(12, rect.right - menuWidth), // right-align to kebab
+        });
 
-        setMenuPos({ top, left });
         setShowProfileMenu(true);
     };
 
@@ -770,190 +770,140 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 </div>
 
                 {/* Bottom */}
-                <div style={{ flexShrink: 0 }}>
+                <div className="sidebar-footer">
                     {/* Main / Settings Tabs */}
                     {!isCollapsed && (
-                        <div className="sidebar-tabs-glass">
+                        <div className="sidebar-tabs-glass" role="tablist" aria-label="Sidebar tabs">
                             <button
-                                onClick={() => setSidebarTab('main')}
-                                className={`sidebar-tab ${sidebarTab === 'main' ? 'active' : ''}`}
-                                style={{
-                                    flex: 1,
-                                    padding: '0.625rem 0.5rem',
-                                    fontSize: '0.8rem',
-                                    fontWeight: sidebarTab === 'main' ? 600 : 400,
-                                    color: sidebarTab === 'main' ? '#002855' : '#000000',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease-in-out',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '0.25rem',
-                                    fontFamily: 'inherit',
-                                }}
+                                type="button"
+                                onClick={() => setSidebarTab("main")}
+                                className={`sidebar-tab ${sidebarTab === "main" ? "active" : ""}`}
+                                role="tab"
+                                aria-selected={sidebarTab === "main"}
                             >
                                 Main
                             </button>
+
                             <button
-                                onClick={() => setSidebarTab('settings')}
-                                className={`sidebar-tab ${sidebarTab === 'settings' ? 'active' : ''}`}
-                                style={{
-                                    flex: 1,
-                                    padding: '0.625rem 0.5rem',
-                                    fontSize: '0.8rem',
-                                    fontWeight: sidebarTab === 'settings' ? 600 : 400,
-                                    color: sidebarTab === 'settings' ? '#002855' : '#000000',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease-in-out',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontFamily: 'inherit',
-                                }}
+                                type="button"
+                                onClick={() => setSidebarTab("settings")}
+                                className={`sidebar-tab ${sidebarTab === "settings" ? "active" : ""}`}
+                                role="tab"
+                                aria-selected={sidebarTab === "settings"}
                             >
                                 Settings
                             </button>
                         </div>
                     )}
+
                     {/* Profile */}
-                    <div
-                        style={{
-                            padding: isCollapsed ? "0.75rem 0.5rem" : "0.75rem 1rem",
-                            display: "flex",
-                            alignItems: isCollapsed ? "center" : "center",
-                            justifyContent: isCollapsed ? "center" : "space-between",
-                            flexDirection: isCollapsed ? "column" : "row",
-                            gap: isCollapsed ? "0.5rem" : 0,
-                        }}
-                    >
-                        {/* Collapsed: collapse/expand button ABOVE avatar */}
+                    <div className={`sidebar-profile ${isCollapsed ? "is-collapsed" : ""}`}>
+                        {/* Collapsed: expand button ABOVE avatar */}
                         {isCollapsed && !isAutoCollapsed && (
                             <button
+                                type="button"
                                 onClick={toggleCollapse}
-                                className="glossy-icon-btn"
+                                className="glossy-icon-btn sidebar-expand-btn"
                                 title="Expand sidebar"
-                                style={{
-                                    padding: "0.35rem",
-                                    borderRadius: "0.5rem",
-                                    border: "none",
-                                    cursor: "pointer",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                }}
                             >
                                 <ChevronRight style={{ height: "1.1rem", width: "1.1rem" }} />
                             </button>
                         )}
 
-                        {/* Avatar + name/email (your existing block, unchanged) */}
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                flex: isCollapsed ? "none" : 1,
-                                justifyContent: isCollapsed ? "center" : "flex-start",
-                                width: isCollapsed ? "100%" : "auto",
-                            }}
-                        >
-                            <div
-                                style={{
-                                    width: "2.25rem",
-                                    height: "2.25rem",
-                                    backgroundColor: "#3b82f6",
-                                    borderRadius: "50%",
-                                    display: "flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    color: "white",
-                                    fontSize: "0.8rem",
-                                    fontWeight: 600,
-                                    cursor: isCollapsed ? "pointer" : "default",
-                                }}
+                        {/* Avatar + name/email */}
+                        <div className="sidebar-user">
+                            <button
+                                type="button"
+                                className="sidebar-avatar"
                                 onClick={() => isCollapsed && setShowProfileMenu(!showProfileMenu)}
                                 title={isCollapsed ? "Admin User" : undefined}
                             >
                                 AD
-                            </div>
+                            </button>
 
                             {!isCollapsed && (
-                                <div style={{ marginLeft: "0.75rem", flex: 1 }}>
-                                    <p style={{ fontSize: "0.8rem", fontWeight: 500, margin: 0 }}>Admin User</p>
-                                    <p style={{ fontSize: "0.7rem", margin: 0 }}>admin@bos.sg</p>
+                                <div className="sidebar-user-meta">
+                                    <p className="sidebar-user-name">Admin User</p>
+                                    <p className="sidebar-user-email">admin@bos.sg</p>
                                 </div>
                             )}
                         </div>
 
-                        {/* Expanded: collapse button near kebab (optional) */}
+                        {/* Right side actions */}
                         {!isCollapsed && !isAutoCollapsed && (
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div className="sidebar-profile-actions">
                                 <button
+                                    type="button"
                                     className="glossy-icon-btn icon-btn-square"
                                     onClick={toggleCollapse}
-                                    title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+                                    title="Collapse sidebar"
                                 >
                                     <ChevronLeft size={18} />
                                 </button>
 
-
-                                {showProfileMenu && menuPos &&
-                                    createPortal(
-                                        <>
-                                            <div className="menu-overlay" onClick={closeMenu} />
-                                            <div
-                                                className="glass-acrylic glass-menu"
-                                                style={{
-                                                    position: "fixed",
-                                                    top: menuPos.top,
-                                                    left: menuPos.left,
-                                                    width: 180,
-                                                    transform: "translateY(-100%)",
-                                                    zIndex: 9999,
-                                                }}
-                                            >
-                                                <button
-                                                    type="button"
-                                                    className="glass-menu-item"
-                                                    onClick={() => handleProfileMenuAction("settings")}
-                                                >
-                                                    <User style={{ height: "1rem", width: "1rem" }} />
-                                                    Profile
-                                                </button>
-
-                                                <button
-                                                    type="button"
-                                                    className="glass-menu-item"
-                                                    onClick={() => handleProfileMenuAction("settings")}
-                                                >
-                                                    <Settings style={{ height: "1rem", width: "1rem" }} />
-                                                    Settings
-                                                </button>
-
-                                                <div className="glass-menu-divider" />
-
-                                                <button
-                                                    type="button"
-                                                    className="glass-menu-item danger"
-                                                    onClick={() => handleProfileMenuAction("logout")}
-                                                >
-                                                    <LogOut style={{ height: "1rem", width: "1rem" }} />
-                                                    Logout
-                                                </button>
-                                            </div>
-                                        </>,
-                                        document.body
-                                    )}
                                 <button
+                                    type="button"
                                     ref={kebabBtnRef}
                                     className="glossy-icon-btn icon-btn-square"
                                     onClick={() => (showProfileMenu ? closeMenu() : openMenu())}
+                                    aria-haspopup="menu"
+                                    aria-expanded={showProfileMenu}
+                                    title="Profile menu"
                                 >
                                     <MoreVertical size={18} />
                                 </button>
                             </div>
                         )}
+
+                        {/* Menu */}
+                        {showProfileMenu && menuPos &&
+                            createPortal(
+                                <>
+                                    <div className="menu-overlay" onClick={closeMenu} />
+                                    <div
+                                        className="glass-acrylic glass-menu glass-menu-floating sidebar-profile-menu"
+                                        style={{
+                                            position: "fixed",
+                                            top: menuPos.top,
+                                            left: menuPos.left,
+                                        }}
+                                        role="menu"
+                                    >
+                                        <button
+                                            type="button"
+                                            className="glass-menu-item"
+                                            role="menuitem"
+                                            onClick={() => handleProfileMenuAction("profile")}
+                                        >
+                                            <User style={{ height: "1rem", width: "1rem" }} />
+                                            Profile
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="glass-menu-item"
+                                            role="menuitem"
+                                            onClick={() => handleProfileMenuAction("settings")}
+                                        >
+                                            <Settings style={{ height: "1rem", width: "1rem" }} />
+                                            Settings
+                                        </button>
+
+                                        <div className="glass-menu-divider" />
+
+                                        <button
+                                            type="button"
+                                            className="glass-menu-item danger"
+                                            role="menuitem"
+                                            onClick={() => handleProfileMenuAction("logout")}
+                                        >
+                                            <LogOut style={{ height: "1rem", width: "1rem" }} />
+                                            Logout
+                                        </button>
+                                    </div>
+                                </>,
+                                document.body
+                            )}
                     </div>
                 </div>
             </aside>

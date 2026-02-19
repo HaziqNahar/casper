@@ -527,38 +527,18 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                     </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <button style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        background: '#002855',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.375rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem'
-                    }}>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button className="btn btn-primary">
                         <Edit size={16} />
                         Edit
                     </button>
-                    <button style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '0.5rem',
-                        padding: '0.5rem 1rem',
-                        background: '#dc2626',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '0.375rem',
-                        cursor: 'pointer',
-                        fontSize: '0.875rem'
-                    }}>
+
+                    <button className="btn btn-danger">
                         <Trash2 size={16} />
                         Delete
                     </button>
                 </div>
+
             </div>
 
             {/* Status Badge */}
