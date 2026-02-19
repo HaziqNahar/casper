@@ -1,0 +1,211 @@
+/* =========================================================
+   components.ui.css
+   Reusable UI: Pills + Buttons + Small Helpers
+   (Generic styles used across pages/components)
+   ========================================================= */
+
+/* ---------------------------
+   Status Pill
+--------------------------- */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+
+    height: 24px;
+    padding: 0 10px;
+
+    font-size: .72rem;
+    font-weight: 700;
+    border-radius: 999px;
+}
+
+.status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+}
+
+/* Variants */
+.status-pill.active {
+    background: rgba(34, 197, 94, .14);
+    color: rgb(22, 163, 74);
+}
+
+.status-pill.active .status-dot {
+    background: rgb(22, 163, 74);
+}
+
+.status-pill.inactive {
+    background: rgba(239, 68, 68, .14);
+    color: rgb(220, 38, 38);
+}
+
+.status-pill.inactive .status-dot {
+    background: rgb(220, 38, 38);
+}
+
+.status-pill.pending {
+    background: rgba(245, 158, 11, .16);
+    color: rgb(217, 119, 6);
+}
+
+.status-pill.pending .status-dot {
+    background: rgb(217, 119, 6);
+}
+
+/* ---------------------------
+   Role Pill (simple label)
+--------------------------- */
+.role-pill {
+    display: inline-flex;
+    align-items: center;
+
+    height: 24px;
+    padding: 0 10px;
+
+    font-size: .72rem;
+    font-weight: 700;
+    border-radius: 999px;
+
+    background: rgba(37, 99, 235, .12);
+    color: rgba(37, 99, 235, .95);
+}
+
+/* ---------------------------
+   Generic Pill
+--------------------------- */
+.pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    height: 24px;
+    padding: 0 10px;
+
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    border: 1px solid transparent;
+}
+
+.pill-neutral {
+    background: #f1f5f9;
+    color: #475569;
+}
+
+.pill-info {
+    background: rgba(219, 234, 254, .9);
+    color: #1d4ed8;
+}
+
+.pill-warn {
+    background: rgba(254, 243, 199, .95);
+    color: #b45309;
+}
+
+/* Toggle helpers (if you use them) */
+.pill-toggle {
+    border: 1px solid rgba(37, 99, 235, .25);
+    cursor: pointer;
+    transition: .15s ease;
+}
+
+.pill-toggle:active {
+    transform: translateY(1px);
+}
+
+.pill-on {
+    background: rgba(37, 99, 235, .12);
+    border-color: rgba(37, 99, 235, .45);
+}
+
+.pill-off {
+    opacity: .55;
+    background: rgba(37, 99, 235, .06);
+}
+
+/* ---------------------------
+   Highlight Note
+--------------------------- */
+.note-highlight {
+    display: inline-block;
+    padding: .2rem .35rem;
+    border-radius: 6px;
+
+    background: rgba(253, 230, 138, .95);
+    color: rgba(15, 23, 42, .95);
+
+    font-weight: 700;
+    width: fit-content;
+}
+
+/* ---------------------------
+   Small layout helpers
+--------------------------- */
+.roles-2fa {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.fa2-stack {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+}
+
+/* ---------------------------
+   Buttons
+--------------------------- */
+.btn-primary {
+    background: var(--kc-primary);
+    border: 1px solid var(--kc-primary);
+    color: #fff;
+
+    border-radius: 10px;
+    padding: .45rem .8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.btn-primary:hover {
+    filter: brightness(.95);
+}
+
+.btn-secondary {
+    background: #f8fafc;
+    border: 1px solid var(--kc-border);
+    color: #334155;
+
+    border-radius: 10px;
+    padding: .45rem .8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+/* Icon Action Button */
+.icon-action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    color: #64748b;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+.icon-action:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+}

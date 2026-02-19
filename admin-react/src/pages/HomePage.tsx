@@ -109,31 +109,41 @@ interface ActivityItem {
     time: string;
 }
 
-const ActivityIcon: React.FC<{ type: string }> = ({ type }) => {
-    const iconProps = { size: 16 };
-
+const ActivityIcon: React.FC<{ type: ActivityItem["type"] }> = ({ type }) => {
     switch (type) {
-        case 'case':
-            return <FileText {...iconProps} />;
-        case 'warden':
-            return <Users {...iconProps} />;
-        case 'alert':
-            return <AlertTriangle {...iconProps} />;
-        default:
-            return <Activity {...iconProps} />;
+        case "case": return <FileText />;
+        case "warden": return <Users />;
+        case "alert": return <AlertTriangle />;
+        default: return <Activity />;
     }
 };
 
-const getActivityColor = (type: string) => {
+const getActivityColor = (type: ActivityItem['type']) => {
     switch (type) {
         case 'case':
-            return { bg: '#dbeafe', color: '#2563eb' };
+            return {
+                bg: 'rgba(59, 130, 246, 0.14)',   // soft blue
+                color: '#2563eb'
+            };
+
         case 'warden':
-            return { bg: '#d1fae5', color: '#059669' };
+            return {
+                bg: 'rgba(16, 185, 129, 0.14)',   // soft green
+                color: '#059669'
+            };
+
         case 'alert':
-            return { bg: '#fef3c7', color: '#d97706' };
+            return {
+                bg: 'rgba(245, 158, 11, 0.16)',   // soft amber
+                color: '#d97706'
+            };
+
+        case 'system':
         default:
-            return { bg: '#f3f4f6', color: '#000000' };
+            return {
+                bg: 'rgba(107, 114, 128, 0.14)',  // soft gray
+                color: '#6b7280'
+            };
     }
 };
 
@@ -141,65 +151,27 @@ const getActivityColor = (type: string) => {
 // QUICK ACTION BUTTON
 // ==========================================
 
-interface QuickActionProps {
+type QuickActionProps = {
     icon: React.ReactNode;
     label: string;
     onClick: () => void;
-    color: string;
-    bgColor: string;
-}
+    color: string;   // icon color
+    bgColor: string; // icon background
+};
 
 const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onClick, color, bgColor }) => (
     <button
+        type="button"
+        className="dash-qaBtn"
         onClick={onClick}
-        style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: '0.5rem',
-            padding: '1rem',
-            background: 'rgba(255, 255, 255, 0.8)',
-            backdropFilter: 'blur(15px)',
-            WebkitBackdropFilter: 'blur(15px)',
-            border: '1px solid rgba(229, 231, 235, 0.4)',
-            borderRadius: '0.75rem',
-            cursor: 'pointer',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            minWidth: '100px',
-            fontFamily: 'inherit',
-        }}
-        onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.95)';
-            e.currentTarget.style.backdropFilter = 'blur(20px)';
-            e.currentTarget.style.WebkitBackdropFilter = 'blur(20px)';
-            e.currentTarget.style.borderColor = color;
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0, 0, 0, 0.12)';
-        }}
-        onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.8)';
-            e.currentTarget.style.backdropFilter = 'blur(15px)';
-            e.currentTarget.style.WebkitBackdropFilter = 'blur(15px)';
-            e.currentTarget.style.borderColor = 'rgba(229, 231, 235, 0.4)';
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = 'none';
-        }}
+        style={{ borderColor: "rgba(229,231,235,0.45)" }}
+        onMouseEnter={(e) => (e.currentTarget.style.borderColor = color)}
+        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(229,231,235,0.45)")}
     >
-        <div style={{
-            width: '2.5rem',
-            height: '2.5rem',
-            borderRadius: '0.5rem',
-            backgroundColor: bgColor,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: color
-        }}>
+        <div className="dash-qaIcon" style={{ backgroundColor: bgColor, color }}>
             {icon}
         </div>
-        <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#000000' }}>
-            {label}
-        </span>
+        <span className="dash-qaLabel">{label}</span>
     </button>
 );
 
@@ -244,7 +216,7 @@ const HomePage: React.FC = () => {
                     icon={<Users size={24} />}
                     color="#2563eb"
                     bgColor="#dbeafe"
-                    onClick={() => navigate(ROUTES.USERS_ALL)}
+                    onClick={() => navigate(ROUTES.USERS)}
                 />
                 <StatCard
                     title="Total Realms"
@@ -252,7 +224,7 @@ const HomePage: React.FC = () => {
                     icon={<Globe size={24} />}
                     color="#d97706"
                     bgColor="#fef3c7"
-                    onClick={() => navigate(ROUTES.REALMS_ALL)}
+                    onClick={() => navigate(ROUTES.REALMS)}
                 />
                 <StatCard
                     title="Audit Logs"
@@ -275,15 +247,11 @@ const HomePage: React.FC = () => {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
                     {/* Quick Actions */}
                     <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
-                        <h3 style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            color: '#000000',
-                            margin: '0 0 1rem 0'
-                        }}>
+                        <h3 className="dash-sectionTitle">
                             Quick Actions
                         </h3>
-                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                        <div className="dash-quickRow">
+
                             <QuickAction
                                 icon={<UserPlus size={20} />}
                                 label="Create User"
@@ -311,115 +279,39 @@ const HomePage: React.FC = () => {
 
                 {/* Right Column - Recent Activity */}
                 <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        marginBottom: '1rem'
-                    }}>
-                        <h3 style={{
-                            fontSize: '0.875rem',
-                            fontWeight: 600,
-                            color: '#000000',
-                            margin: 0
-                        }}>
+                    <div className="dash-sectionHead">
+                        <h3 className="dash-sectionTitle">
                             Recent Activity
                         </h3>
-                        <button
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#2563eb',
-                                background: 'none',
-                                border: 'none',
-                                cursor: 'pointer',
-                                fontWeight: 500,
-                                fontFamily: 'inherit',
-                            }}
-                        >
+                        <button className="dash-linkBtn">
                             View All
                         </button>
                     </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div className="dash-activityList">
                         {recentActivity.map((activity) => {
                             const colors = getActivityColor(activity.type);
+
                             return (
-                                <div
-                                    key={activity.id}
-                                    style={{
-                                        display: 'flex',
-                                        gap: '0.75rem',
-                                        padding: '0.75rem',
-                                        borderRadius: '0.75rem',
-                                        background: 'rgba(255, 255, 255, 0.82)',
-                                        border: '1px solid rgba(255, 255, 255, 0.35)',
-                                        backdropFilter: 'blur(10px)',
-                                        WebkitBackdropFilter: 'blur(10px)',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.background = 'rgba(243, 244, 246, 0.8)';
-                                        e.currentTarget.style.backdropFilter = 'blur(12px)';
-                                        e.currentTarget.style.WebkitBackdropFilter = 'blur(12px)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.background = 'rgba(249, 250, 251, 0.6)';
-                                        e.currentTarget.style.backdropFilter = 'blur(10px)';
-                                        e.currentTarget.style.WebkitBackdropFilter = 'blur(10px)';
-                                    }}
-                                >
-                                    <div style={{
-                                        width: '2rem',
-                                        height: '2rem',
-                                        borderRadius: '50%',
-                                        backgroundColor: colors.bg,
-                                        color: colors.color,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0,
-                                    }}>
+                                <div key={activity.id} className="dash-activityItem">
+                                    <div className={`dash-activityIcon is-${activity.type}`}>
                                         <ActivityIcon type={activity.type} />
                                     </div>
+
                                     <div style={{ flex: 1, minWidth: 0 }}>
-                                        <p style={{
-                                            fontSize: '0.8rem',
-                                            fontWeight: 600,
-                                            color: '#000000',
-                                            margin: 0,
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
-                                        }}>
-                                            {activity.title}
-                                        </p>
-                                        <p style={{
-                                            fontSize: '0.7rem',
-                                            color: '#000000',
-                                            margin: '0.125rem 0 0 0',
-                                            whiteSpace: 'nowrap',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis'
-                                        }}>
-                                            {activity.description}
-                                        </p>
-                                        <p style={{
-                                            fontSize: '0.65rem',
-                                            color: '#000000',
-                                            margin: '0.25rem 0 0 0'
-                                        }}>
-                                            {activity.time}
-                                        </p>
+                                        <div className="dash-activityTitle">{activity.title}</div>
+                                        <div className="dash-activityDesc">{activity.description}</div>
+                                        <div className="dash-activityTime">{activity.time}</div>
                                     </div>
                                 </div>
                             );
                         })}
+
                     </div>
                 </div>
             </div>
         </div>
     );
-};
+}
 
 export default HomePage;

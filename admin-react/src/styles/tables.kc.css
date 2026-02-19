@@ -1,0 +1,706 @@
+/* =========================================================
+   Keycloak-style Table (hyphenated classes)
+   - Matches DataTable2.tsx classNames
+   - Rounded corners work even with scroll + sticky header
+   - Includes fallbacks so missing --kc-* tokens won't break styles
+   ========================================================= */
+
+/* Toolbar */
+.kc-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 12px 16px;
+    background: var(--kc-toolbar-bg, #f9fafb);
+    border-bottom: 1px solid var(--kc-border, #e5e7eb);
+}
+
+.kc-table-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    flex: 1;
+    min-width: 180px;
+    max-width: 360px;
+}
+
+.kc-table-searchIcon {
+    position: absolute;
+    left: 12px;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.kc-table-searchInput {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+
+    font-size: 0.875rem;
+    color: var(--kc-text, #111827);
+    outline: none;
+}
+
+.kc-table-searchInput:focus {
+    border-color: #93c5fd;
+    box-shadow: 0 0 0 3px var(--kc-focus, rgba(147, 197, 253, .35));
+}
+
+.kc-table-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 0.875rem;
+    color: var(--kc-text-muted, #6b7280);
+    white-space: nowrap;
+}
+
+/* Scroll region (important for rounded corners + sticky header) */
+.kc-table-wrap {
+    width: 100%;
+    overflow: auto;
+
+    /* This makes the inner scroll content respect the rounded corners */
+    clip-path: inset(0 round var(--kc-radius, 14px));
+}
+
+/* Table */
+.kc-table-table {
+    width: 100%;
+    min-width: 720px;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+/* Header */
+.kc-table-th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    background: var(--kc-primary, #0b1f3a);
+    color: #fff;
+
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    white-space: nowrap;
+}
+
+.kc-table-thInner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.kc-table-thLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kc-table-sort {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 0.8;
+    opacity: 0.65;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.kc-table-sort .is-on {
+    opacity: 1;
+    color: #fff;
+}
+
+/* Body */
+.kc-table-tr:nth-child(even) {
+    background: #fbfcfe;
+}
+
+.kc-table-tr:hover {
+    background: #f5f9ff;
+}
+
+.kc-table-tr.is-clickable {
+    cursor: pointer;
+}
+
+.kc-table-td {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    color: var(--kc-text, #111827);
+
+    border-bottom: 1px solid var(--kc-border-soft, #eef2f7);
+    border-right: 1px solid var(--kc-border-soft, #eef2f7);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kc-table-td:last-child {
+    border-right: none;
+}
+
+/* Empty state */
+.kc-table-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 36px 16px;
+    color: var(--kc-text-muted, #6b7280);
+}
+
+.kc-table-emptyTitle {
+    font-weight: 700;
+    color: var(--kc-text, #111827);
+}
+
+.kc-table-emptySub {
+    font-size: 0.875rem;
+    margin-top: 2px;
+    color: var(--kc-text-muted, #6b7280);
+}
+
+/* Pagination */
+.kc-table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    padding: 12px 16px;
+    background: var(--kc-primary, #0b1f3a);
+    color: #fff;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
+}
+
+.kc-table-pagerLeft,
+.kc-table-pagerRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kc-table-rows {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kc-table-select {
+    padding: 6px 8px;
+    border-radius: var(--kc-radius-sm, 10px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #fff;
+    color: #111;
+    outline: none;
+}
+
+.kc-table-pageBox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kc-table-pageInput {
+    width: 44px;
+    padding: 6px 6px;
+    border-radius: var(--kc-radius-sm, 10px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #fff;
+    color: #111;
+    text-align: center;
+    outline: none;
+}
+
+/* Buttons used in your JSX */
+.kc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    height: 32px;
+    padding: 0 12px;
+
+    border-radius: var(--kc-radius-sm, 10px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+
+    background: rgba(255, 255, 255, 0.12);
+
+    font: inherit;
+    cursor: pointer;
+}
+
+.kc-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.kc-btn--ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+.kc-btn--icon {
+    width: 34px;
+    padding: 0;
+}
+
+.kc-btn-primary {
+    background: var(--kc-primary);
+    border: 1px solid var(--kc-primary);
+    color: #fff;
+}
+
+.kc-btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+}
+
+/* Datetime (Option A) */
+.kc-datetime {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 2px;
+
+    line-height: 1.15;
+    white-space: nowrap;
+    /* keeps it tidy in table */
+    max-width: 100%;
+}
+
+.kc-datetime-sub {
+    margin-left: 0;
+    /* key: avoid weird indent */
+    font-size: 0.78em;
+    font-weight: 500;
+    color: var(--kc-text-muted, #64748b);
+    opacity: 0.95;
+}
+
+.kc-muted {
+    color: #94a3b8;
+}
+
+/* ---------------------------
+   Spinner
+--------------------------- */
+.kc-spin {
+    animation: kc-spin 1s linear infinite;
+}
+
+@keyframes kc-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ---------------------------
+   Table Shell
+--------------------------- */
+.kc-table {
+    width: 100%;
+    background: var(--kc-surface, #ffffff);
+    border: 1px solid var(--kc-border, #e5e7eb);
+    border-radius: var(--kc-radius, 12px);
+    box-shadow: var(--kc-shadow, 0 8px 24px rgba(0, 0, 0, 0.08));
+    overflow: hidden;
+    /* IMPORTANT for rounded corners + sticky header */
+}
+
+
+/* ---------------------------
+   Toolbar
+--------------------------- */
+.kc-table .kc-table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    padding: 12px 16px;
+    background: #f9fafb;
+}
+
+.kc-table .kc-table-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+
+    flex: 1;
+    min-width: 180px;
+    max-width: 360px;
+}
+
+.kc-table .kc-table-searchIcon {
+    position: absolute;
+    left: 12px;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.kc-table .kc-table-searchInput {
+    width: 100%;
+    padding: 8px 12px 8px 36px;
+
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    background: #fff;
+
+    font-size: 0.875rem;
+    color: var(--kc-text, #0f172a);
+    outline: none;
+}
+
+.kc-table .kc-table-searchInput:focus {
+    border-color: var(--kc-focus, #93c5fd);
+    box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.35);
+}
+
+.kc-table .kc-table-meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    font-size: 0.875rem;
+    color: var(--kc-text-muted, #64748b);
+    white-space: nowrap;
+}
+
+/* ---------------------------
+   Scroll wrapper
+   - Keep overflow here so the outer rounded corners stay clean.
+--------------------------- */
+.kc-table .kc-table-wrap {
+    overflow: auto;
+    width: 100%;
+}
+
+/* ---------------------------
+   Table Base
+--------------------------- */
+.kc-table .kc-table-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: auto;
+}
+
+/* (optional) if your table gets squished on small widths */
+.kc-table .kc-table-table {
+    min-width: 720px;
+}
+
+/* ---------------------------
+   Header
+--------------------------- */
+.kc-table .kc-table-th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+
+    background: var(--kc-primary, #0b1f3a);
+    color: #fff;
+
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    white-space: nowrap;
+}
+
+/* Round the header corners so it doesn't look "square" inside the rounded container */
+.kc-table thead tr th:first-child {
+    border-top-left-radius: var(--kc-radius, 12px);
+}
+
+.kc-table thead tr th:last-child {
+    border-top-right-radius: var(--kc-radius, 12px);
+}
+
+.kc-table .kc-table-thInner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 0;
+}
+
+.kc-table .kc-table-thLabel {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.kc-table .kc-table-sort {
+    display: inline-flex;
+    flex-direction: column;
+    line-height: 0.8;
+    opacity: 0.65;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.kc-table .kc-table-sort .is-on {
+    opacity: 1;
+    color: #fff;
+}
+
+/* ---------------------------
+   Rows / Cells
+--------------------------- */
+.kc-table .kc-table-tr:nth-child(even) {
+    background: #fbfcfe;
+}
+
+.kc-table .kc-table-tr:hover {
+    background: #f5f9ff;
+}
+
+.kc-table .kc-table-tr.is-clickable {
+    cursor: pointer;
+}
+
+.kc-table .kc-table-td {
+    padding: 12px 16px;
+    font-size: 0.875rem;
+    color: var(--kc-text, #0f172a);
+
+    border-bottom: 1px solid var(--kc-border-soft, #eef2f7);
+
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Round the bottom corners on the last row */
+.kc-table tbody tr:last-child td:first-child {
+    border-bottom-left-radius: var(--kc-radius, 12px);
+}
+
+.kc-table tbody tr:last-child td:last-child {
+    border-bottom-right-radius: var(--kc-radius, 12px);
+}
+
+/* ---------------------------
+   Empty State
+--------------------------- */
+.kc-table .kc-table-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 36px 16px;
+    color: var(--kc-text-muted, #64748b);
+}
+
+.kc-table .kc-table-emptyTitle {
+    font-weight: 700;
+    color: var(--kc-text, #0f172a);
+}
+
+.kc-table .kc-table-emptySub {
+    font-size: 0.875rem;
+    margin-top: 2px;
+    color: var(--kc-text-muted, #64748b);
+}
+
+/* ---------------------------
+   Pagination (Footer)
+--------------------------- */
+.kc-table .kc-table-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+
+    padding: 12px 16px;
+    background: var(--kc-primary, #0b1f3a);
+    color: #fff;
+
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+    font-size: 0.8rem;
+}
+
+/* Round footer corners */
+.kc-table .kc-table-pagination {
+    border-bottom-left-radius: var(--kc-radius, 12px);
+    border-bottom-right-radius: var(--kc-radius, 12px);
+}
+
+.kc-table .kc-table-pagerLeft,
+.kc-table .kc-table-pagerRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.kc-table .kc-table-rows {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kc-table .kc-table-select {
+    padding: 6px 8px;
+    border-radius: var(--kc-radius-sm, 8px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #fff;
+    color: #111;
+    outline: none;
+}
+
+.kc-table .kc-table-pageBox {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.kc-table .kc-table-pageInput {
+    width: 44px;
+    padding: 6px 6px;
+
+    border-radius: var(--kc-radius-sm, 8px);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    background: #fff;
+    color: #111;
+
+    text-align: center;
+    outline: none;
+}
+
+/* ---------------------------
+   Buttons used in DataTable2
+--------------------------- */
+.kc-table .kc-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    height: 32px;
+    padding: 0 12px;
+
+    border-radius: var(--kc-radius-sm, 8px);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+
+    font: inherit;
+    cursor: pointer;
+}
+
+.kc-table .kc-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.kc-table .kc-btn--ghost:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.20);
+}
+
+.kc-table .kc-btn--icon {
+    width: 34px;
+    padding: 0;
+}
+
+/* ---------------------------
+   Badge (Status pill)
+   NOTE: scoped under .kc-table to beat other CSS
+--------------------------- */
+.kc-table .kc-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    padding: 6px 10px;
+    border-radius: 999px;
+
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.kc-table .kc-badge--default {
+    background: #f5f5f5;
+    color: #6a6e73;
+    border-color: #d2d2d2;
+}
+
+.kc-table .kc-badge--success {
+    background: #f3faf2;
+    color: #3e8635;
+    border-color: #bde5b8;
+}
+
+.kc-table .kc-badge--warning {
+    background: #fdf7e7;
+    color: #8a6d00;
+    border-color: #f6d173;
+}
+
+.kc-table .kc-badge--error {
+    background: #faeae8;
+    color: #c9190b;
+    border-color: #f2b8b5;
+}
+
+.kc-table .kc-badge--info {
+    background: #e7f1fa;
+    color: #004b95;
+    border-color: #bee1f4;
+}
+
+.kc-table .kc-badge--purple {
+    background: #f2f0fc;
+    color: #5752d1;
+    border-color: #cbc7f5;
+}
+
+/* ---------------------------
+   LinkCell
+--------------------------- */
+.kc-table .kc-linkcell {
+    background: transparent;
+    border: 0;
+    padding: 0;
+
+    color: var(--kc-link, #2563eb);
+    font: inherit;
+    cursor: pointer;
+
+    text-decoration: none;
+}
+
+.kc-table .kc-linkcell:hover {
+    text-decoration: underline;
+}

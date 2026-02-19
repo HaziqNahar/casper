@@ -14,7 +14,7 @@ import ManageRealmsPage from "./pages/Realms/ManageRealms";
 import ManageUsersPage from "./pages/Users/ManageUsers";
 import CreateUserPage from "./pages/Users/CreateUser";
 import Login from "./pages/Authentication/Login";
-import RegisterAppsPage from "./pages/Application/RegisterApps";
+import RegisterAppsPage from "./pages/Application/Registerapps";
 
 const App: React.FC = () => {
   return (

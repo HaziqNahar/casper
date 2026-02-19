@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 import TabPanel from "../../components/common/tabs/TabPanel";
-import DataTable2, { Badge, LinkCell, TableColumn } from "../../components/common/DataTable2";
+import DataTable2, { TableColumn } from "../../components/common/DataTable";
 import { useTabs } from "../../hooks/useTabs";
 import type { Tab } from "../../hooks/useTabs";
 import {
@@ -21,35 +21,40 @@ import {
     Clock,
     LogIn
 } from 'lucide-react';
-
-// Import the CSS
-import '../../styles/browserTabs.css';
-
-type Status = "Active" | "Inactive" | "Pending";
+import { Badge, LinkCell } from "../../components/common/Bagde";
 
 export interface UserRow {
-    id: number;
+    id: string;
+    staffId?: string | null;
+
     username: string;
     email: string;
     firstName: string;
     lastName: string;
-    phone?: string;
+
     role: string;
+    userType: string;
     department?: string;
     status: 'Active' | 'Inactive' | 'Pending';
     lastLogin?: string;
-    createdAt: string;
-    updatedAt?: string;
+
+    isDeleted?: boolean;
+    deletedAt?: string | null;
 }
 
 export interface UserTypeRow {
     id: string;
-    userTypeTitle: string;
-    userTypeDesc?: string;
+    title: string;
+    desc?: string;
     username: string;
     fa1: string;
     fa2: string[];
     useCase: string;
+}
+
+export interface RoleRow {
+    id: string;
+    title: string;
 }
 
 interface CreateUserDto {
@@ -58,82 +63,126 @@ interface CreateUserDto {
     firstName: string;
     lastName: string;
     phone?: string;
-    role: string;
     department?: string;
+    userType: string;
 }
 
 // ============================================================================
 // MOCK DATA (Replace with actual API calls)
 // ============================================================================
-
 const USERS_DATA: UserRow[] = [
     {
-        id: 1,
+        id: "2b2f5b9b-6b2b-4ae9-9f7a-4f4f8f8b0c01",
+        staffId: "S123",
         username: "admin",
         email: "admin@bos.sg",
         firstName: "Admin",
         lastName: "User",
-        role: "Certis Full User",
+        role: "Administrator",
+        userType: "Certis Full User",
         department: "IT",
         status: "Active",
         lastLogin: "19 Dec 2025, 03:30 pm",
-        createdAt: "19 Dec 2025, 03:30 pm",
+        isDeleted: false,
+        deletedAt: null,
     },
     {
-        id: 2,
+        id: "f6c3a0a4-2e1b-46d3-8e0e-8a3b8b6a6a11",
+        staffId: "S234",
         username: "john.doe",
         email: "john.doe@bos.sg",
         firstName: "John",
         lastName: "Doe",
-        role: "Certis Contractor",
+        role: "User",
+        userType: "Certis Half User",
         department: "Operations",
         status: "Active",
         lastLogin: "19 Dec 2025, 02:20 pm",
-        createdAt: "19 Dec 2025, 02:20 pm",
+        isDeleted: false,
+        deletedAt: null,
     },
     {
-        id: 3,
+        id: "c2de49b3-0c8e-4f3b-9b1d-9b22a9cb9e12",
+        staffId: "S345",
         username: "jane.smith",
         email: "jane.smith@bos.sg",
         firstName: "Jane",
         lastName: "Smith",
-        role: "Certis Half User",
+        role: "User",
+        userType: "Certis Contractor",
         department: "Operations",
         status: "Active",
         lastLogin: "18 Dec 2025, 04:45 pm",
-        createdAt: "18 Dec 2025, 04:45 pm",
+        isDeleted: false,
+        deletedAt: null,
     },
     {
-        id: 4,
+        id: "91a1d9e6-2f74-4a91-9c94-1e2b9c4a77c1",
+        staffId: "S456",
         username: "mike.tan",
         email: "mike.tan@bos.sg",
         firstName: "Mike",
         lastName: "Tan",
-        role: "External User",
+        role: "User",
+        userType: "External User",
         department: "Finance",
         status: "Inactive",
         lastLogin: "-",
-        createdAt: "18 Dec 2025, 04:45 pm",
+        isDeleted: false,
+        deletedAt: null,
     },
     {
-        id: 5,
+        id: "a8f8d8e4-8a21-4c36-8cfa-8dbefc9c1122",
+        staffId: "S567",
         username: "sarah.lee",
         email: "sarah.lee@bos.sg",
         firstName: "Sarah",
         lastName: "Lee",
-        role: "Local User",
+        role: "User",
+        userType: "Local User",
         department: "Operations",
         status: "Pending",
         lastLogin: "-",
-        createdAt: "18 Dec 2025, 04:45 pm",
+        isDeleted: false,
+        deletedAt: null,
+    },
+    {
+        id: "e3f0a6c1-1f3a-4d1f-9c8f-9b02f45a7710",
+        staffId: "S678",
+        username: "alex.wong",
+        email: "alex.wong@bos.sg",
+        firstName: "Alex",
+        lastName: "Wong",
+        role: "User",
+        userType: "Local User",
+        department: "Operations",
+        status: "Inactive",
+        lastLogin: "10 Oct 2025, 09:10 am",
+        isDeleted: true,
+        deletedAt: "2025-11-01T00:00:00.000Z",
+    },
+    {
+        id: "7c19f82d-6d89-4c25-b5b7-1b0d4b3b1abc",
+        staffId: "S901",
+        username: "alex.wong",
+        email: "alex.wong@bos.sg",
+        firstName: "Alex",
+        lastName: "Wong",
+        role: "User",
+        userType: "Local User",
+        department: "Operations",
+        status: "Active",
+        lastLogin: "20 Dec 2025, 10:05 am",
+        isDeleted: false,
+        deletedAt: null,
     },
 ];
 
 const USER_TYPES_DATA: UserTypeRow[] = [
     {
         id: "certis-full",
-        userTypeTitle: "Certis Full User",
-        userTypeDesc: "Users with valid Certis employee/contractor ID and email address",
+        title: "Certis Full User",
+        desc: "Users with valid Certis employee/contractor ID and email address",
         username: "xxx@certis.com",
         fa1: "Password",
         fa2: ["TOTP"],
@@ -141,8 +190,8 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
     {
         id: "certis-contractor",
-        userTypeTitle: "Certis Contractor",
-        userTypeDesc: "Certis contractor with contractor ID and Certis email address",
+        title: "Certis Contractor",
+        desc: "Certis contractor with contractor ID and Certis email address",
         username: "xxx@certis.com",
         fa1: "Password",
         fa2: ["TOTP", "Additional Email OTP required once a day"],
@@ -150,8 +199,8 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
     {
         id: "certis-half",
-        userTypeTitle: "Certis Half User",
-        userTypeDesc: "Users with valid Certis employee ID only",
+        title: "Certis Half User",
+        desc: "Users with valid Certis employee ID only",
         username: "Certis Employee ID",
         fa1: "Password",
         fa2: ["Staff Card (NFC) + PIN"],
@@ -159,8 +208,8 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
     {
         id: "external",
-        userTypeTitle: "External Users",
-        userTypeDesc: "External users identified by their company email address",
+        title: "External Users",
+        desc: "External users identified by their company email address",
         username: "External user company email address",
         fa1: "Password",
         fa2: ["TOTP", "Additional Email OTP required once a day"],
@@ -168,8 +217,8 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
     {
         id: "local-user",
-        userTypeTitle: "Local User",
-        userTypeDesc: "For scenarios where all other user types are not suitable. E.g. break glass account.",
+        title: "Local User",
+        desc: "For scenarios where all other user types are not suitable. E.g. break glass account.",
         username: "Custom Username",
         fa1: "Password",
         fa2: ["Yubikey + PIN", "TOTP"],
@@ -177,14 +226,15 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
 ];
 
-const availablePermissions = [
-    { id: 'users.view', label: 'View Users' },
-    { id: 'users.manage', label: 'Manage Users' },
-    { id: 'realms.view', label: 'View Roles' },
-    { id: 'realms.manage', label: 'Manage Roles' },
-    { id: 'settings.view', label: 'View Settings' },
-    { id: 'settings.manage', label: 'Manage Settings' },
-    { id: 'audit.view', label: 'View Audit Logs' },
+const ROLES_DATA: RoleRow[] = [
+    {
+        id: "admin",
+        title: "Administrator",
+    },
+    {
+        id: "user",
+        title: "User",
+    },
 ];
 
 // ============================================================================
@@ -257,6 +307,12 @@ const createUserColumns = (
         {
             key: 'role',
             label: 'Role',
+            width: '200px',
+            render: (value) => (value as string) || '-',
+        },
+        {
+            key: 'userType',
+            label: 'User Type',
             width: '130px',
             render: (value) => (
                 <Badge variant="info">{value as string}</Badge>
@@ -271,10 +327,10 @@ const createUserColumns = (
         {
             key: 'status',
             label: 'Status',
-            width: '110px',
+            width: '130px',
             render: (value) => (
                 <Badge variant={getStatusVariant(value as string)}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span className="kc-badge">
                         {getStatusIcon(value as string)}
                         {value as string}
                     </span>
@@ -299,17 +355,7 @@ const createUserColumns = (
                         e.stopPropagation();
                         onView(row);
                     }}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '0.375rem',
-                        background: 'transparent',
-                        border: 'none',
-                        borderRadius: '0.25rem',
-                        color: '#2563eb',
-                        cursor: 'pointer',
-                    }}
+                    className="icon-action"
                     title="View Details"
                 >
                     <Eye size={16} />
@@ -318,31 +364,19 @@ const createUserColumns = (
         },
     ];
 
-const createRoleColumns = (
+const createUserTypeColumns = (
     onView: (row: UserTypeRow) => void,
     enabled2FAByType: Record<string, string[]>,
     onToggle2FA: (typeId: string, method: string) => void
 ): TableColumn<UserTypeRow>[] => [
         {
-            key: "userTypeTitle",
+            key: "title",
             label: "User Type",
             width: "220px",
             render: (value, row) => (
                 <LinkCell onClick={() => onView(row)}>{value as string}</LinkCell>
             ),
         },
-        // {
-        //     key: "userTypeDesc",
-        //     label: "Description",
-        //     width: "1fr",
-        //     render: (value) => (value as string) || "-",
-        // },
-        // {
-        //     key: "username",
-        //     label: "Username",
-        //     width: "240px",
-        //     render: (value) => (value as string) || "-",
-        // },
         {
             key: "fa1",
             label: "1FA",
@@ -389,12 +423,6 @@ const createRoleColumns = (
                 );
             },
         },
-        // {
-        //     key: "useCase",
-        //     label: "Use Case",
-        //     width: "260px",
-        //     render: (value) => (value as string) || "-",
-        // },
         {
             key: "id",
             label: "Actions",
@@ -414,6 +442,25 @@ const createRoleColumns = (
                     <Eye size={16} />
                 </button>
             ),
+        },
+    ];
+
+const createRoleColumns = (
+    onView: (row: RoleRow) => void
+): TableColumn<RoleRow>[] => [
+        {
+            key: "id",
+            label: "ID",
+            width: "80px",
+            sortable: false,
+            render: (_, row) => row.id,
+        },
+        {
+            key: "title",
+            label: "Title",
+            width: "200px",
+            sortable: false,
+            render: (_, row) => row.title,
         },
     ];
 
@@ -505,7 +552,7 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
 
             {/* Status Badge */}
             <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                <span style={{
+                <span className="kc-badge" style={{
                     padding: '0.375rem 0.75rem',
                     background: user.status === 'Active' ? '#dcfce7' : user.status === 'Pending' ? '#fef3c7' : '#fee2e2',
                     color: user.status === 'Active' ? '#16a34a' : user.status === 'Pending' ? '#d97706' : '#dc2626',
@@ -519,7 +566,7 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                     {getStatusIcon(user.status)}
                     {user.status}
                 </span>
-                <span style={{
+                <span className="kc-badge" style={{
                     padding: '0.375rem 0.75rem',
                     background: '#dbeafe',
                     color: '#2563eb',
@@ -614,12 +661,6 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                                 {user.email}
                             </p>
                         </div>
-                        <div>
-                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Phone</label>
-                            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937' }}>
-                                {user.phone || '-'}
-                            </p>
-                        </div>
                     </div>
                 </div>
 
@@ -686,35 +727,38 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                                 {formatDateTime(user.lastLogin)}
                             </p>
                         </div>
-                        <div>
+                        {/* <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Created</label>
                             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937' }}>
                                 {formatDateTime(user.createdAt)}
                             </p>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
         </div>
     );
 };
+
 // ============================================================================
-// ROLE DETAIL COMPONENT
+// USER TYPES DETAIL COMPONENT
 // ============================================================================
 
-interface RoleDetailContentProps {
-    role: UserTypeRow;
+interface UserTypesDetailContentProps {
+    usertype: UserTypeRow;
     onBack?: () => void;
     enabled2FAByType: Record<string, string[]>;
     onToggle2FA: (typeId: string, method: string) => void;
+    filteredUserTypes: UserTypeRow[];
 }
 
-const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
-    role,
+const UserTypesDetailContent: React.FC<UserTypesDetailContentProps> = ({
+    usertype,
     onBack,
     enabled2FAByType,
-    onToggle2FA, }) => {
-    const enabledSet = new Set(enabled2FAByType?.[role.id] ?? []);
+    onToggle2FA,
+    filteredUserTypes }) => {
+    const enabledSet = new Set(enabled2FAByType?.[usertype.id] ?? []);
     return (
         <div style={{ padding: '0.5rem' }}>
             {/* Header with Back Button */}
@@ -749,10 +793,10 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
                     )}
                     <div>
                         <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: '#1f2937' }}>
-                            {role.userTypeTitle}
+                            {usertype.title}
                         </h2>
                         <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#6b7280' }}>
-                            {role.userTypeDesc}
+                            {usertype.desc}
                         </p>
                     </div>
                 </div>
@@ -849,13 +893,13 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
                         <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Name</label>
                             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937', fontWeight: 600 }}>
-                                {role.username}
+                                {usertype.title}
                             </p>
                         </div>
                         <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Description</label>
                             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937' }}>
-                                {role.userTypeDesc || 'No description provided'}
+                                {usertype.desc || 'No description provided'}
                             </p>
                         </div>
                         {/* <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -899,13 +943,13 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
                             <div>
                                 <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>1FA</label>
                                 <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937' }}>
-                                    {role.fa1}
+                                    {usertype.fa1}
                                 </p>
                             </div>
                             <div>
                                 <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>2FA</label>
                                 <div className="fa2-stack" style={{ marginTop: "0.35rem" }}>
-                                    {(role.fa2 ?? []).map((method) => {
+                                    {(usertype.fa2 ?? []).map((method) => {
                                         const enabled = enabledSet.has(method);
                                         const isNote = /additional\s+email\s+otp/i.test(method);
 
@@ -919,7 +963,7 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
                                                     enabled ? "pill-on" : "pill-off",
                                                     "pill-toggle",
                                                 ].join(" ")}
-                                                onClick={() => onToggle2FA(role.id, method)}
+                                                onClick={() => onToggle2FA(usertype.id, method)}
                                                 aria-pressed={enabled}
                                                 title={enabled ? "Click to disable" : "Click to enable"}
                                             >
@@ -933,7 +977,7 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
                         <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block' }}>Use Case</label>
                             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.875rem', color: '#1f2937' }}>
-                                {role.useCase}
+                                {usertype.useCase}
                             </p>
                         </div>
                     </div>
@@ -986,6 +1030,22 @@ const RoleDetailContent: React.FC<RoleDetailContentProps> = ({
 };
 
 // ============================================================================
+// ROLE DETAIL COMPONENT
+// ============================================================================
+
+interface RoleDetailProps {
+    role: RoleRow;
+}
+
+const RoleDetailContent: React.FC<RoleDetailProps> = ({ role }) => {
+    return (
+        <div>
+            <h2>{role.title}</h2>
+        </div>
+    );
+};
+
+// ============================================================================
 // USERS TAB CONTENT
 // ============================================================================
 
@@ -998,7 +1058,10 @@ interface UsersContentProps {
     statusFilter: string;
     roleFilter: string;
     onStatusFilterChange: (value: string) => void;
-    onRoleFilterChange: (value: string) => void;
+    onUserTypesFilterChange: (value: string) => void;
+    showArchivedUsers: boolean;
+    setShowArchivedUsers: (value: boolean) => void;
+    filteredUsers: UserRow[];
 }
 
 const UsersContent: React.FC<UsersContentProps> = ({
@@ -1010,20 +1073,15 @@ const UsersContent: React.FC<UsersContentProps> = ({
     statusFilter,
     roleFilter,
     onStatusFilterChange,
-    onRoleFilterChange,
+    onUserTypesFilterChange,
+    showArchivedUsers,
+    setShowArchivedUsers,
+    filteredUsers,
 }) => {
     const columns = React.useMemo(
         () => createUserColumns(onRowClick),
         [onRowClick]
     );
-
-    const filteredUsers = React.useMemo(() => {
-        return users.filter((user) => {
-            if (statusFilter !== 'All' && user.status !== statusFilter) return false;
-            if (roleFilter !== 'All' && user.role !== roleFilter) return false;
-            return true;
-        });
-    }, [users, statusFilter, roleFilter]);
 
     const uniqueRoles = React.useMemo(() => {
         return [...new Set(users.map(u => u.role))];
@@ -1032,6 +1090,35 @@ const UsersContent: React.FC<UsersContentProps> = ({
     return (
         <div className="tab-table-container" style={{ position: 'relative' }}>
             <div className="table-card" style={{ flex: 1 }}>
+                <div
+                    style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "0.75rem 1rem",
+                        borderBottom: "1px solid #e5e7eb",
+                        background: "#f9fafb",
+                    }}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setShowArchivedUsers((v) => !v)}
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                            padding: "0.375rem 0.75rem",
+                            fontSize: "0.75rem",
+                            borderRadius: "9999px",
+                            border: "1px solid #e5e7eb",
+                            background: showArchivedUsers ? "#111827" : "white",
+                            color: showArchivedUsers ? "white" : "#111827",
+                            cursor: "pointer",
+                        }}
+                    >
+                        {showArchivedUsers ? "Hide archived" : "Show archived"}
+                    </button>
+                </div>
                 <DataTable2<UserRow>
                     data={filteredUsers}
                     columns={columns}
@@ -1073,7 +1160,7 @@ const UsersContent: React.FC<UsersContentProps> = ({
                         Filter Options
                     </h4>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                        <div>
+                        {/* <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>
                                 Status
                             </label>
@@ -1094,14 +1181,14 @@ const UsersContent: React.FC<UsersContentProps> = ({
                                 <option value="Inactive">Inactive</option>
                                 <option value="Pending">Pending</option>
                             </select>
-                        </div>
+                        </div> */}
                         <div>
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>
-                                Role
+                                User Types
                             </label>
                             <select
                                 value={roleFilter}
-                                onChange={(e) => onRoleFilterChange(e.target.value)}
+                                onChange={(e) => onUserTypesFilterChange(e.target.value)}
                                 style={{
                                     width: '100%',
                                     padding: '0.5rem',
@@ -1120,7 +1207,7 @@ const UsersContent: React.FC<UsersContentProps> = ({
                         <button
                             onClick={() => {
                                 onStatusFilterChange('All');
-                                onRoleFilterChange('All');
+                                onUserTypesFilterChange('All');
                             }}
                             style={{
                                 marginTop: '0.5rem',
@@ -1137,17 +1224,18 @@ const UsersContent: React.FC<UsersContentProps> = ({
                         </button>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 };
 
 // ============================================================================
-// ROLES TAB CONTENT
+// USER TYPES TAB CONTENT
 // ============================================================================
 
-interface RolesContentProps {
-    roles: UserTypeRow[];
+interface UserTypesContentProps {
+    usertypes: UserTypeRow[];
     loading: boolean;
     error: string | null;
     onRowClick: (role: UserTypeRow) => void;
@@ -1157,10 +1245,13 @@ interface RolesContentProps {
 
     enabled2FAByType: Record<string, string[]>;
     onToggle2FA: (typeId: string, method: string) => void;
+    showArchivedUsers: boolean;
+    setShowArchivedUsers: (value: boolean) => void;
+    filteredUserTypes: UserTypeRow[];
 }
 
-const RolesContent: React.FC<RolesContentProps> = ({
-    roles,
+const UserTypeContent: React.FC<UserTypesContentProps> = ({
+    usertypes,
     loading,
     error,
     onRowClick,
@@ -1169,25 +1260,21 @@ const RolesContent: React.FC<RolesContentProps> = ({
     onStatusFilterChange,
     enabled2FAByType,
     onToggle2FA,
+    showArchivedUsers,
+    setShowArchivedUsers,
+    filteredUserTypes,
 }) => {
     const columns = React.useMemo(
-        () => createRoleColumns(onRowClick, enabled2FAByType, onToggle2FA),
+        () => createUserTypeColumns(onRowClick, enabled2FAByType, onToggle2FA),
         [onRowClick, enabled2FAByType, onToggle2FA]
     );
 
-    const filteredRoles = React.useMemo(() => {
-        return roles.filter((role) => {
-            // (you currently don't have role.status in UserTypeRow, so remove this unless you add it)
-            if (statusFilter !== "All") return true;
-            return true;
-        });
-    }, [roles, statusFilter]);
 
     return (
         <div className="tab-table-container" style={{ position: "relative" }}>
             <div className="table-card" style={{ flex: 1 }}>
                 <DataTable2<UserTypeRow>
-                    data={filteredRoles}
+                    data={filteredUserTypes}
                     columns={columns}
                     keyField="id"
                     onRowClick={onRowClick}
@@ -1201,7 +1288,7 @@ const RolesContent: React.FC<RolesContentProps> = ({
                     striped={true}
                     hoverable={true}
                     stickyHeader={true}
-                    emptyMessage="No roles found"
+                    emptyMessage="No user types found"
                     minHeight="100%"
                 />
             </div>
@@ -1232,24 +1319,152 @@ const RolesContent: React.FC<RolesContentProps> = ({
 };
 
 // ============================================================================
+// ROLES TAB CONTENT
+// ============================================================================
+
+interface RolesContentProps {
+    roles: RoleRow[];
+    loading: boolean;
+    error: string | null;
+    onRowClick: (role: RoleRow) => void;
+    isFilterOpen: boolean;
+    statusFilter: string;
+    roleFilter: string;
+    onStatusFilterChange: (value: string) => void;
+    onRoleFilterChange: (value: string) => void;
+    filteredRoles: RoleRow[];
+}
+
+const RolesContent: React.FC<RolesContentProps> = ({
+    roles,
+    loading,
+    error,
+    onRowClick,
+    isFilterOpen,
+    statusFilter,
+    roleFilter,
+    onStatusFilterChange,
+    onRoleFilterChange,
+    filteredRoles,
+}) => {
+    const columns = React.useMemo(
+        () => createRoleColumns(onRowClick),
+        [onRowClick]
+    );
+
+    const uniqueRoles = React.useMemo(() => {
+        return [...new Set(roles.map(r => r.title))];
+    }, [roles]);
+
+    return (
+        <div className="tab-table-container" style={{ position: 'relative' }}>
+            <div className="table-card" style={{ flex: 1 }}>
+                <DataTable2<RoleRow>
+                    data={filteredRoles}
+                    columns={columns}
+                    keyField="id"
+                    onRowClick={onRowClick}
+                    loading={loading}
+                    error={error}
+                    searchable={true}
+                    searchPlaceholder="Search by role name..."
+                    paginated={true}
+                    pageSize={10}
+                    pageSizeOptions={[10, 25, 50, 100]}
+                    striped={true}
+                    hoverable={true}
+                    stickyHeader={true}
+                    emptyMessage="No roles found"
+                    minHeight="100%"
+                />
+            </div>
+
+            {isFilterOpen && (
+                <div
+                    className="tab-table-filters"
+                    style={{
+                        position: 'absolute',
+                        top: 0,
+                        right: 0,
+                        width: '260px',
+                        height: '100%',
+                        background: 'white',
+                        borderLeft: '1px solid #e5e7eb',
+                        boxShadow: '-4px 0 12px rgba(0, 0, 0, 0.1)',
+                        zIndex: 10,
+                        padding: '1rem',
+                        overflowY: 'auto',
+                    }}
+                >
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#374151' }}>
+                        Filter Options
+                    </h4>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        <div>
+                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>
+                                Roles
+                            </label>
+                            <select
+                                value={roleFilter}
+                                onChange={(e) => onRoleFilterChange(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '0.5rem',
+                                    borderRadius: '0.375rem',
+                                    border: '1px solid #d1d5db',
+                                    fontSize: '0.875rem',
+                                    background: 'white',
+                                }}
+                            >
+                                <option value="All">All</option>
+                                {uniqueRoles.map(role => (
+                                    <option key={role} value={role}>{role}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <button
+                            onClick={() => {
+                                onRoleFilterChange('All');
+                            }}
+                            style={{
+                                marginTop: '0.5rem',
+                                padding: '0.5rem 1rem',
+                                background: '#f3f4f6',
+                                color: '#374151',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '0.375rem',
+                                fontSize: '0.875rem',
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Clear Filters
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div >
+    );
+};
+
+// ============================================================================
 // CREATE USER CONTENT
 // ============================================================================
 
 interface CreateUserContentProps {
     onCancel?: () => void;
     onSave?: (user: UserRow) => void;
-    roles: UserTypeRow[];
+    userTypes: UserTypeRow[];
 }
 
-const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave, roles }) => {
+const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave, userTypes }) => {
     const [formData, setFormData] = useState<CreateUserDto>({
         username: '',
         email: '',
         firstName: '',
         lastName: '',
         phone: '',
-        role: '',
         department: '',
+        userType: '',
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -1277,8 +1492,8 @@ const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave,
             setError('Last name is required');
             return;
         }
-        if (!formData.role) {
-            setError('Role is required');
+        if (!formData.userType) {
+            setError('User type is required');
             return;
         }
 
@@ -1453,19 +1668,19 @@ const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave,
                     </div>
                 </div>
 
-                {/* Role & Department */}
+                {/* User Type & Department */}
                 <div style={{ background: '#f9fafb', borderRadius: '0.5rem', padding: '1rem', border: '1px solid #e5e7eb' }}>
                     <h3 style={{ margin: '0 0 1rem 0', fontSize: '0.875rem', fontWeight: 600, color: '#374151', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <Shield size={16} />
-                        Role & Department
+                        User Type & Department
                     </h3>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                         <div>
-                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>Role *</label>
-                            <select value={formData.role} onChange={(e) => handleChange('role', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', background: 'white' }}>
-                                <option value="">Select a role</option>
-                                {roles.filter(r => r.status === 'Active').map(role => (
-                                    <option key={role.userTypeTitle} value={role.userTypeTitle}>{role.userTypeTitle}</option>
+                            <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>User Type *</label>
+                            <select value={formData.userType} onChange={(e) => handleChange('userType', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', background: 'white' }}>
+                                <option value="">Select a user type</option>
+                                {userTypes.filter(userType => userType.status === 'Active').map(userType => (
+                                    <option key={userType.title} value={userType.title}>{userType.title}</option>
                                 ))}
                             </select>
                         </div>
@@ -1486,6 +1701,7 @@ const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave,
 
 const DEFAULT_TABS: Tab[] = [
     { id: 'users', title: 'Users', type: 'users', closable: false },
+    { id: 'usertypes', title: 'User Types', type: 'usertypes', closable: false },
     { id: 'roles', title: 'Roles', type: 'roles', closable: false },
 ];
 
@@ -1495,21 +1711,27 @@ const DEFAULT_TABS: Tab[] = [
 
 const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<UserRow[]>(USERS_DATA);
-    const [roles, setRoles] = useState<UserTypeRow[]>(USER_TYPES_DATA);
+    // const [roles, setRoles] = useState<UserTypeRow[]>(USER_TYPES_DATA);
+    const [usertypes, setUserTypes] = useState<UserTypeRow[]>(USER_TYPES_DATA);
+    const [roles, setRoles] = useState<RoleRow[]>(ROLES_DATA);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [enabled2FAByType, setEnabled2FAByType] = useState<Record<string, string[]>>({});
+    const onlyActiveUsers = (users: UserRow[] | undefined | null) =>
+        (Array.isArray(users) ? users : []).filter((u) => !u.isDeleted);
+
+    const [showArchivedUsers, setShowArchivedUsers] = useState(false);
 
     useEffect(() => {
-        // initialise defaults from roles once
+        // initialise defaults from user types once
         setEnabled2FAByType((prev) => {
             const next = { ...prev };
-            for (const r of roles ?? []) {
-                if (!next[r.id]) next[r.id] = [...(r.fa2 ?? [])];
+            for (const ut of usertypes ?? []) {
+                if (!next[ut.id]) next[ut.id] = [...(ut.fa2 ?? [])];
             }
             return next;
         });
-    }, [roles]);
+    }, [usertypes]);
 
     const toggle2FA = useCallback((typeId: string, method: string) => {
         setEnabled2FAByType((prev) => {
@@ -1519,15 +1741,35 @@ const UsersPage: React.FC = () => {
         });
     }, []);
 
-
-    // Filter states for Users tab
     const [userStatusFilter, setUserStatusFilter] = useState('All');
-    const [userRoleFilter, setUserRoleFilter] = useState('All');
+    const [userTypeFilter, setUserTypeFilter] = useState('All');
 
-    // Filter states for Roles tab
     const [roleStatusFilter, setRoleStatusFilter] = useState('All');
+    const [roleFilter, setRoleFilter] = useState('All');
 
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isRoleFilterOpen, setIsRoleFilterOpen] = useState(false);
+
+    const filteredUsers = useMemo(() => {
+        const safeUsers = Array.isArray(users) ? users : [];
+
+        return safeUsers.filter((user) => {
+            if (!showArchivedUsers && user.isDeleted) return false;
+
+            if (userStatusFilter !== "All" && user.status !== userStatusFilter) return false;
+            if (userTypeFilter !== "All" && user.userType !== userTypeFilter) return false;
+
+            return true;
+        });
+    }, [users, userStatusFilter, userTypeFilter, showArchivedUsers]);
+
+    const filteredUserTypes = useMemo(() => {
+        return usertypes || [];
+    }, [usertypes]);
+
+    const filteredRoles = useMemo(() => {
+        return roles || [];
+    }, [roles]);
 
     const {
         tabs,
@@ -1537,7 +1779,7 @@ const UsersPage: React.FC = () => {
         closeTab,
         reorderTabs,
     } = useTabs({
-        storageKey: 'admin-organization-tabs',
+        storageKey: 'user-tabs',
         defaultTabs: DEFAULT_TABS,
     });
 
@@ -1546,7 +1788,8 @@ const UsersPage: React.FC = () => {
         // Simulate API refresh
         setTimeout(() => {
             setUsers(USERS_DATA);
-            setRoles(USER_TYPES_DATA);
+            setUserTypes(USER_TYPES_DATA);
+            setRoles(ROLES_DATA);
             setLoading(false);
         }, 500);
     }, []);
@@ -1569,7 +1812,7 @@ const UsersPage: React.FC = () => {
         }
     }, [tabs, setActiveTab, addTab]);
 
-    const handleRoleRowClick = useCallback((role: UserTypeRow) => {
+    const handleRoleRowClick = useCallback((role: RoleRow) => {
         const existingTabIndex = tabs.findIndex(
             (tab: Tab) => tab.type === 'role-detail' && tab.id === `role-${role.id}`
         );
@@ -1579,10 +1822,28 @@ const UsersPage: React.FC = () => {
         } else {
             addTab({
                 id: `role-${role.id}`,
-                title: role.userTypeTitle,
+                title: role.title,
                 type: 'role-detail',
                 closable: true,
                 content: role,
+            });
+        }
+    }, [tabs, setActiveTab, addTab]);
+
+    const handleUserTypesRowClick = useCallback((usertypes: UserTypeRow) => {
+        const existingTabIndex = tabs.findIndex(
+            (tab: Tab) => tab.type === 'usertypes-detail' && tab.id === `usertypes-${usertypes.id}`
+        );
+
+        if (existingTabIndex !== -1) {
+            setActiveTab(existingTabIndex);
+        } else {
+            addTab({
+                id: `usertypes-${usertypes.id}`,
+                title: usertypes.title,
+                type: 'usertypes-detail',
+                closable: true,
+                content: usertypes,
             });
         }
     }, [tabs, setActiveTab, addTab]);
@@ -1602,7 +1863,7 @@ const UsersPage: React.FC = () => {
                     closable: true,
                 });
             }
-        } else {
+        } else if (currentTab?.type === 'roles' || currentTab?.type === 'role-detail' || currentTab?.type === 'create-role') {
             const existingCreateTab = tabs.findIndex((tab: Tab) => tab.type === 'create-role');
             if (existingCreateTab !== -1) {
                 setActiveTab(existingCreateTab);
@@ -1611,6 +1872,18 @@ const UsersPage: React.FC = () => {
                     id: `create-role-${Date.now()}`,
                     title: 'New Role',
                     type: 'create-role',
+                    closable: true,
+                });
+            }
+        } else {
+            const existingCreateTab = tabs.findIndex((tab: Tab) => tab.type === 'create-usertypes');
+            if (existingCreateTab !== -1) {
+                setActiveTab(existingCreateTab);
+            } else {
+                addTab({
+                    id: `create-usertypes-${Date.now()}`,
+                    title: 'New User Type',
+                    type: 'create-usertypes',
                     closable: true,
                 });
             }
@@ -1624,8 +1897,8 @@ const UsersPage: React.FC = () => {
         }
     };
 
-    const handleBackToRoles = () => {
-        const rolesIndex = tabs.findIndex((tab: Tab) => tab.type === 'roles');
+    const handleBackToUserTypes = () => {
+        const rolesIndex = tabs.findIndex((tab: Tab) => tab.type === 'usertypes');
         if (rolesIndex !== -1) {
             setActiveTab(rolesIndex);
         }
@@ -1634,8 +1907,8 @@ const UsersPage: React.FC = () => {
     // Determine add button label based on active tab
     const getAddButtonLabel = () => {
         const currentTab = tabs[activeTab];
-        if (currentTab?.type === 'roles' || currentTab?.type === 'role-detail') {
-            return 'New Role';
+        if (currentTab?.type === 'usertypes' || currentTab?.type === 'usertypes-detail') {
+            return 'New User Type';
         }
         return 'New User';
     };
@@ -1645,29 +1918,35 @@ const UsersPage: React.FC = () => {
             case 'users':
                 return (
                     <UsersContent
-                        users={users}
+                        users={showArchivedUsers ? users : onlyActiveUsers(users)}
                         loading={loading}
                         error={error}
                         onRowClick={handleUserRowClick}
                         isFilterOpen={isFilterOpen}
                         statusFilter={userStatusFilter}
-                        roleFilter={userRoleFilter}
+                        userTypeFilter={userTypeFilter}
                         onStatusFilterChange={setUserStatusFilter}
-                        onRoleFilterChange={setUserRoleFilter}
+                        onUserTypeFilterChange={setUserTypeFilter}
+                        showArchivedUsers={showArchivedUsers}
+                        setShowArchivedUsers={setShowArchivedUsers}
+                        filteredUsers={filteredUsers}
                     />
                 );
-            case 'roles':
+            case 'usertypes':
                 return (
-                    <RolesContent
-                        roles={roles}
+                    <UserTypeContent
+                        usertypes={usertypes}
                         loading={loading}
                         error={error}
-                        onRowClick={handleRoleRowClick}
+                        onRowClick={handleUserTypesRowClick}
                         isFilterOpen={isFilterOpen}
                         statusFilter={roleStatusFilter}
                         onStatusFilterChange={setRoleStatusFilter}
                         enabled2FAByType={enabled2FAByType}
                         onToggle2FA={toggle2FA}
+                        showArchivedUsers={showArchivedUsers}
+                        setShowArchivedUsers={setShowArchivedUsers}
+                        filteredUserTypes={filteredUserTypes}
                     />
                 );
             case 'user-detail':
@@ -1677,19 +1956,20 @@ const UsersPage: React.FC = () => {
                         onBack={handleBackToUsers}
                     />
                 );
-            case 'role-detail':
+            case 'usertypes-detail':
                 return (
-                    <RoleDetailContent
-                        role={tab.content as UserTypeRow}
-                        onBack={handleBackToRoles}
+                    <UserTypesDetailContent
+                        usertype={tab.content as UserTypeRow}
+                        onBack={handleBackToUserTypes}
                         enabled2FAByType={enabled2FAByType}
                         onToggle2FA={toggle2FA}
+                        filteredUserTypes={filteredUserTypes}
                     />
                 );
             case 'create-user':
                 return (
                     <CreateUserContent
-                        roles={roles}
+                        userTypes={usertypes}
                         onCancel={() => {
                             const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
                             if (tabIndex !== -1) {
@@ -1706,25 +1986,39 @@ const UsersPage: React.FC = () => {
                         }}
                     />
                 );
-            // case 'create-role':
-            //     return (
-            //         <CreateRoleContent
-            //             onCancel={() => {
-            //                 const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
-            //                 if (tabIndex !== -1) {
-            //                     closeTab(tabIndex);
-            //                 }
-            //             }}
-            //             onSave={(newRole) => {
-            //                 setRoles(prev => [...prev, newRole]);
-            //                 const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
-            //                 if (tabIndex !== -1) {
-            //                     closeTab(tabIndex);
-            //                     handleRoleRowClick(newRole);
-            //                 }
-            //             }}
-            //         />
-            //     );
+            case 'roles':
+                return (
+                    <RolesContent
+                        roles={roles}
+                        loading={loading}
+                        error={error}
+                        onRowClick={handleRoleRowClick}
+                        isFilterOpen={isRoleFilterOpen}
+                        roleFilter={roleFilter}
+                        onRoleFilterChange={setRoleFilter}
+                        filteredRoles={filteredRoles}
+                    />
+                );
+            case 'role-detail':
+                return (
+                    <RoleDetailContent
+                        role={tab.content as RoleRow}
+                        onCancel={() => {
+                            const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
+                            if (tabIndex !== -1) {
+                                closeTab(tabIndex);
+                            }
+                        }}
+                        onSave={(newRole) => {
+                            setRoles(prev => [...prev, newRole]);
+                            const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
+                            if (tabIndex !== -1) {
+                                closeTab(tabIndex);
+                                handleRoleRowClick(newRole);
+                            }
+                        }}
+                    />
+                );
             default:
                 return (
                     <div style={{ padding: '2rem', textAlign: 'center', color: '#9ca3af' }}>
@@ -1735,8 +2029,8 @@ const UsersPage: React.FC = () => {
     };
 
     return (
-        <div className="admin-organization-page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <div className="admin-organization-tab-wrapper" style={{ flex: 1, minHeight: 0 }}>
+        <div className="users-page-wrapper" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div className="users-tab-wrapper" style={{ flex: 1, minHeight: 0 }}>
                 <TabPanel
                     tabs={tabs}
                     activeTab={activeTab}

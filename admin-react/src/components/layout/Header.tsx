@@ -29,6 +29,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
     const quickBtnRef = useRef<HTMLButtonElement | null>(null);
     const [showQuickMenu, setShowQuickMenu] = useState(false);
     const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
+    const quickMenuRef = useRef<HTMLDivElement>(null);
 
     const formatDate = (date: Date) =>
         date.toLocaleDateString("en-SG", {
@@ -58,6 +59,50 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
         window.addEventListener("resize", onResize);
         return () => window.removeEventListener("resize", onResize);
     }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (quickMenuRef.current && !quickMenuRef.current.contains(event.target as Node)) {
+                setShowQuickMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const widgetStyle: React.CSSProperties = {
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+        padding: '0.5rem 0.875rem',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        borderRadius: '0.375rem',
+        color: '#ffffff',
+        fontSize: '0.8rem',
+        fontWeight: 500,
+        height: '2.25rem',
+    };
+
+    // Dark theme icon button style - semi-transparent for visibility on banner
+    const iconButtonStyle: React.CSSProperties = {
+        padding: '0.5rem',
+        borderRadius: '0.375rem',
+        backgroundColor: 'rgba(255, 255, 255, 0.15)',
+        backdropFilter: 'blur(8px)',
+        border: '1px solid rgba(255, 255, 255, 0.2)',
+        color: 'var(--kc-primary, #3b82f6)',
+        // color: '#ffffff',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s',
+        height: '2.25rem',
+        width: '2.25rem',
+        fontFamily: 'inherit',
+    };
 
     // ===== Positioning helpers for portal menu =====
     const positionQuickMenu = useCallback(() => {
@@ -201,20 +246,21 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
 
             {/* Right */}
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                <div className="glossy-pill">
-                    <Calendar style={{ height: "0.9rem", width: "0.9rem" }} />
-                    <span>{formatDate(currentTime)}</span>
-
-                    <div className="glossy-pill-sep" />
-
-                    <Clock style={{ height: "0.9rem", width: "0.9rem" }} />
-                    <span style={{ fontFamily: "'Inter', monospace" }}>
-                        {formatTime(currentTime)}
-                    </span>
+                <div style={widgetStyle}>
+                    <Calendar style={{ height: '0.9rem', width: '0.9rem', color: '#F68D2E' }} />
+                    <span style={{ color: '#002855' }}>{formatDate(currentTime)}</span>
+                    <div style={{
+                        width: '1px',
+                        height: '1rem',
+                        backgroundColor: '#002855',
+                        margin: '0 0.125rem'
+                    }} />
+                    <Clock style={{ height: '0.9rem', width: '0.9rem', color: '#F68D2E' }} />
+                    <span style={{ fontFamily: "'Inter', monospace", minWidth: '60px', color: '#002855' }}>{formatTime(currentTime)}</span>
                 </div>
 
                 {/* Quick Menu Button */}
-                <button
+                {/* <button
                     ref={quickBtnRef}
                     type="button"
                     className={`glossy-icon-btn ${showQuickMenu ? "is-open" : ""}`}
@@ -224,10 +270,10 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                     title="Quick Menu"
                 >
                     <LayoutGrid style={{ height: 18, width: 18 }} />
-                </button>
+                </button> */}
 
                 {/* Portal Menu */}
-                {showQuickMenu && menuPos &&
+                {/* {showQuickMenu && menuPos &&
                     createPortal(
                         <>
                             <div className="menu-overlay" onClick={closeQuickMenu} />
@@ -263,7 +309,78 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                         </>,
                         document.body
                     )
-                }
+                } */}
+
+                <div ref={quickMenuRef} style={{ position: 'relative' }}>
+                    <button
+                        onClick={() => setShowQuickMenu(!showQuickMenu)}
+                        style={{
+                            ...iconButtonStyle,
+                            backgroundColor: showQuickMenu ? 'rgba(255, 255, 255, 0.3)' : 'rgba(255, 255, 255, 0.15)',
+                        }}
+                        title="Quick Menu"
+                        onMouseEnter={(e) => {
+                            if (!showQuickMenu) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.25)';
+                        }}
+                        onMouseLeave={(e) => {
+                            if (!showQuickMenu) e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
+                        }}
+                    >
+                        <LayoutGrid size={18} color='var(--kc-primary, #3b82f6)' />
+                    </button>
+
+                    {/* Quick Menu Dropdown - Updated with navigation */}
+                    {showQuickMenu && (
+                        <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            right: 0,
+                            marginTop: '0.5rem',
+                            width: '200px',
+                            backgroundColor: 'white',
+                            borderRadius: '0.5rem',
+                            boxShadow: '0 10px 25px rgba(0,0,0,0.15)',
+                            border: '1px solid #e5e7eb',
+                            zIndex: 50,
+                            overflow: 'hidden',
+                        }}>
+                            <div style={{ padding: '0.5rem' }}>
+                                {[
+                                    { label: 'Home', icon: '📊', path: ROUTES.HOME },
+                                    { label: "Manage Users", icon: "📝", path: ROUTES.MANAGE_USERS },
+                                    { label: "Manage Apps", icon: "🗺️", path: ROUTES.MANAGE_APPS },
+
+                                ].map((item, index) => (
+                                    <button
+                                        key={index}
+                                        onClick={() => handleQuickMenuClick(item.path)}
+                                        style={{
+                                            width: '100%',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '0.75rem',
+                                            padding: '0.625rem 0.75rem',
+                                            fontSize: '0.85rem',
+                                            color: '#000000',
+                                            backgroundColor: 'transparent',
+                                            border: 'none',
+                                            borderRadius: '0.375rem',
+                                            cursor: 'pointer',
+                                            textAlign: 'left',
+                                            transition: 'background-color 0.2s',
+                                            fontFamily: 'inherit',
+                                        }}
+                                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                                    >
+                                        <span>{item.icon}</span>
+                                        <span>{item.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </header>
     );

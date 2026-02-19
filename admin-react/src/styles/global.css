@@ -14,45 +14,117 @@ body,
 }
 
 :root {
-    /* Typography */
-    --font-family-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* =========================
+     Typography
+  ========================= */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+    --font-mono: 'Monaco', 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
 
-    /* Brand */
+    /* =========================
+     Layout
+  ========================= */
+    --sidebar-width: 16rem;
+    --header-height: 4rem;
+
+    /* =========================
+     Spacing
+  ========================= */
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 1rem;
+    --space-4: 1.5rem;
+    --space-5: 2rem;
+    --space-6: 3rem;
+
+    /* =========================
+     Radius
+  ========================= */
+    --radius-sm: 0.25rem;
+    --radius-md: 0.375rem;
+    --radius-lg: 0.5rem;
+    --radius-xl: 0.75rem;
+
+    /* =========================
+     Shadows
+  ========================= */
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 10px rgba(0, 0, 0, 0.08);
+    --shadow-lg: 0 10px 26px rgba(0, 0, 0, 0.14);
+
+    /* =========================
+     Base Palette (generic)
+  ========================= */
+    --blue-600: #2563eb;
+    --blue-500: #3b82f6;
+    --blue-100: #dbeafe;
+
+    --gray-900: #111827;
+    --gray-700: #374151;
+    --gray-500: #6b7280;
+    --gray-200: #e5e7eb;
+    --gray-100: #f3f4f6;
+    --white: #ffffff;
+
+    --green-600: #16a34a;
+    --green-100: #d1fae5;
+
+    --amber-600: #d97706;
+    --amber-100: #fef3c7;
+
+    --red-600: #dc2626;
+    --red-100: #fee2e2;
+
+    --violet-600: #7c3aed;
+    --violet-100: #f3e8ff;
+
+    /* =========================
+     Brand
+    ========================= */
     --brand-orange: #ff9229;
     --brand-navy: #1b3045;
-    --focus-cyan: rgba(125, 211, 252, 0.65);
 
-    /* Text on dark glass (sidebar) */
+    /* =========================
+     App Surfaces (Keycloak-ish)
+    ========================= */
+    --app-bg: #f5f7fa;
+    --surface: #ffffff;
+    --border: #e5e7eb;
+    --border-soft: #eef2f7;
+
+    --text: #151515;
+    --text-muted: #6a6e73;
+
+    /* Keycloak primary (navy) */
+    --primary: #002855;
+    --primary-hover: rgba(0, 40, 85, 0.85);
+
+    --secondary: rgba(153, 184, 255, 0.35);
+
+    /* Status */
+    --success: #3e8635;
+    --success-soft: #f3faf2;
+
+    --danger: #c9190b;
+    --danger-soft: #faeae8;
+
+    --warning: #f0ab00;
+    --warning-soft: #fdf7e7;
+
+    /* Component defaults */
+    --component-radius: 12px;
+    --component-shadow: 0 2px 10px rgba(0, 0, 0, 0.06);
+
+    /* =========================
+     Glass Sidebar Theme
+     ========================= */
     --on-dark: rgba(255, 255, 255, 0.92);
     --on-dark-muted: rgba(255, 255, 255, 0.72);
     --on-dark-faint: rgba(255, 255, 255, 0.56);
 
-    /* Hairlines / borders */
     --hairline: rgba(255, 255, 255, 0.18);
     --hairline-strong: rgba(255, 255, 255, 0.28);
 
-    /* Radii */
-    --r-sm: 10px;
-    --r-md: 12px;
-    --r-lg: 16px;
-    --r-xl: 18px;
-
-    /* Shadows */
-    --shadow-1: 0 10px 26px rgba(0, 0, 0, 0.18);
-    --shadow-2: 0 16px 40px rgba(0, 0, 0, 0.22);
-    --shadow-soft: 0 18px 45px rgba(0, 0, 0, 0.22);
-    --shadow-card: 0 10px 30px rgba(0, 0, 0, 0.14);
-
-    /* Sidebar readable defaults */
-    --nav-text-primary: rgba(255, 255, 255, 0.95);
-    --nav-text-secondary: rgba(255, 255, 255, 0.74);
-    --nav-icon: rgba(255, 255, 255, 0.95);
-
-    /* Surface = content cards like Quick Actions / Recent Activity */
-    --surface-bg: rgba(255, 255, 255, 0.7);
-    --surface-blur: 20px;
-    --surface-sat: 180%;
-    --surface-border: rgba(255, 255, 255, 0.3);
+    --focus-cyan: rgba(125, 211, 252, 0.65);
 
     --sidebar-bg: linear-gradient(180deg, rgba(17, 31, 48, 0.78), rgba(14, 27, 44, 0.70));
     --sidebar-border: rgba(255, 255, 255, 0.18);
@@ -63,6 +135,84 @@ body,
     --acrylic-border: rgba(255, 255, 255, 0.45);
     --acrylic-blur: 26px;
     --acrylic-sat: 180%;
+
+    /* ========== KC Core Tokens ========== */
+    --kc-bg: #f5f7fa;
+    --kc-surface: #ffffff;
+
+    --kc-border: #e5e7eb;
+    --kc-border-soft: #eef2f7;
+
+    /* Table header/footer navy */
+    --kc-navy: #0b1f3a;
+    --kc-navy-2: #08162a;
+
+    /* Radius + shadow */
+    --kc-radius-sm: 8px;
+    --kc-radius-md: 12px;
+    --kc-radius-lg: 16px;
+
+    /* Focus ring */
+    --kc-focus: rgba(59, 130, 246, 0.35);
+    --kc-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.15);
+
+    --kc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+    --kc-shadow-md: 0 8px 20px rgba(0, 0, 0, 0.10);
+
+    /* Activity badge colors */
+    --kc-blue-bg: rgba(59, 130, 246, 0.14);
+    --kc-blue-fg: #2563eb;
+
+    --kc-green-bg: rgba(16, 185, 129, 0.14);
+    --kc-green-fg: #059669;
+
+    --kc-amber-bg: rgba(245, 158, 11, 0.16);
+    --kc-amber-fg: #d97706;
+
+    --kc-gray-bg: rgba(107, 114, 128, 0.14);
+    --kc-gray-fg: #6b7280;
+
+    /* Keycloak-ish tokens (used by tables.kc.css + buttons) */
+
+    --kc-text: #151515;
+    --kc-text-muted: #6a6e73;
+    --kc-text-faint: rgba(15, 23, 42, 0.55);
+
+    --kc-primary: #0b2f4f;
+    /* footer/pagination navy */
+    --kc-primary-2: #0b1f3a;
+    /* header navy (slightly darker) */
+
+    --kc-radius-md: 12px;
+
+    --kc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+
+    /* ========== Dashboard Glass Tokens ========== */
+    --glass-bg: rgba(255, 255, 255, 0.72);
+    --glass-bg-soft: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.35);
+    --glass-blur: 18px;
+    --glass-sat: 160%;
+
+    /* Optional aliases if older CSS uses these */
+    --border: var(--kc-border);
+    --text: var(--kc-text);
+    --component-radius: var(--kc-radius);
+    --component-shadow: var(--kc-shadow);
+    --primary: var(--kc-primary);
+
+}
+
+/* Dark mode support (future enhancement) */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --app-bg: #0b1220;
+        --surface: #111827;
+        --border: rgba(255, 255, 255, 0.12);
+        --border-soft: rgba(255, 255, 255, 0.08);
+        --text: #f9fafb;
+        --text-muted: #9ca3af;
+    }
 }
 
 /* Base page */
@@ -145,47 +295,6 @@ body {
 }
 
 /* =========================================================
-   3) GLASS PRIMITIVES (reusable)
-   ========================================================= */
-
-/* Big panels, cards, sections */
-.glass-surface {
-    position: relative;
-    background: var(--surface-bg);
-    backdrop-filter: blur(var(--surface-blur)) saturate(var(--surface-sat));
-    -webkit-backdrop-filter: blur(var(--surface-blur)) saturate(var(--surface-sat));
-    border: 1px solid var(--surface-border);
-    border-radius: var(--r-lg);
-    box-shadow: var(--shadow-card), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-    overflow: hidden;
-}
-
-/* Highlight sheen */
-.glass-surface::before {
-    background: radial-gradient(120% 80% at 20% 0%,
-            rgba(255, 255, 255, 0.18),
-            rgba(255, 255, 255, 0.00) 60%);
-}
-
-.glass-surface--soft {
-    --surface-bg: rgba(255, 255, 255, 0.55);
-    --surface-blur: 18px;
-    --surface-sat: 160%;
-}
-
-/* Menus / flyouts */
-.glass-acrylic {
-    position: relative;
-    background: var(--acrylic-bg);
-    backdrop-filter: blur(var(--acrylic-blur)) saturate(var(--acrylic-sat));
-    -webkit-backdrop-filter: blur(var(--acrylic-blur)) saturate(var(--acrylic-sat));
-    border: 1px solid var(--acrylic-border);
-    border-radius: var(--r-xl);
-    box-shadow: var(--shadow-soft), inset 0 1px 0 rgba(255, 255, 255, 0.55);
-    overflow: hidden;
-}
-
-/* =========================================================
    4) SIDEBAR INPUT (Search)
    ========================================================= */
 .sidebar .glass-input {
@@ -247,136 +356,6 @@ body {
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5),
         0 4px 10px rgba(0, 0, 0, 0.12);
     border-radius: var(--r-sm);
-}
-
-/* =========================================================
-   6) MENUS / OVERLAYS
-   ========================================================= */
-.menu-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 9998;
-    background: transparent;
-}
-
-.glass-menu {
-    padding: 8px;
-}
-
-.glass-menu-item:active {
-    transform: scale(0.99);
-    background: rgba(255, 255, 255, 0.24);
-}
-
-.glass-menu-item {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 0.75rem 0.85rem;
-    font-size: 0.85rem;
-    color: #0f172a;
-
-    background: transparent;
-    border: 0;
-    border-radius: 12px;
-
-    cursor: pointer;
-    text-align: left;
-
-    outline: none;
-    box-shadow: none;
-}
-
-.glass-menu-item:hover {
-    background: rgba(255, 255, 255, 0.22) !important;
-}
-
-.glass-menu-divider {
-    height: 1px;
-    margin: 6px 6px;
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.glass-menu-item.danger {
-    color: #dc2626;
-}
-
-.glass-menu-item.danger:hover {
-    background: rgba(239, 68, 68, 0.12) !important;
-}
-
-/* Optional pop animation */
-.glass-menu-floating {
-    transform-origin: bottom right;
-    animation: glassMenuPop 160ms ease-out;
-}
-
-/* Glossy icon button */
-.glossy-icon-btn {
-    padding: 0.35rem;
-    border-radius: 0.5rem;
-    border: none;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-
-    background: rgba(255, 255, 255, 0.14);
-    backdrop-filter: blur(12px) saturate(160%);
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
-
-    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.45),
-        0 6px 16px rgba(0, 0, 0, 0.18);
-
-    transition: background 180ms ease, box-shadow 180ms ease, transform 180ms ease;
-    color: #0f172a;
-}
-
-.glossy-icon-btn:hover {
-    background: rgba(255, 255, 255, 0.22);
-}
-
-.glossy-icon-btn:active {
-    transform: scale(0.96);
-}
-
-/* Acrylic icon button (opaque glass) */
-.glass-icon-btn {
-    background: linear-gradient(180deg,
-            rgba(255, 255, 255, 0.55),
-            rgba(255, 255, 255, 0.32));
-    backdrop-filter: blur(22px) saturate(180%);
-    -webkit-backdrop-filter: blur(22px) saturate(180%);
-
-    border: 1px solid rgba(255, 255, 255, 0.45);
-    border-radius: 0.5rem;
-
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.65),
-        0 10px 30px rgba(0, 0, 0, 0.22);
-
-    color: #0f172a;
-
-    width: 2.25rem;
-    height: 2.25rem;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    cursor: pointer;
-    transition: background 180ms ease, transform 120ms ease;
-}
-
-.glass-icon-btn:hover {
-    background: linear-gradient(180deg,
-            rgba(255, 255, 255, 0.65),
-            rgba(255, 255, 255, 0.38));
-}
-
-.glass-icon-btn:active {
-    transform: scale(0.96);
 }
 
 /* =========================================================
@@ -465,6 +444,64 @@ body {
     text-transform: uppercase;
     letter-spacing: 0.05em;
 }
+
+/* Quick Action tile */
+.qa-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+
+    padding: 1rem;
+    min-width: 100px;
+
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(229, 231, 235, 0.45);
+    border-radius: 0.75rem;
+
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+
+    cursor: pointer;
+    font: inherit;
+
+    transition: transform 140ms ease, box-shadow 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.qa-tile:hover {
+    background: rgba(255, 255, 255, 0.94);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.qa-tile:active {
+    transform: translateY(0);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.10);
+}
+
+/* Icon box (square rounded) */
+.qa-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+
+    display: grid;
+    place-items: center;
+
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
+
+.qa-icon svg {
+    width: 20px;
+    height: 20px;
+}
+
+.qa-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(15, 23, 42, 0.92);
+}
+
 
 /* Responsive */
 @media (max-width: 1024px) {

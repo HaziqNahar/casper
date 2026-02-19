@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+    AppWindow,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -65,7 +66,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 id: "realms",
                 label: "Realms",
                 icon: Globe,
-                description: "Manage Realms and Apps",
+                description: "Manage Realms",
                 hasSubMenu: true,
                 subItems: [
                     {
@@ -88,6 +89,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         label: "All Users",
                         description: "View all users",
                         path: ROUTES.USERS
+                    },
+                ],
+            },
+            {
+                id: "applications",
+                label: "Applications",
+                icon: AppWindow,
+                description: "Manage and track Apps",
+                hasSubMenu: true,
+                subItems: [
+                    {
+                        id: "applications-all",
+                        label: "All Applications",
+                        description: "View all applications",
+                        path: ROUTES.APPS
                     },
                 ],
             },
@@ -685,7 +701,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                         }}
                                         title={isCollapsed ? item.label : undefined}
                                     >
-                                        <Icon style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }} />
+                                        <Icon className="sidebar-nav-item-icon" style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }} />
 
                                         {!isCollapsed && (
                                             <>

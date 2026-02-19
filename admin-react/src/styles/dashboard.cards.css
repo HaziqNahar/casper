@@ -1,0 +1,170 @@
+/* =========================================================
+   Dashboard Cards (Quick Actions + Activity)
+   ========================================================= */
+
+.dash-sectionTitle {
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: var(--kc-text);
+    margin: 0 0 1rem 0;
+}
+
+/* Quick Action button */
+.dash-qaBtn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+
+    padding: 1rem;
+    min-width: 100px;
+
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(229, 231, 235, 0.45);
+    border-radius: 14px;
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    cursor: pointer;
+    font-family: inherit;
+
+    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.dash-qaBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.dash-qaIcon {
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+}
+
+.dash-qaLabel {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--kc-text);
+}
+
+/* Activity list item */
+.dash-activityItem {
+    display: flex;
+    gap: 0.85rem;
+    padding: 0.85rem;
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(229, 231, 235, 0.45);
+
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+
+    transition: transform 160ms ease, background 160ms ease;
+}
+
+.dash-activityItem:hover {
+    background: rgba(243, 244, 246, 0.9);
+    transform: translateY(-1px);
+}
+
+.dash-activityIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.dash-activityIcon svg {
+    width: 18px;
+    height: 18px;
+}
+
+.dash-activityTitle {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--kc-text);
+}
+
+.dash-activityDesc {
+    font-size: 0.75rem;
+    color: var(--kc-text-muted);
+}
+
+.dash-activityTime {
+    font-size: 0.7rem;
+    color: var(--kc-text-faint);
+    margin-top: 2px;
+}
+
+/* Badge variants for activity icon */
+.dash-activityIcon.is-case {
+    background: var(--kc-blue-bg);
+    color: var(--kc-blue-fg);
+}
+
+.dash-activityIcon.is-warden {
+    background: var(--kc-green-bg);
+    color: var(--kc-green-fg);
+}
+
+.dash-activityIcon.is-alert {
+    background: var(--kc-amber-bg);
+    color: var(--kc-amber-fg);
+}
+
+.dash-activityIcon.is-system {
+    background: var(--kc-gray-bg);
+    color: var(--kc-gray-fg);
+}
+
+.dash-sectionTitle {
+    margin: 0 0 1rem 0;
+    font-size: 0.875rem;
+    font-weight: 700;
+    color: rgba(15, 23, 42, 0.92);
+}
+
+.dash-sectionHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.dash-linkBtn {
+    font: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #2563eb;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+}
+
+.dash-linkBtn:hover {
+    text-decoration: underline;
+}
+
+/* Quick actions row */
+.dash-quickRow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+/* Activity list */
+.dash-activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
