@@ -337,9 +337,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 />
             )}
 
-            {/* Sidebar
-          IMPORTANT: use "sidebar glass-mica-dark" so it matches the new global.css selectors
-      */}
+            {/* Sidebar */}
             <aside
                 className={`sidebar glass-mica-dark ${isOpen ? "sidebar-open" : ""}`}
                 style={{
@@ -347,7 +345,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                     minWidth: isMobile ? "256px" : sidebarWidth,
                     transition: "width 0.3s ease-in-out, min-width 0.3s ease-in-out, transform 0.3s ease-in-out",
                     transform: isMobile && !isOpen ? "translateX(-100%)" : "translateX(0)",
-                    position: "fixed",
                     zIndex: 50,
                     height: "100vh",
                     left: 0,
@@ -771,55 +768,38 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                 {/* Bottom */}
                 <div className="sidebar-footer">
-                    {/* Main / Settings Tabs */}
                     {!isCollapsed && (
-                        <div className="sidebar-tabs-glass" role="tablist" aria-label="Sidebar tabs">
+                        <div className="sidebar-tabs-glass">
                             <button
-                                type="button"
                                 onClick={() => setSidebarTab("main")}
                                 className={`sidebar-tab ${sidebarTab === "main" ? "active" : ""}`}
-                                role="tab"
-                                aria-selected={sidebarTab === "main"}
                             >
                                 Main
                             </button>
-
                             <button
-                                type="button"
                                 onClick={() => setSidebarTab("settings")}
                                 className={`sidebar-tab ${sidebarTab === "settings" ? "active" : ""}`}
-                                role="tab"
-                                aria-selected={sidebarTab === "settings"}
                             >
                                 Settings
                             </button>
                         </div>
                     )}
 
-                    {/* Profile */}
-                    <div className={`sidebar-profile ${isCollapsed ? "is-collapsed" : ""}`}>
-                        {/* Collapsed: expand button ABOVE avatar */}
+                    <div className={`sidebar-profile-card ${isCollapsed ? "is-collapsed" : ""}`}>
                         {isCollapsed && !isAutoCollapsed && (
-                            <button
-                                type="button"
-                                onClick={toggleCollapse}
-                                className="glossy-icon-btn sidebar-expand-btn"
-                                title="Expand sidebar"
-                            >
+                            <button onClick={toggleCollapse} className="glossy-icon-btn sidebar-expand-btn" title="Expand sidebar">
                                 <ChevronRight style={{ height: "1.1rem", width: "1.1rem" }} />
                             </button>
                         )}
 
-                        {/* Avatar + name/email */}
                         <div className="sidebar-user">
-                            <button
-                                type="button"
-                                className="sidebar-avatar"
+                            <div
+                                className={`sidebar-avatar ${isCollapsed ? "is-clickable" : ""}`}
                                 onClick={() => isCollapsed && setShowProfileMenu(!showProfileMenu)}
                                 title={isCollapsed ? "Admin User" : undefined}
                             >
                                 AD
-                            </button>
+                            </div>
 
                             {!isCollapsed && (
                                 <div className="sidebar-user-meta">
@@ -829,81 +809,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                             )}
                         </div>
 
-                        {/* Right side actions */}
                         {!isCollapsed && !isAutoCollapsed && (
                             <div className="sidebar-profile-actions">
-                                <button
-                                    type="button"
-                                    className="glossy-icon-btn icon-btn-square"
-                                    onClick={toggleCollapse}
-                                    title="Collapse sidebar"
-                                >
+                                <button className="glossy-icon-btn icon-btn-square" onClick={toggleCollapse} title="Collapse sidebar">
                                     <ChevronLeft size={18} />
                                 </button>
 
                                 <button
-                                    type="button"
                                     ref={kebabBtnRef}
                                     className="glossy-icon-btn icon-btn-square"
                                     onClick={() => (showProfileMenu ? closeMenu() : openMenu())}
-                                    aria-haspopup="menu"
-                                    aria-expanded={showProfileMenu}
-                                    title="Profile menu"
                                 >
                                     <MoreVertical size={18} />
                                 </button>
                             </div>
                         )}
-
-                        {/* Menu */}
-                        {showProfileMenu && menuPos &&
-                            createPortal(
-                                <>
-                                    <div className="menu-overlay" onClick={closeMenu} />
-                                    <div
-                                        className="glass-acrylic glass-menu glass-menu-floating sidebar-profile-menu"
-                                        style={{
-                                            position: "fixed",
-                                            top: menuPos.top,
-                                            left: menuPos.left,
-                                        }}
-                                        role="menu"
-                                    >
-                                        <button
-                                            type="button"
-                                            className="glass-menu-item"
-                                            role="menuitem"
-                                            onClick={() => handleProfileMenuAction("profile")}
-                                        >
-                                            <User style={{ height: "1rem", width: "1rem" }} />
-                                            Profile
-                                        </button>
-
-                                        <button
-                                            type="button"
-                                            className="glass-menu-item"
-                                            role="menuitem"
-                                            onClick={() => handleProfileMenuAction("settings")}
-                                        >
-                                            <Settings style={{ height: "1rem", width: "1rem" }} />
-                                            Settings
-                                        </button>
-
-                                        <div className="glass-menu-divider" />
-
-                                        <button
-                                            type="button"
-                                            className="glass-menu-item danger"
-                                            role="menuitem"
-                                            onClick={() => handleProfileMenuAction("logout")}
-                                        >
-                                            <LogOut style={{ height: "1rem", width: "1rem" }} />
-                                            Logout
-                                        </button>
-                                    </div>
-                                </>,
-                                document.body
-                            )}
                     </div>
                 </div>
             </aside>
