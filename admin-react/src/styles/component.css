@@ -22,3 +22,38 @@
     padding: .75rem;
     box-shadow: 0 4px 12px rgba(0, 0, 0, .04);
 }
+
+/* =========================
+   Breadcrumb - CASPER Style
+   ========================= */
+
+.breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.breadcrumb a {
+    color: #7dd3fc;
+    /* soft blue */
+    text-decoration: none;
+    transition: color 160ms ease;
+}
+
+.breadcrumb a:hover {
+    color: #38bdf8;
+    /* brighter blue */
+}
+
+.breadcrumb-separator {
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 0.85rem;
+}
+
+.breadcrumb-current {
+    color: #f59e0b;
+    /* orange accent */
+    font-weight: 700;
+}

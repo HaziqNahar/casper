@@ -236,8 +236,6 @@
     border: 1px solid rgba(255, 255, 255, 0.16);
 }
 
-
-
 /* ---------------------------
    DROPDOWN MENUS (shell only)
 --------------------------- */
@@ -274,6 +272,69 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 
+:root {
+    --crumb-blue: #60a5fa;
+    /* link blue */
+    --crumb-orange: #f59e0b;
+    /* current pill */
+}
+
+/* container */
+.header-breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    flex-wrap: wrap;
+}
+
+/* clickable crumbs = blue text */
+.crumb-link {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    cursor: pointer;
+    font: inherit;
+
+    color: var(--crumb-blue);
+    font-weight: 650;
+    text-decoration: none;
+
+    text-shadow: 0 1px 2px rgba(0, 0, 0, .25);
+}
+
+.crumb-link:hover {
+    text-decoration: underline;
+}
+
+/* separators */
+.crumb-sep {
+    opacity: .75;
+    color: rgba(255, 255, 255, .75);
+}
+
+/* last crumb = orange pill */
+.breadcrumb-pill.is-current {
+    display: inline-flex;
+    align-items: center;
+
+    height: 1.35rem;
+    padding: 0 .55rem;
+    border-radius: 999px;
+
+    background: rgba(245, 158, 11, 0.22);
+    border: 1px solid rgba(245, 158, 11, 0.55);
+
+    color: #ffd089;
+    font-weight: 800;
+
+    backdrop-filter: blur(10px) saturate(140%);
+    -webkit-backdrop-filter: blur(10px) saturate(140%);
+
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .25),
+        0 8px 18px rgba(0, 0, 0, .18);
+}
+
 /* =========================================================
    Sidebar ACTIVE state (authoritative)
    ========================================================= */
@@ -282,17 +343,15 @@
 }
 
 .sidebar .sidebar-nav-item.active {
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    /* base border */
-    border-left: 3px solid var(--sidebar-active-accent);
-    /* override left */
-
-    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.22) !important;
 
     box-shadow:
+        inset 3px 0 0 var(--sidebar-active-accent),
         inset 0 1px 0 rgba(255, 255, 255, 0.26),
         0 10px 26px rgba(0, 0, 0, 0.22),
-        0 0 0 3px color-mix(in srgb, var(--sidebar-active-accent) 18%, transparent);
+        0 0 0 3px color-mix(in srgb, var(--sidebar-active-accent) 18%, transparent) !important;
+
+    background: rgba(255, 255, 255, 0.18) !important;
 }
 
 .sidebar .sidebar-nav-item.active .sidebar-nav-label,
@@ -401,91 +460,10 @@
     padding: 0.6rem 0.4rem;
 }
 
-/* Avatar + text */
-.sidebar-user {
-    display: flex;
-    align-items: center;
-    min-width: 0;
-    flex: 1;
-}
-
-.sidebar-avatar {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 999px;
-    background: #3b82f6;
-    color: #fff;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    font-size: 0.8rem;
-    font-weight: 700;
-    flex-shrink: 0;
-}
-
-.sidebar-avatar.is-clickable {
-    cursor: pointer;
-}
-
-.sidebar-userMeta {
-    margin-left: 0.75rem;
-    min-width: 0;
-    flex: 1;
-}
-
-.sidebar-userName {
-    margin: 0;
-    font-size: 0.8rem;
-    font-weight: 650;
-    color: rgba(255, 255, 255, 0.92);
-
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.sidebar-userEmail {
-    margin: 0;
-    font-size: 0.72rem;
-    color: rgba(255, 255, 255, 0.65);
-
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* Right side actions */
-.sidebar-profileActions {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    position: relative;
-    /* anchors dropdown */
-}
-
-.sidebar-profileMenu {
-    position: absolute;
-    right: 0;
-    bottom: calc(100% + 10px);
-    width: 180px;
-    z-index: 10001;
-}
-
-.sidebar-profileMenu.is-collapsed {
-    right: auto;
-    left: 50%;
-    transform: translateX(-50%);
-}
-
 /* =========================================================
    Sidebar Footer (Tabs + Profile) - authoritative
    ========================================================= */
 
-/* ===========================
-   Sidebar bottom: frosted cards
-   =========================== */
 
 .sidebar-footer {
     flex-shrink: 0;
@@ -650,11 +628,27 @@
     gap: 0.5rem;
 }
 
+.sidebar-profile {
+    position: relative;
+}
+
 /* Dropdown positioning helper (if you stop using fixed) */
 .sidebar-profile-menu {
-    position: relative;
+    position: absolute;
     right: 0;
     bottom: calc(100% + 10px);
     width: 180px;
-    z-index: 10001;
+    background: rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    padding: 8px 0;
+    z-index: 10002;
+    transform-origin: bottom right;
+    animation: glassMenuPop 160ms ease-out;
+}
+
+.sidebar-footer {
+    overflow: visible;
 }

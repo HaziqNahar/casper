@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import { createPortal } from "react-dom";
+
 import { useNavigate } from "react-router-dom";
 import { Menu, Clock, Calendar, ChevronRight } from "lucide-react";
 import { LayoutGrid } from "lucide-react";
@@ -173,39 +173,94 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
 
     const renderBreadcrumbs = () => {
         if (!breadcrumbs || breadcrumbs.length === 0) {
-            return subtitle ? <p className="header-subtitle">{subtitle}</p> : null;
+            // Fall back to subtitle if no breadcrumbs
+            if (subtitle) {
+                return (
+                    <p style={{
+                        margin: 0,
+                        marginTop: '0.5rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        letterSpacing: '0.03em',
+                    }}>
+                        {subtitle}
+                    </p>
+                );
+            }
+            return null;
         }
 
         return (
-            <nav className="header-breadcrumbs" aria-label="Breadcrumb">
+            <nav style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginTop: '0.375rem',
+                fontSize: '0.75rem',
+            }}>
                 {breadcrumbs.map((crumb, index) => {
                     const isLast = index === breadcrumbs.length - 1;
-                    const isClickable = !!crumb.path && !isLast;
+                    const isClickable = crumb.path && !isLast;
 
                     return (
-                        <React.Fragment key={`${crumb.label}-${index}`}>
+                        <React.Fragment key={index}>
                             {isClickable ? (
                                 <button
-                                    type="button"
-                                    className="crumb-link"
                                     onClick={() => handleBreadcrumbClick(crumb.path!)}
+                                    style={{
+                                        background: 'none',
+                                        border: 'none',
+                                        padding: 0,
+                                        margin: 0,
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        color: '#7dd3fc',
+                                        cursor: 'pointer',
+                                        textDecoration: 'none',
+                                        transition: 'color 0.2s',
+                                        fontFamily: 'inherit',
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#bae6fd'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#7dd3fc'}
                                 >
                                     {crumb.label}
                                 </button>
                             ) : (
-                                <span className="breadcrumb-pill">{crumb.label}</span>
+                                <span style={{
+                                    fontWeight: isLast ? 600 : 500,
+                                    color: isLast ? '#F68D2E' : '#ffffff',
+                                }}>
+                                    {crumb.label}
+                                </span>
                             )}
-                            {!isLast && <ChevronRight size={14} className="crumb-sep" aria-hidden="true" />}
+                            {!isLast && (
+                                <>
+                                    <ChevronRight
+                                        size={14}
+                                        style={{
+                                            marginLeft: '0.375rem',
+                                            marginRight: '-0.6rem',
+                                            color: 'rgba(255, 255, 255, 1)',
+                                            flexShrink: 0
+                                        }}
+                                    />
+                                    <ChevronRight
+                                        size={14}
+                                        style={{
+                                            marginRight: '0.375rem',
+                                            marginLeft: '0',
+                                            color: 'rgba(255, 255, 255, 1)',
+                                            flexShrink: 0
+                                        }}
+                                    />
+                                </>
+                            )}
                         </React.Fragment>
                     );
                 })}
             </nav>
         );
     };
-
-    // ✅ Make header button more “opaque / solid” like sidebar button
-    const headerIconBtnClass = "glossy-icon-btn"; // reuse your existing class
-
     return (
         <header
             className="app-header-glass"
