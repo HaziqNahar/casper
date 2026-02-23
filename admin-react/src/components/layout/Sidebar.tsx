@@ -9,7 +9,6 @@ import {
     Globe,
     LayoutDashboard,
     LogOut,
-    Menu,
     MoreVertical,
     Search,
     Settings,
@@ -73,22 +72,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         id: "realms-all",
                         label: "All Realms",
                         description: "View all realms",
-                        path: ROUTES.REALMS
-                    },
-                ],
-            },
-            {
-                id: "users",
-                label: "Users",
-                icon: Users,
-                description: "Manage and track users",
-                hasSubMenu: true,
-                subItems: [
-                    {
-                        id: "users-all",
-                        label: "All Users",
-                        description: "View all users",
-                        path: ROUTES.USERS
+                        path: ROUTES.REALMS,
                     },
                 ],
             },
@@ -103,10 +87,26 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         id: "applications-all",
                         label: "All Applications",
                         description: "View all applications",
-                        path: ROUTES.APPS
+                        path: ROUTES.APPS,
                     },
                 ],
             },
+            {
+                id: "users",
+                label: "Users",
+                icon: Users,
+                description: "Manage and track users",
+                hasSubMenu: true,
+                subItems: [
+                    {
+                        id: "users-all",
+                        label: "All Users",
+                        description: "View all users",
+                        path: ROUTES.USERS,
+                    },
+                ],
+            },
+
         ],
         []
     );
@@ -146,10 +146,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
     const initialState = getResponsiveState(window.innerWidth);
     const [isMobile, setIsMobile] = useState(initialState.isMobile);
-    const [isAutoCollapsed, setIsAutoCollapsed] = useState(
-        initialState.isAutoCollapsed
-    );
+    const [isAutoCollapsed, setIsAutoCollapsed] = useState(initialState.isAutoCollapsed);
     const [isCollapsed, setIsCollapsed] = useState(initialState.isAutoCollapsed);
+
 
     // Keep sidebar width in a CSS var for layout alignment
     useEffect(() => {
@@ -230,10 +229,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
     const handleMenuClick = (item: MenuItem) => {
         if (item.hasSubMenu) {
-            // If collapsed, expand sidebar first then open submenu
             if (isCollapsed) {
-                // If in auto-collapsed breakpoint, you were blocking expansion previously.
-                // Keep it consistent: allow expansion only if NOT auto-collapsed.
+                // keep your existing behavior for expanded mode
                 if (isAutoCollapsed) return;
                 setIsCollapsed(false);
                 setExpandedMenus((prev) => new Set(prev).add(item.id));
@@ -265,11 +262,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
         if (!isCollapsed) {
             setExpandedMenus(new Set());
-            setSidebarTab('main'); // reset to main when collapsing
+            setSidebarTab("main");
         }
     };
 
-    // Profile menu portal
+    // Profile menu
     const kebabBtnRef = useRef<HTMLButtonElement | null>(null);
     const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
 
@@ -281,8 +278,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         const menuWidth = 200;
 
         setMenuPos({
-            top: rect.top - 8, // menu will sit above (we'll translate in CSS)
-            left: Math.max(12, rect.right - menuWidth), // right-align to kebab
+            top: rect.top - 8,
+            left: Math.max(12, rect.right - menuWidth),
         });
 
         setShowProfileMenu(true);
@@ -293,7 +290,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         setMenuPos(null);
     };
 
-    // Close menu on ESC
+    // Close profile menu on ESC
     useEffect(() => {
         const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") closeMenu();
@@ -302,16 +299,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         return () => window.removeEventListener("keydown", onKeyDown);
     }, [showProfileMenu]);
 
-    const handleProfileMenuAction = (action: "settings" | "logout") => {
+    const handleProfileMenuAction = (action: "profile" | "settings" | "logout") => {
         closeMenu();
+        if (action === "profile") console.log("Opening profile...");
         if (action === "settings") console.log("Opening settings...");
         if (action === "logout") console.log("Logging out...");
     };
 
-    // Sidebar width
     const sidebarWidth = isCollapsed ? "70px" : "256px";
 
-    // Scrollbar styles (you can move this to CSS if you want)
     const scrollbarStyles = `
     .sidebar-nav-scrollable::-webkit-scrollbar { width: 6px; }
     .sidebar-nav-scrollable::-webkit-scrollbar-track { background: transparent; }
@@ -323,7 +319,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         <>
             <style>{scrollbarStyles}</style>
 
-            {/* Mobile overlay */}
             {isMobile && isOpen && (
                 <div
                     className="sidebar-overlay"
@@ -337,13 +332,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 />
             )}
 
-            {/* Sidebar */}
             <aside
-                className={`sidebar glass-mica-dark ${isOpen ? "sidebar-open" : ""}`}
+                className={`sidebar glass-mica-dark ${isOpen ? "sidebar-open" : ""} ${isCollapsed ? "is-collapsed" : ""
+                    }`}
                 style={{
                     width: isMobile ? "256px" : sidebarWidth,
                     minWidth: isMobile ? "256px" : sidebarWidth,
-                    transition: "width 0.3s ease-in-out, min-width 0.3s ease-in-out, transform 0.3s ease-in-out",
+                    transition:
+                        "width 0.3s ease-in-out, min-width 0.3s ease-in-out, transform 0.3s ease-in-out",
                     transform: isMobile && !isOpen ? "translateX(-100%)" : "translateX(0)",
                     zIndex: 50,
                     height: "100vh",
@@ -358,7 +354,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 <div
                     className="sidebar-header"
                     style={{
-                        padding: "1rem",
+                        padding: isCollapsed ? "0.85rem 0" : "1rem",
                         overflow: "hidden",
                         flexShrink: 0,
                         display: "flex",
@@ -396,21 +392,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                 }}
                             />
 
-                            {/* logo text */}
                             <span
                                 style={{
-                                    fontSize: '1.8rem',
-                                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                                    fontWeight: 400, /* Bold weight to match CERTIS reference */
-                                    color: '#ffffff',
-                                    letterSpacing: '0.03em',
-                                    whiteSpace: 'nowrap',
+                                    fontSize: "1.8rem",
+                                    fontFamily:
+                                        "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+                                    fontWeight: 400,
+                                    color: "#ffffff",
+                                    letterSpacing: "0.03em",
+                                    whiteSpace: "nowrap",
                                     opacity: isCollapsed ? 0 : 1,
-                                    maxWidth: isCollapsed ? 0 : '200px',
-                                    overflow: 'hidden',
-                                    transition: 'opacity 0.2s ease-in-out, max-width 0.3s ease-in-out',
-                                    pointerEvents: isCollapsed ? 'none' : 'auto',
-                                    lineHeight: 1
+                                    maxWidth: isCollapsed ? 0 : "200px",
+                                    overflow: "hidden",
+                                    transition: "opacity 0.2s ease-in-out, max-width 0.3s ease-in-out",
+                                    pointerEvents: isCollapsed ? "none" : "auto",
+                                    lineHeight: 1,
                                 }}
                             >
                                 CASPER
@@ -418,7 +414,6 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         </div>
                     </div>
 
-                    {/* Mobile close */}
                     <button
                         onClick={() => setIsOpen(false)}
                         style={{
@@ -540,16 +535,20 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                     <div key={item.id} style={{ position: "relative" }}>
                                         <button
                                             type="button"
-                                            onClick={() => handleMenuClick(item)}
-                                            onMouseEnter={() => setHoveredItem(item.id)}
+                                            onClick={() => {
+                                                handleMenuClick(item);
+                                            }}
+                                            onMouseEnter={() => {
+                                                setHoveredItem(item.id);
+                                            }}
                                             onMouseLeave={() => setHoveredItem(null)}
                                             className={`sidebar-nav-item ${isActive ? "active" : ""}`}
                                             style={{
-                                                width: "100%",
+                                                width: isCollapsed ? "auto" : "100%",
                                                 display: "flex",
                                                 alignItems: "center",
                                                 justifyContent: isCollapsed ? "center" : "flex-start",
-                                                padding: isCollapsed ? "0.75rem" : "0.75rem 1rem",
+                                                padding: isCollapsed ? 0 : "0.75rem 1rem",
                                                 gap: isCollapsed ? 0 : "0.75rem",
                                                 fontFamily: "inherit",
                                             }}
@@ -582,40 +581,36 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                             <div
                                                 style={{
                                                     position: "absolute",
-                                                    left: "100%",
+                                                    left: "calc(100% + 10px)",
                                                     top: "50%",
                                                     transform: "translateY(-50%)",
-                                                    marginLeft: "0.5rem",
-                                                    padding: "0.5rem 0.75rem",
-                                                    backgroundColor: "#111827",
-                                                    color: "white",
-                                                    borderRadius: "0.5rem",
-                                                    fontSize: "0.8rem",
-                                                    fontWeight: 600,
-                                                    whiteSpace: "nowrap",
-                                                    zIndex: 100,
-                                                    boxShadow: "0 10px 26px rgba(0,0,0,0.35)",
+                                                    zIndex: 9999,
+
+                                                    width: 220,
+                                                    padding: "0.65rem 0.8rem",
+                                                    borderRadius: 12,
+
+                                                    background:
+                                                        "linear-gradient(180deg, rgba(255,255,255,0.50), rgba(255,255,255,0.24))",
+                                                    border: "1px solid rgba(255,255,255,0.26)",
+                                                    backdropFilter: "blur(18px) saturate(160%)",
+                                                    WebkitBackdropFilter: "blur(18px) saturate(160%)",
+                                                    boxShadow:
+                                                        "0 16px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
+
+                                                    pointerEvents: "none",
                                                 }}
                                             >
-                                                {item.label}
-                                                {item.hasSubMenu && <span style={{ opacity: 0.7, marginLeft: "0.25rem" }}>▸</span>}
-                                                <div
-                                                    style={{
-                                                        position: "absolute",
-                                                        left: "-5px",
-                                                        top: "50%",
-                                                        transform: "translateY(-50%)",
-                                                        width: 0,
-                                                        height: 0,
-                                                        borderTop: "5px solid transparent",
-                                                        borderBottom: "5px solid transparent",
-                                                        borderRight: "5px solid #111827",
-                                                    }}
-                                                />
+                                                <div style={{ fontSize: "0.86rem", fontWeight: 750, color: "rgba(15,23,42,0.92)" }}>
+                                                    {item.label}
+                                                </div>
+                                                <div style={{ fontSize: "0.75rem", marginTop: 2, color: "rgba(15,23,42,0.62)" }}>
+                                                    {item.description}
+                                                </div>
                                             </div>
                                         )}
 
-                                        {/* Submenu */}
+                                        {/* Submenu (expanded mode only) */}
                                         {!isCollapsed && item.hasSubMenu && item.subItems && isExpanded && (
                                             <div
                                                 className="submenu-rail"
@@ -683,22 +678,29 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                 <div key={item.id} style={{ position: "relative" }}>
                                     <button
                                         type="button"
-                                        onClick={() => handleMenuClick(item)}
-                                        onMouseEnter={() => setHoveredItem(item.id)}
+                                        onClick={() => {
+                                            handleMenuClick(item);
+                                        }}
+                                        onMouseEnter={() => {
+                                            setHoveredItem(item.id);
+                                        }}
                                         onMouseLeave={() => setHoveredItem(null)}
                                         className={`sidebar-nav-item ${isActive ? "active" : ""}`}
                                         style={{
-                                            width: "100%",
+                                            width: isCollapsed ? "auto" : "100%",
                                             display: "flex",
                                             alignItems: "center",
                                             justifyContent: isCollapsed ? "center" : "flex-start",
-                                            padding: isCollapsed ? "0.75rem" : "0.75rem 1rem",
+                                            padding: isCollapsed ? 0 : "0.75rem 1rem",
                                             gap: isCollapsed ? 0 : "0.75rem",
                                             fontFamily: "inherit",
                                         }}
                                         title={isCollapsed ? item.label : undefined}
                                     >
-                                        <Icon className="sidebar-nav-item-icon" style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }} />
+                                        <Icon
+                                            className="sidebar-nav-item-icon"
+                                            style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }}
+                                        />
 
                                         {!isCollapsed && (
                                             <>
@@ -787,12 +789,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                     <div className={`sidebar-profile-card ${isCollapsed ? "is-collapsed" : ""}`}>
                         {isCollapsed && !isAutoCollapsed && (
-                            <button onClick={toggleCollapse} className="glossy-icon-btn sidebar-expand-btn" title="Expand sidebar">
+                            <button
+                                onClick={toggleCollapse}
+                                className="glossy-icon-btn sidebar-expand-btn"
+                                title="Expand sidebar"
+                            >
                                 <ChevronRight style={{ height: "1.1rem", width: "1.1rem" }} />
                             </button>
                         )}
 
-                        <div className="sidebar-user">
+                        <div className="sidebar-user" style={{ position: "relative" }}>
                             <div
                                 className={`sidebar-avatar ${isCollapsed ? "is-clickable" : ""}`}
                                 onClick={() => isCollapsed && setShowProfileMenu(!showProfileMenu)}
@@ -810,18 +816,120 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         </div>
 
                         {!isCollapsed && !isAutoCollapsed && (
-                            <div className="sidebar-profile-actions">
-                                <button className="glossy-icon-btn icon-btn-square" onClick={toggleCollapse} title="Collapse sidebar">
+                            <div className="sidebar-profile-actions" style={{ position: "relative" }}>
+                                <button
+                                    className="glossy-icon-btn icon-btn-square"
+                                    onClick={toggleCollapse}
+                                    title="Collapse sidebar"
+                                >
                                     <ChevronLeft size={18} />
                                 </button>
 
                                 <button
                                     ref={kebabBtnRef}
                                     className="glossy-icon-btn icon-btn-square"
-                                    onClick={() => (showProfileMenu ? closeMenu() : openMenu())}
+                                    onClick={() => setShowProfileMenu((v) => !v)}
                                 >
                                     <MoreVertical size={18} />
                                 </button>
+
+                                {showProfileMenu && (
+                                    <>
+                                        <div
+                                            onClick={() => setShowProfileMenu(false)}
+                                            style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                                        />
+
+                                        <div
+                                            style={{
+                                                position: "absolute",
+                                                bottom: "calc(100% + 8px)",
+                                                right: 0,
+                                                width: "140px",
+                                                backgroundColor: "white",
+                                                borderRadius: "0.5rem",
+                                                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+                                                border: "1px solid #e5e7eb",
+                                                zIndex: 9999,
+                                                overflow: "hidden",
+                                            }}
+                                        >
+                                            <button
+                                                onClick={() => handleProfileMenuAction("profile")}
+                                                style={{
+                                                    width: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "0.75rem",
+                                                    padding: "0.625rem 0.75rem",
+                                                    fontSize: "0.85rem",
+                                                    color: "#000000",
+                                                    backgroundColor: "transparent",
+                                                    border: "none",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                    transition: "background-color 0.2s",
+                                                    fontFamily: "inherit",
+                                                }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                            >
+                                                <User style={{ height: "1rem", width: "1rem" }} />
+                                                Profile
+                                            </button>
+
+                                            <button
+                                                onClick={() => handleProfileMenuAction("settings")}
+                                                style={{
+                                                    width: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "0.75rem",
+                                                    padding: "0.625rem 0.75rem",
+                                                    fontSize: "0.85rem",
+                                                    color: "#000000",
+                                                    backgroundColor: "transparent",
+                                                    border: "none",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                    transition: "background-color 0.2s",
+                                                    fontFamily: "inherit",
+                                                }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
+                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                            >
+                                                <Settings style={{ height: "1rem", width: "1rem" }} />
+                                                Settings
+                                            </button>
+
+                                            <div style={{ height: "1px", backgroundColor: "#e5e7eb" }} />
+
+                                            <button
+                                                onClick={() => handleProfileMenuAction("logout")}
+                                                style={{
+                                                    width: "100%",
+                                                    display: "flex",
+                                                    alignItems: "center",
+                                                    gap: "0.75rem",
+                                                    padding: "0.625rem 0.75rem",
+                                                    fontSize: "0.85rem",
+                                                    color: "#dc2626",
+                                                    backgroundColor: "transparent",
+                                                    border: "none",
+                                                    cursor: "pointer",
+                                                    textAlign: "left",
+                                                    transition: "background-color 0.2s",
+                                                    fontFamily: "inherit",
+                                                }}
+                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
+                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                            >
+                                                <LogOut style={{ height: "1rem", width: "1rem" }} />
+                                                Logout
+                                            </button>
+                                        </div>
+                                    </>
+                                )}
                             </div>
                         )}
                     </div>
