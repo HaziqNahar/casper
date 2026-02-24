@@ -65,10 +65,42 @@ export interface UserRow {
     lastLogin?: string;
 }
 
-export type RealmUserMap = Record<string, string[]>; // realmId -> userUUIDs
+// export type RealmUserMap = Record<string, string[]>; 
+export type RealmRoleId = string;
+
+export interface RealmRole {
+    id: RealmRoleId;
+    name: string;
+}
+
+export interface RealmMembership {
+    userUuid: string;
+    roleId: RealmRoleId;
+    // optional:
+    // assignedAt?: string;
+    // assignedBy?: string;
+}
+
+export type RealmUserMap = Record<string, RealmMembership[]>; // realmId -> memberships
 export type RealmAppUserKey = string;
 export type RealmAppUsersMap = Record<RealmAppUserKey, string[]>;
 
+export interface RealmRole {
+    id: RealmRoleId;
+    name: string;        // "Certis Full User"
+    description?: string;
+    oneFA?: string[];    // optional display
+    twoFA?: string[];
+}
+
+const REALM_ROLES: RealmRole[] = [
+    { id: "admin_user", name: "Admin User" },
+    { id: "certis_full_user", name: "Certis Full User" },
+    { id: "certis_contractor", name: "Certis Contractor" },
+    { id: "certis_half_user", name: "Certis Half User" },
+    { id: "external_user", name: "External Users" },
+    { id: "local_user", name: "Local User" },
+];
 // Keycloak-facing Applications model (realm has many apps)
 export interface AppRow {
     id: string; // app_id
@@ -124,32 +156,10 @@ const cardTitleStyle: React.CSSProperties = {
     marginBottom: 10,
 };
 
-const sectionLabelStyle: React.CSSProperties = {
-    fontSize: "0.78rem",
-    fontWeight: 900,
-    color: "#6b7280",
-    marginBottom: 6,
-};
-
-const listStyle: React.CSSProperties = {
-    margin: 0,
-    paddingLeft: "1.1rem",
-};
-
-const listItemStyle: React.CSSProperties = {
-    marginBottom: 4,
-};
-
 const monoStyle: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
 };
 
-const Field: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <label style={{ fontSize: "0.75rem", fontWeight: 800, color: "#6b7280" }}>{label}</label>
-        {children}
-    </div>
-);
 
 const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -288,9 +298,18 @@ const REALMS_DATA: RealmRow[] = [
 ];
 
 const REALM_USERS_INITIAL: RealmUserMap = {
-    "realm-ops": ["u-5b9f2a2c-1", "u-5b9f2a2c-2", "u-5b9f2a2c-3"],
-    "realm-fin": ["u-5b9f2a2c-4", "u-5b9f2a2c-5"],
-    "realm-dev": ["u-5b9f2a2c-2"],
+    "realm-ops": [
+        { userUuid: "u-5b9f2a2c-1", roleId: "admin_user" },
+        { userUuid: "u-5b9f2a2c-2", roleId: "certis_full_user" },
+        { userUuid: "u-5b9f2a2c-3", roleId: "certis_contractor" },
+    ],
+    "realm-fin": [
+        { userUuid: "u-5b9f2a2c-4", roleId: "certis_full_user" },
+        { userUuid: "u-5b9f2a2c-5", roleId: "certis_contractor" },
+    ],
+    "realm-dev": [
+        { userUuid: "u-5b9f2a2c-2", roleId: "certis_full_user" },
+    ],
 };
 
 const REALM_APP_USERS_INITIAL: RealmAppUsersMap = {
@@ -557,26 +576,34 @@ const createRealmColumns = (onView: (row: RealmRow) => void): TableColumn<RealmR
 ];
 
 const createRealmUsersColumns = (
-    onViewUser: (user: UserRow) => void,
+    roleNameById: Map<string, string>,
     onRemoveFromRealm: (userUuid: string) => void
-): TableColumn<UserRow>[] => [
+): TableColumn<any>[] => [
         {
             key: "username",
             label: "Username",
             width: "190px",
-            render: (value, row) => <LinkCell onClick={() => onViewUser(row)}>{value as string}</LinkCell>,
+            render: (value, row) => <LinkCell onClick={() => { }}>{value as string}</LinkCell>,
         },
         {
             key: "firstName",
             label: "Name",
             width: "220px",
-            render: (_, row) => `${row.firstName} ${row.lastName}`,
+            render: (_v, row) => `${row.firstName} ${row.lastName}`,
         },
         {
             key: "email",
             label: "Email",
             width: "260px",
-            render: (value) => (value as string) || "-",
+            render: (v) => (v as string) || "-",
+        },
+        {
+            key: "realmRoleId",
+            label: "User Type",
+            width: "220px",
+            render: (v) => (
+                <Badge variant="info">{roleNameById.get(v as string) ?? "—"}</Badge>
+            ),
         },
         {
             key: "status",
@@ -592,7 +619,6 @@ const createRealmUsersColumns = (
             render: (value) => {
                 if (!value) return "-";
                 const dt = new Date(value as string);
-
                 return (
                     <time className="kc-datetime" dateTime={dt.toISOString()} title={formatFull(dt)}>
                         {formatAbsolute(dt)}
@@ -607,14 +633,11 @@ const createRealmUsersColumns = (
             width: "90px",
             align: "center",
             sortable: false,
-            render: (_, row) => (
+            render: (_v, row) => (
                 <button
                     type="button"
                     className="icon-action"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onRemoveFromRealm(row.uuid);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); onRemoveFromRealm(row.uuid); }}
                     title="Remove from realm"
                     style={{ color: "#dc2626" }}
                 >
@@ -625,59 +648,60 @@ const createRealmUsersColumns = (
     ];
 
 const createAddUserColumns = (
-    onAddToRealm: (userUuid: string) => void
+    roles: RealmRole[],
+    selectedRoleByUser: Record<string, RealmRoleId | "">,
+    setSelectedRoleByUser: React.Dispatch<React.SetStateAction<Record<string, RealmRoleId | "">>>,
+    onAddToRealm: (userUuid: string, roleId: RealmRoleId) => void
 ): TableColumn<UserRow>[] => [
-        {
-            key: "username",
-            label: "Username",
-            width: "190px",
-            render: (value) => value as any,
-        },
-        {
-            key: "firstName",
-            label: "Name",
-            width: "220px",
-            render: (_, row) => `${row.firstName} ${row.lastName}`,
-        },
-        {
-            key: "email",
-            label: "Email",
-            width: "260px",
-            render: (value) => (value as string) || "-",
-        },
+        { key: "username", label: "Username", width: "190px", render: (v) => v as any },
+        { key: "firstName", label: "Name", width: "220px", render: (_v, row) => `${row.firstName} ${row.lastName}` },
+        { key: "email", label: "Email", width: "260px", render: (v) => (v as string) || "-" },
         {
             key: "status",
             label: "Status",
             width: "130px",
             align: "center",
-            render: (value) => <Badge variant={userStatusVariant(value as UserStatus)}>{value as string}</Badge>,
+            render: (v) => <Badge variant={userStatusVariant(v as UserStatus)}>{v as string}</Badge>,
         },
+
         {
-            key: "uuid",
+            key: "uuid_actions",
             label: "Actions",
-            width: "120px",
+            width: "140px",
             align: "center",
             sortable: false,
-            render: (_, row) => (
-                <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onAddToRealm(row.uuid);
-                    }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "0.45rem 0.75rem" }}
-                    title="Add to realm"
-                >
-                    <Plus size={16} /> Add
-                </button>
-            ),
+            render: (_v, row) => {
+                const roleId = selectedRoleByUser[row.uuid] ?? "";
+                return (
+                    <div className="kc-row-actions">
+                        <select
+                            className="kc-select"
+                            value={roleId}
+                            onChange={(e) => setSelectedRoleByUser((p) => ({ ...p, [row.uuid]: e.target.value as RealmRoleId }))}
+                        >
+                            <option value="">Select role…</option>
+                            {roles.map((r) => (
+                                <option key={r.id} value={r.id}>{r.name}</option>
+                            ))}
+                        </select>
+                        <button
+                            type="button"
+                            className="kc-btn kc-btn-cell kc-btn-primary"
+                            disabled={!roleId}
+                            onClick={(e) => { e.stopPropagation(); if (!roleId) return; onAddToRealm(row.uuid, roleId); }}
+                            title={!roleId ? "Select a user type first" : "Add to realm"}
+                        >
+                            <Plus size={16} /> Add
+                        </button>
+                    </div>
+                );
+            },
         },
     ];
 
 const createAppColumns = (
     onViewApp?: (app: AppRow) => void
-): TableColumn<AppRow>[] => [
+): TableColumn<any>[] => [
         {
             key: "name",
             label: "Application",
@@ -806,8 +830,8 @@ const RealmsContent: React.FC<{
     const columns = useMemo(() => createRealmColumns(onRowClick), [onRowClick]);
     return (
         <div className="tab-table-container" style={{ position: "relative" }}>
-            <div className="table-card" style={{ flex: 1 }}>
-                <DataTable2<RealmRow>
+            <div className="kc-card" style={{ flex: 1 }}>
+                <DataTable2<any>
                     data={Array.isArray(realms) ? realms : []}
                     columns={columns}
                     keyField="id"
@@ -830,7 +854,7 @@ const RealmsContent: React.FC<{
     );
 };
 
-const createAppAccessUsersColumns = (onRemove: (uuid: string) => void): TableColumn<UserRow>[] => [
+const createAppAccessUsersColumns = (onRemove: (uuid: string) => void): TableColumn<any>[] => [
     { key: "username", label: "Username", width: "180px", render: (v) => v as any },
     { key: "email", label: "Email", width: "260px", render: (v) => v as any },
     {
@@ -857,7 +881,7 @@ const createAppAccessUsersColumns = (onRemove: (uuid: string) => void): TableCol
     },
 ];
 
-const createGrantAccessColumns = (onAdd: (uuid: string) => void): TableColumn<UserRow>[] => [
+const createGrantAccessColumns = (onAdd: (uuid: string) => void): TableColumn<any>[] => [
     { key: "username", label: "Username", width: "180px", render: (v) => v as any },
     { key: "email", label: "Email", width: "260px", render: (v) => v as any },
     {
@@ -888,7 +912,8 @@ type RealmDetailTab = "users" | "applications";
 const RealmDetailContent: React.FC<{
     realm: RealmRow;
     allUsers: UserRow[];
-    realmUserUuids: string[];
+    realmMemberships: RealmMembership[];
+    roles: RealmRoleId[];
     appsInRealm: AppRow[];
 
     appUsers: RealmAppUsersMap;
@@ -897,11 +922,18 @@ const RealmDetailContent: React.FC<{
 
     onBack?: () => void;
     onRemoveUser: (userUuid: string) => void;
-    onAddUser: (userUuid: string) => void;
+    onAddUser: (userUuid: string, roleId: RealmRoleId) => void;
     onCreateUser: (newUser: UserRow) => void;
-}> = ({ realm, allUsers, realmUserUuids, appsInRealm, appUsers, onRevokeAppUser, onGrantAppUser, onBack, onRemoveUser, onAddUser, onCreateUser }) => {
+}> = ({ realm, allUsers, realmMemberships, roles, appsInRealm, appUsers, onRevokeAppUser, onGrantAppUser, onBack, onRemoveUser, onAddUser, onCreateUser }) => {
     const [tab, setTab] = useState<RealmDetailTab>("users");
     const [query, setQuery] = useState("");
+
+    const [selectedRoleByUser, setSelectedRoleByUser] = useState<Record<string, RealmRoleId | "">>({});
+
+    const addColumns = useMemo(
+        () => createAddUserColumns(roles, selectedRoleByUser, setSelectedRoleByUser, onAddUser),
+        [roles, selectedRoleByUser, onAddUser]
+    );
 
     // Create user form
     const [form, setForm] = useState({
@@ -911,7 +943,7 @@ const RealmDetailContent: React.FC<{
         firstName: "",
         lastName: "",
     });
-    const addColumns = useMemo(() => createAddUserColumns((uuid) => onAddUser(uuid)), [onAddUser]);
+    // const addColumns = useMemo(() => createAddUserColumns((uuid) => onAddUser(uuid, "user")), [onAddUser]);
 
     const [formError, setFormError] = useState<string | null>(null);
 
@@ -930,16 +962,33 @@ const RealmDetailContent: React.FC<{
         [handleSelectApp]
     );
 
-    const realmUserSet = useMemo(() => new Set(realmUserUuids), [realmUserUuids]);
+    const membershipMap = useMemo(() => {
+        return new Map((realmMemberships ?? []).map((m) => [m.userUuid, m.roleId]));
+    }, [realmMemberships]);
+
+
+    const roleNameById = useMemo(() => {
+        const m = new Map<string, string>();
+        (roles ?? []).forEach((r) => m.set(r.id, r.name));
+        return m;
+    }, [roles]);
 
     const usersInRealm = useMemo(() => {
         const safeUsers = Array.isArray(allUsers) ? allUsers : [];
-        return safeUsers.filter((u) => realmUserSet.has(u.uuid) && !u.isDeleted);
-    }, [allUsers, realmUserSet]);
+        return safeUsers
+            .filter((u) => membershipMap.has(u.uuid) && !u.isDeleted)
+            .map((u) => ({
+                ...u,
+                realmRoleId: membershipMap.get(u.uuid)!,
+            }));
+    }, [allUsers, membershipMap]);
+
+    const realmUserSet = useMemo(() => new Set(realmMemberships?.map(m => m.userUuid)), [realmMemberships]);
+
 
     const userColumns = useMemo(
-        () => createRealmUsersColumns(() => { }, (uuid) => onRemoveUser(uuid)),
-        [onRemoveUser]
+        () => createRealmUsersColumns(roleNameById, (uuid) => onRemoveUser(uuid)),
+        [roleNameById, onRemoveUser]
     );
 
     const availableUsersToAdd = useMemo(() => {
@@ -1078,7 +1127,7 @@ const RealmDetailContent: React.FC<{
             </div>
 
             {/* Inner tabs */}
-            <div style={{ display: "flex", gap: 18, borderBottom: "1px solid var(--kc-border-subtle)", marginBottom: 12 }}>
+            <div className="realm-tabs" style={{ display: "flex", gap: 18, borderBottom: "1px solid var(--kc-border-subtle)", marginBottom: 12 }}>
                 {[
                     { id: "users", label: "Users", icon: <UsersIcon size={14} /> },
                     { id: "applications", label: "Applications", icon: <Globe size={14} /> },
@@ -1124,7 +1173,7 @@ const RealmDetailContent: React.FC<{
                             </button>
                         </div>
 
-                        <DataTable2<UserRow>
+                        <DataTable2<any>
                             data={usersInRealm}
                             columns={userColumns}
                             keyField="uuid"
@@ -1616,8 +1665,15 @@ const ApplicationDetailContent: React.FC<{
                     <div style={cardTitleStyle}>
                         <Shield size={16} /> Scopes
                     </div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
 
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {(app.clientScopes ?? []).length ? (
+                            app.clientScopes.map((s) => (
+                                <span key={s} className="pill pill-info">{s}</span>
+                            ))
+                        ) : (
+                            <span style={{ color: "#6b7280" }}>—</span>
+                        )}
                     </div>
                 </div>
 
@@ -1832,9 +1888,7 @@ const RealmsPage: React.FC = () => {
         (realmId: string, userUuid: string) => {
             setRealmUsers((prev) => {
                 const next: RealmUserMap = { ...(prev ?? {}) };
-                const current = new Set(next[realmId] ?? []);
-                current.delete(userUuid);
-                next[realmId] = Array.from(current);
+                next[realmId] = (next[realmId] ?? []).filter((m) => m.userUuid !== userUuid);
                 queueMicrotask(() => syncRealmUserCounts(next));
                 return next;
             });
@@ -1843,12 +1897,16 @@ const RealmsPage: React.FC = () => {
     );
 
     const addUserToRealm = useCallback(
-        (realmId: string, userUuid: string) => {
+        (realmId: string, userUuid: string, roleId: RealmRoleId) => {
             setRealmUsers((prev) => {
                 const next: RealmUserMap = { ...(prev ?? {}) };
-                const current = new Set(next[realmId] ?? []);
-                current.add(userUuid);
-                next[realmId] = Array.from(current);
+                const list = next[realmId] ?? [];
+
+                const exists = list.some((m) => m.userUuid === userUuid);
+                next[realmId] = exists
+                    ? list.map((m) => (m.userUuid === userUuid ? { ...m, roleId } : m))
+                    : [...list, { userUuid, roleId }];
+
                 queueMicrotask(() => syncRealmUserCounts(next));
                 return next;
             });
@@ -1868,8 +1926,8 @@ const RealmsPage: React.FC = () => {
 
                 case "realm-detail": {
                     const realm = tab.content as RealmRow;
-
-                    const realmUserUuids = (realmUsers?.[realm.id] ?? []) as string[];
+                    const realmMemberships = (realmUsers?.[realm.id] ?? []) as RealmMembership[];
+                    const realmUserUuids = realmMemberships.map((m) => m.userUuid);
                     const appIds = (realmApps?.[realm.id] ?? []) as string[];
                     const appSet = new Set(appIds);
                     const appsInRealm = (Array.isArray(apps) ? apps : []).filter((a) => appSet.has(a.id));
@@ -1880,8 +1938,10 @@ const RealmsPage: React.FC = () => {
                             realmUserUuids={realmUserUuids}
                             appsInRealm={appsInRealm}
                             onBack={backToRealms}
+                            realmMemberships={realmMemberships}
+                            roles={REALM_ROLES}
+                            onAddUser={(uuid, roleId) => addUserToRealm(realm.id, uuid, roleId)}
                             onRemoveUser={(uuid) => removeUserFromRealm(realm.id, uuid)}
-                            onAddUser={(uuid) => addUserToRealm(realm.id, uuid)}
                             onCreateUser={(u) => createUser(u)}
                             appUsers={realmAppUsers}
                             onGrantAppUser={(appId, userUuid) => grantUserToApp(realm.id, appId, userUuid)}

@@ -4,6 +4,12 @@
    - Rounded corners work even with scroll + sticky header
    - Includes fallbacks so missing --kc-* tokens won't break styles
    ========================================================= */
+.kc-card {
+    background: var(--kc-surface);
+    border: 1px solid var(--kc-border-subtle);
+    border-radius: var(--kc-radius-lg);
+    box-shadow: var(--kc-shadow-sm);
+}
 
 /* Toolbar */
 .kc-table-toolbar {
@@ -609,7 +615,6 @@
     border: 1px solid rgba(255, 255, 255, 0.18);
 
     background: rgba(255, 255, 255, 0.12);
-    color: #fff;
 
     font: inherit;
     cursor: pointer;
@@ -686,6 +691,12 @@
     border-color: #cbc7f5;
 }
 
+
+/* Footer buttons stay white */
+.kc-table .kc-table-pagination .kc-btn {
+    color: #fff;
+}
+
 /* ---------------------------
    LinkCell
 --------------------------- */
@@ -703,4 +714,220 @@
 
 .kc-table .kc-linkcell:hover {
     text-decoration: underline;
+}
+
+/* Shared control sizing (matches your table row density) */
+.kc-control {
+    height: 34px;
+    border-radius: 10px;
+    border: 1px solid var(--border-subtle, #e5e7eb);
+    background: inherit;
+    color: inherit;
+    font-size: 0.85rem;
+    font-weight: 700;
+    line-height: 1;
+    outline: none;
+    box-shadow: none;
+}
+
+/* Select (dropdown) */
+/* Match kc-btn sizing + radius */
+.kc-select {
+    height: 32px;
+    /* same as .kc-btn */
+    padding: 0 34px 0 12px;
+    border-radius: var(--kc-radius-sm, 10px);
+
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(255, 255, 255, 0.12);
+    color: var(--kc-text, #0f172a);
+
+    font: inherit;
+    font-weight: 700;
+    font-size: 0.85rem;
+    line-height: 32px;
+
+    outline: none;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* arrow */
+    background-image:
+        linear-gradient(45deg, transparent 50%, rgba(255, 255, 255, 0.75) 50%),
+        linear-gradient(135deg, rgba(255, 255, 255, 0.75) 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) 50%,
+        calc(100% - 11px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+.kc-select:hover:not(:disabled) {
+    filter: brightness(1.06);
+}
+
+.kc-select:focus {
+    border-color: var(--kc-primary);
+    box-shadow: 0 0 0 3px rgba(0, 40, 85, 0.18);
+    /* matches your primary vibe */
+}
+
+.kc-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Make option menu readable (native dropdown list) */
+.kc-select option {
+    color: #0f172a;
+}
+
+.kc-select:hover {
+    border-color: var(--border, #d1d5db);
+    background-color: #fff;
+}
+
+
+/* Primary small action button (matches table actions) */
+.kc-btn-sm {
+    height: 34px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: var(--primary, #002855);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: transform 0.04s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+.kc-btn-sm:hover {
+    filter: brightness(1.05);
+}
+
+.kc-btn-sm:active {
+    transform: translateY(1px);
+}
+
+.kc-btn-sm:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px var(--ring, rgba(0, 40, 85, 0.18));
+}
+
+/* Disabled state should look intentional */
+.kc-btn-sm:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    transform: none;
+    filter: none;
+}
+
+.kc-row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+}
+
+.kc-row-actions .kc-select {
+    flex: 1;
+    min-width: 180px;
+}
+
+/* ===========================
+   TABLE CELL CONTROLS
+   - Blend into table text
+=========================== */
+
+/* Select inside table cell: looks like text until hover/focus */
+.kc-table .kc-table-td .kc-select {
+    height: 32px;
+    width: 100%;
+    padding: 0 28px 0 0;
+    /* keep arrow space */
+    border-radius: 10px;
+
+    border: 1px solid transparent;
+    background: transparent;
+
+    color: var(--kc-text, #0f172a);
+    font-size: 0.875rem;
+    font-weight: 600;
+    font-family: inherit;
+
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+
+    /* arrow in muted text color */
+    background-image:
+        linear-gradient(45deg, transparent 50%, #94a3b8 50%),
+        linear-gradient(135deg, #94a3b8 50%, transparent 50%);
+    background-position:
+        calc(100% - 16px) 50%,
+        calc(100% - 11px) 50%;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
+}
+
+/* Only show "control chrome" when interacting */
+.kc-table .kc-table-td .kc-select:hover:not(:disabled) {
+    border-color: #d1d5db;
+    background: #fff;
+}
+
+.kc-table .kc-table-td .kc-select:focus {
+    border-color: #93c5fd;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(147, 197, 253, .35);
+}
+
+.kc-table .kc-table-td .kc-select:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/* Native dropdown list text */
+.kc-table .kc-table-td .kc-select option {
+    color: #0f172a;
+}
+
+/* Add button inside table cell: compact, matches cell text */
+.kc-table .kc-table-td .kc-btn.kc-btn-cell {
+    height: 32px;
+    padding: 0 12px;
+    border-radius: 10px;
+
+    background: transparent;
+    border: 1px solid #d1d5db;
+
+    color: var(--kc-text, #0f172a);
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.kc-table .kc-table-td .kc-btn.kc-btn-cell:hover:not(:disabled) {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
+.kc-table .kc-table-td .kc-btn.kc-btn-cell:active:not(:disabled) {
+    background: #f1f5f9;
+}
+
+.kc-table .kc-table-td .kc-btn.kc-btn-cell:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* Optional: if you want Add to be "primary text" but still subtle */
+.kc-table .kc-table-td .kc-btn.kc-btn-cell.is-primary {
+    color: var(--kc-primary, #0b1f3a);
+    border-color: rgba(11, 31, 58, 0.22);
 }
