@@ -1,6 +1,6 @@
-import React from 'react';
-import TabHeader from './TabHeader';
-import type { Tab } from '../../../hooks/useTabs';
+import React from "react";
+import TabHeader from "./TabHeader";
+import type { Tab } from "../../../hooks/useTabs";
 
 export interface TabPanelProps {
     tabs: Tab[];
@@ -9,16 +9,21 @@ export interface TabPanelProps {
     onAdd: () => void;
     onClose: (index: number) => void;
     onReorder: (sourceIndex: number, destIndex: number) => void;
+
     onRefresh?: () => void;
     onFilterToggle?: () => void;
     isFilterOpen?: boolean;
+
+    /** Controls whether TabHeader shows its default refresh/filter actions */
     showActions?: boolean;
+
     addButtonLabel?: string;
     children?: React.ReactNode;
     renderContent?: (tab: Tab, index: number) => React.ReactNode;
     className?: string;
     contentClassName?: string;
     minHeight?: string;
+
     /** Custom actions to render in place of default refresh/filter buttons */
     customActions?: React.ReactNode;
 }
@@ -33,18 +38,17 @@ export const TabPanel: React.FC<TabPanelProps> = ({
     onRefresh,
     onFilterToggle,
     isFilterOpen = false,
-    showActions = true,
+    showActions = false,
     addButtonLabel,
     children,
     renderContent,
-    className = '',
-    contentClassName = '',
-    minHeight = '400px',
+    className = "",
+    contentClassName = "",
+    minHeight = "400px",
     customActions,
 }) => {
     const activeTabData = tabs[activeTab];
 
-    // Determine content to render
     const content = () => {
         if (tabs.length === 0) {
             return (
@@ -57,21 +61,15 @@ export const TabPanel: React.FC<TabPanelProps> = ({
             );
         }
 
-        // If renderContent prop is provided, use it
-        if (renderContent && activeTabData) {
-            return renderContent(activeTabData, activeTab);
-        }
+        if (renderContent && activeTabData) return renderContent(activeTabData, activeTab);
+        if (children) return children;
 
-        // If children provided, render them
-        if (children) {
-            return children;
-        }
-
-        // Default: render tab's content property
-        return activeTabData?.content || (
-            <div className="browser-tabs-empty">
-                <p>No content available</p>
-            </div>
+        return (
+            activeTabData?.content || (
+                <div className="browser-tabs-empty">
+                    <p>No content available</p>
+                </div>
+            )
         );
     };
 
@@ -91,21 +89,17 @@ export const TabPanel: React.FC<TabPanelProps> = ({
                 addButtonLabel={addButtonLabel}
                 customActions={customActions}
             />
+
             <div
                 className={`browser-tabs-content ${contentClassName}`}
                 role="tabpanel"
-                // style={{ minHeight }}
                 style={{
                     flex: 1,
                     minHeight: 0,
-                    overflow: 'hidden'
+                    overflow: "hidden",
                 }}
             >
-                {/* Key forces re-mount on tab change, triggering animation */}
-                <div
-                    key={activeTabData?.id || activeTab}
-                    className="tab-content-animated"
-                >
+                <div key={activeTabData?.id || activeTab} className="tab-content-animated">
                     {content()}
                 </div>
             </div>

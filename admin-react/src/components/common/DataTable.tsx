@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
     Search,
     ChevronUp,
@@ -6,6 +6,8 @@ import {
     ChevronLeft,
     ChevronRight,
     RefreshCw,
+    Columns3,
+    Check,
 } from "lucide-react";
 
 // ==========================================
@@ -13,13 +15,19 @@ import {
 // ==========================================
 export type TableData = Record<string, unknown>;
 
-export interface TableColumn<T extends TableData> {
-    key: keyof T;
+export interface TableColumn<T extends TableData, K extends keyof T = keyof T> {
+    key: K;
     label: string;
-    width?: string; // e.g. "160px" | "20%" | "12rem"
-    sortable?: boolean; // default true
+    width?: string;
+    sortable?: boolean;
     align?: "left" | "center" | "right";
-    render?: (value: T[keyof T], row: T) => React.ReactNode;
+    render?: (value: T[K], row: T) => React.ReactNode;
+
+    /** Optional: set to true if you don't want this column to be toggled off */
+    lockVisible?: boolean;
+
+    /** Optional: initial hidden (only used if enableColumnVisibility=true) */
+    hiddenByDefault?: boolean;
 }
 
 export interface DataTableProps<T extends TableData> {
@@ -47,8 +55,19 @@ export interface DataTableProps<T extends TableData> {
     striped?: boolean;
     hoverable?: boolean;
 
+    /** NEW (1): sticky toolbar inside the table card */
+    stickyToolbar?: boolean;
+
+    /** NEW (4): column visibility toggle button in toolbar */
+    enableColumnVisibility?: boolean;
+
     emptyMessage?: string;
     emptyIcon?: React.ReactNode;
+
+    toolbarFilters?: {
+        left?: React.ReactNode;
+        right?: React.ReactNode;
+    };
 }
 
 // ==========================================
@@ -109,9 +128,16 @@ export default function DataTable<T extends TableData>({
     striped = true,
     hoverable = true,
 
+    stickyToolbar = true,
+    enableColumnVisibility = true,
+
     emptyMessage = "No records found",
     emptyIcon,
+    toolbarFilters,
 }: DataTableProps<T>): React.ReactElement {
+    const rootRef = useRef<HTMLDivElement | null>(null);
+    const toolbarRef = useRef<HTMLDivElement | null>(null);
+
     const [searchTerm, setSearchTerm] = useState("");
     const [sortField, setSortField] = useState<keyof T | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -119,15 +145,111 @@ export default function DataTable<T extends TableData>({
     const [pageSize, setPageSize] = useState(initialPageSize);
     const [pageInputValue, setPageInputValue] = useState("1");
 
+    // ============ (1) Sticky toolbar elevation state ============
+    const [toolbarIsStuck, setToolbarIsStuck] = useState(false);
+
+    useEffect(() => {
+        if (!stickyToolbar) return;
+
+        const onScroll = () => {
+            const root = rootRef.current;
+            const toolbar = toolbarRef.current;
+            if (!root || !toolbar) return;
+
+            const rootRect = root.getBoundingClientRect();
+            const toolbarRect = toolbar.getBoundingClientRect();
+
+            // toolbar is considered "stuck" when it hits top of viewport,
+            // but only while the table is still visible.
+            const stuck =
+                toolbarRect.top <= 8 && // a little breathing room
+                rootRect.top < 8 &&
+                rootRect.bottom > 80;
+
+            setToolbarIsStuck(stuck);
+        };
+
+        onScroll();
+        window.addEventListener("scroll", onScroll, { passive: true });
+        return () => window.removeEventListener("scroll", onScroll);
+    }, [stickyToolbar]);
+
+    // ============ (4) Column visibility ============
+    const allKeys = useMemo(() => columns.map((c) => String(c.key)), [columns]);
+
+    const initialVisibleKeys = useMemo(() => {
+        if (!enableColumnVisibility) return new Set(allKeys);
+        const set = new Set<string>();
+        for (const c of columns) {
+            if (!c.hiddenByDefault) set.add(String(c.key));
+        }
+        // safety: never allow empty
+        if (set.size === 0) set.add(allKeys[0] ?? "");
+        return set;
+    }, [enableColumnVisibility, columns, allKeys]);
+
+    const [visibleKeys, setVisibleKeys] = useState<Set<string>>(initialVisibleKeys);
+    const [showCols, setShowCols] = useState(false);
+
+    // keep visibleKeys in sync if columns list changes
+    useEffect(() => {
+        setVisibleKeys((prev) => {
+            const next = new Set<string>();
+            const prevArr = Array.from(prev);
+
+            // keep any still-existing keys
+            for (const k of prevArr) if (allKeys.includes(k)) next.add(k);
+
+            // if none left, fallback to initial computed
+            if (next.size === 0) {
+                for (const k of Array.from(initialVisibleKeys)) next.add(k);
+            }
+
+            // ensure locked columns always visible
+            for (const c of columns) {
+                if (c.lockVisible) next.add(String(c.key));
+            }
+
+            // still empty? pick first
+            if (next.size === 0 && allKeys[0]) next.add(allKeys[0]);
+            return next;
+        });
+    }, [allKeys, columns, initialVisibleKeys]);
+
+    useEffect(() => {
+        const onDoc = (e: MouseEvent) => {
+            if (!showCols) return;
+            const root = rootRef.current;
+            if (!root) return;
+            if (root.contains(e.target as Node)) {
+                // click inside table: allow
+                return;
+            }
+            setShowCols(false);
+        };
+        document.addEventListener("mousedown", onDoc);
+        return () => document.removeEventListener("mousedown", onDoc);
+    }, [showCols]);
+
+    const columnsToRender = useMemo(() => {
+        if (!enableColumnVisibility) return columns;
+        return columns.filter((c) => visibleKeys.has(String(c.key)));
+    }, [columns, enableColumnVisibility, visibleKeys]);
+
+    const visibleCountLabel = useMemo(() => {
+        if (!enableColumnVisibility) return "";
+        return `${visibleKeys.size}/${columns.length}`;
+    }, [enableColumnVisibility, visibleKeys, columns.length]);
+
     // Filter
     const filteredData = useMemo(() => {
         const q = searchTerm.trim().toLowerCase();
         if (!q) return data;
 
         return data.filter((row) =>
-            columns.some((col) => toStr(row[col.key]).toLowerCase().includes(q))
+            columnsToRender.some((col) => toStr(row[col.key]).toLowerCase().includes(q))
         );
-    }, [data, columns, searchTerm]);
+    }, [data, columnsToRender, searchTerm]);
 
     // Sort
     const sortedData = useMemo(() => {
@@ -190,7 +312,7 @@ export default function DataTable<T extends TableData>({
     // ==========================================
     if (loading) {
         return (
-            <div className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
+            <div ref={rootRef} className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
                 <div className="kc-table-state">
                     <RefreshCw size={18} className="kc-spin" />
                     <span>Loading...</span>
@@ -201,11 +323,11 @@ export default function DataTable<T extends TableData>({
 
     if (error) {
         return (
-            <div className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
+            <div ref={rootRef} className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
                 <div className="kc-table-state kc-table-state--error">
                     <p>Error: {error}</p>
                     {onRefresh && (
-                        <button type="button" className="kc-btn kc-btn--primary" onClick={onRefresh}>
+                        <button type="button" className="kc-btn kc-btn-primary" onClick={onRefresh}>
                             Retry
                         </button>
                     )}
@@ -218,30 +340,130 @@ export default function DataTable<T extends TableData>({
     // RENDER
     // ==========================================
     return (
-        <div className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
+        <div ref={rootRef} className={["kc-table", className].filter(Boolean).join(" ")} style={{ minHeight }}>
             {/* Toolbar */}
-            {(searchable || onRefresh) && (
-                <div className="kc-table-toolbar">
-                    {searchable && (
-                        <div className="kc-table-search">
-                            <Search size={16} className="kc-table-searchIcon" />
-                            <input
-                                type="text"
-                                className="kc-table-searchInput"
-                                placeholder={searchPlaceholder}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                    )}
+            {(searchable || toolbarFilters || onRefresh || enableColumnVisibility) && (
+                <div
+                    ref={toolbarRef}
+                    className={[
+                        "kc_tableToolbar",
+                        stickyToolbar ? "is_sticky" : "",
+                        toolbarIsStuck ? "is_scrolled" : "",
+                    ].filter(Boolean).join(" ")}
+                    style={
+                        stickyToolbar
+                            ? { position: "sticky", top: 8, zIndex: 30 }
+                            : undefined
+                    }
+                >
+                    <div className="kc_tableToolbar_left">
+                        {searchable && (
+                            <div className="kc_searchWrap">
+                                <Search size={16} />
+                                <input
+                                    className="kc_searchInput"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    placeholder={searchPlaceholder || "Search..."}
+                                />
+                            </div>
+                        )}
 
-                    <div className="kc-table-meta">
-                        <span>
-                            {searchTerm ? `${sortedData.length} of ${data.length} records` : `${data.length} records`}
-                        </span>
+                        {toolbarFilters?.left}
 
+                        <div className="kc_tableToolbar_spacer" />
+
+                        {toolbarFilters?.right}
+
+                        {/* (4) Columns toggle */}
+                        {enableColumnVisibility && (
+                            <div className="kc_colsWrap" style={{ position: "relative" }}>
+                                <button
+                                    type="button"
+                                    className="kc_btn kc_btn_icon"
+                                    title={`Columns (${visibleCountLabel})`}
+                                    onClick={() => setShowCols((s) => !s)}
+                                    aria-expanded={showCols}
+                                >
+                                    <Columns3 size={16} />
+                                </button>
+
+                                {showCols && (
+                                    <div className="kc-colsDropdown" role="menu" aria-label="Column visibility">
+                                        <div className="kc-colsHeader">
+                                            <span>Columns</span>
+                                            <span className="kc-colsMeta">{visibleCountLabel}</span>
+                                        </div>
+
+                                        <div className="kc-colsList">
+                                            {columns.map((c) => {
+                                                const key = String(c.key);
+                                                const locked = Boolean(c.lockVisible);
+                                                const checked = visibleKeys.has(key);
+
+                                                return (
+                                                    <button
+                                                        key={key}
+                                                        type="button"
+                                                        className="kc-colsItem"
+                                                        role="menuitemcheckbox"
+                                                        aria-checked={checked}
+                                                        disabled={locked}
+                                                        onClick={() => {
+                                                            setVisibleKeys((prev) => {
+                                                                const next = new Set(prev);
+                                                                if (next.has(key)) {
+                                                                    // don't allow hiding last visible col
+                                                                    if (next.size <= 1) return next;
+                                                                    next.delete(key);
+                                                                } else {
+                                                                    next.add(key);
+                                                                }
+                                                                // enforce locked cols visible
+                                                                for (const cc of columns) if (cc.lockVisible) next.add(String(cc.key));
+                                                                return next;
+                                                            });
+                                                        }}
+                                                    >
+                                                        <span className={`kc-colsCheck ${checked ? "is-on" : ""}`}>
+                                                            {checked ? <Check size={14} /> : null}
+                                                        </span>
+                                                        <span className="kc-colsLabel">{c.label}</span>
+                                                        {locked && <span className="kc-colsLocked">Locked</span>}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="kc-colsFooter">
+                                            <button
+                                                type="button"
+                                                className="kc-btn kc-btn-ghost"
+                                                onClick={() => setVisibleKeys(new Set(allKeys))}
+                                            >
+                                                Show all
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="kc-btn kc-btn-primary"
+                                                onClick={() => setShowCols(false)}
+                                            >
+                                                Done
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Refresh */}
                         {onRefresh && (
-                            <button type="button" className="kc-btn kc-btn--icon" onClick={onRefresh} title="Refresh">
+                            <button
+                                type="button"
+                                className="kc_btn kc_btn_icon"
+                                onClick={onRefresh}
+                                title="Refresh"
+                            >
                                 <RefreshCw size={16} />
                             </button>
                         )}
@@ -254,7 +476,7 @@ export default function DataTable<T extends TableData>({
                 <table className="kc-table-table">
                     <thead className="kc-table-thead">
                         <tr>
-                            {columns.map((col) => {
+                            {columnsToRender.map((col) => {
                                 const isSortable = col.sortable !== false;
                                 const isActive = sortField === col.key;
 
@@ -289,7 +511,7 @@ export default function DataTable<T extends TableData>({
                     <tbody className="kc-table-tbody">
                         {paginatedData.length === 0 ? (
                             <tr className="kc-table-tr">
-                                <td className="kc-table-td" colSpan={columns.length}>
+                                <td className="kc-table-td" colSpan={columnsToRender.length}>
                                     <div className="kc-table-empty">
                                         {emptyIcon ?? <Search size={40} style={{ opacity: 0.35 }} />}
                                         <div>
@@ -311,7 +533,7 @@ export default function DataTable<T extends TableData>({
                                         className={rowClassName(rowIndex)}
                                         onClick={() => onRowClick?.(row)}
                                     >
-                                        {columns.map((col) => (
+                                        {columnsToRender.map((col) => (
                                             <td
                                                 key={String(col.key)}
                                                 className="kc-table-td"
@@ -354,11 +576,11 @@ export default function DataTable<T extends TableData>({
                     </div>
 
                     <div className="kc-table-pagerRight">
-                        <button className="kc-btn kc-btn--ghost" onClick={() => goToPage(1)} disabled={currentPage === 1}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(1)} disabled={currentPage === 1}>
                             First
                         </button>
 
-                        <button className="kc-btn kc-btn--ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
                             <ChevronLeft size={14} />
                         </button>
 
@@ -387,11 +609,11 @@ export default function DataTable<T extends TableData>({
                             <span>of {totalPages}</span>
                         </div>
 
-                        <button className="kc-btn kc-btn--ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
                             <ChevronRight size={14} />
                         </button>
 
-                        <button className="kc-btn kc-btn--ghost" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>
                             Last
                         </button>
                     </div>

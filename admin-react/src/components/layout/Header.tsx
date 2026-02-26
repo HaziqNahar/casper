@@ -122,79 +122,88 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
     };
 
     const renderBreadcrumbs = () => {
-        if (!breadcrumbs || breadcrumbs.length === 0) return null;
-
-        // Remove Home when you're already on Home
-        const filteredBreadcrumbs =
-            breadcrumbs.length === 1 && breadcrumbs[0].path === ROUTES.HOME
-                ? []
-                : breadcrumbs;
-
-        if (filteredBreadcrumbs.length === 0) return null;
+        if (!breadcrumbs || breadcrumbs.length === 0) {
+            // Fall back to subtitle if no breadcrumbs
+            if (subtitle) {
+                return (
+                    <p style={{
+                        margin: 0,
+                        marginTop: '0.5rem',
+                        fontSize: '0.75rem',
+                        fontWeight: 500,
+                        color: 'rgba(255, 255, 255, 0.8)',
+                        letterSpacing: '0.03em',
+                    }}>
+                        {subtitle}
+                    </p>
+                );
+            }
+            return null;
+        }
 
         return (
-            <nav
-                aria-label="Breadcrumb"
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.35rem",
-                    marginTop: "0.15rem",
-                    fontSize: "0.78rem",
-                    lineHeight: 1.2,
-                    flexWrap: "wrap",
-                }}
-            >
-                {filteredBreadcrumbs.map((crumb, index) => {
-                    const isLast = index === filteredBreadcrumbs.length - 1;
-                    const isClickable = !!crumb.path && !isLast;
+            <nav style={{
+                display: 'flex',
+                alignItems: 'center',
+                marginTop: '0.375rem',
+                fontSize: '0.75rem',
+            }}>
+                {breadcrumbs.map((crumb, index) => {
+                    const isLast = index === breadcrumbs.length - 1;
+                    const isClickable = crumb.path && !isLast;
 
                     return (
                         <React.Fragment key={index}>
                             {isClickable ? (
                                 <button
-                                    type="button"
                                     onClick={() => handleBreadcrumbClick(crumb.path!)}
                                     style={{
-                                        background: "none",
-                                        border: "none",
+                                        background: 'none',
+                                        border: 'none',
                                         padding: 0,
                                         margin: 0,
-                                        fontSize: "inherit",
-                                        fontWeight: 650,
-                                        color: "#002855",
-                                        cursor: "pointer",
-                                        transition: "color 0.15s ease",
-                                        fontFamily: "inherit",
+                                        fontSize: '0.75rem',
+                                        fontWeight: 500,
+                                        color: '#7dd3fc',
+                                        cursor: 'pointer',
+                                        textDecoration: 'none',
+                                        transition: 'color 0.2s',
+                                        fontFamily: 'inherit',
                                     }}
-                                    onMouseEnter={(e) =>
-                                        (e.currentTarget.style.color = "rgba(0,40,85,0.85)")
-                                    }
-                                    onMouseLeave={(e) =>
-                                        (e.currentTarget.style.color = "#002855")
-                                    }
+                                    onMouseEnter={(e) => e.currentTarget.style.color = '#bae6fd'}
+                                    onMouseLeave={(e) => e.currentTarget.style.color = '#7dd3fc'}
                                 >
                                     {crumb.label}
                                 </button>
                             ) : (
-                                <span
-                                    style={{
-                                        fontWeight: 800,
-                                        color: isLast ? "#F68D2E" : "rgba(0,40,85,0.70)",
-                                    }}
-                                >
+                                <span style={{
+                                    fontWeight: isLast ? 600 : 500,
+                                    color: isLast ? '#F68D2E' : '#ffffff',
+                                }}>
                                     {crumb.label}
                                 </span>
                             )}
-
                             {!isLast && (
-                                <ChevronRight
-                                    size={14}
-                                    style={{
-                                        color: "rgba(0,40,85,0.40)",
-                                        flexShrink: 0,
-                                    }}
-                                />
+                                <>
+                                    <ChevronRight
+                                        size={14}
+                                        style={{
+                                            marginLeft: '0.375rem',
+                                            marginRight: '-0.6rem',
+                                            color: 'rgba(255, 255, 255, 1)',
+                                            flexShrink: 0
+                                        }}
+                                    />
+                                    <ChevronRight
+                                        size={14}
+                                        style={{
+                                            marginRight: '0.375rem',
+                                            marginLeft: '0',
+                                            color: 'rgba(255, 255, 255, 1)',
+                                            flexShrink: 0
+                                        }}
+                                    />
+                                </>
                             )}
                         </React.Fragment>
                     );
@@ -202,6 +211,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
             </nav>
         );
     };
+
     return (
         <header
             className="app-header-glass"

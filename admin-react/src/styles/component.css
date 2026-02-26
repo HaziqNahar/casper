@@ -17,6 +17,12 @@
     margin-bottom: .75rem;
 }
 
+.table-card {
+    overflow: visible;
+    position: relative;
+    z-index: 1;
+}
+
 .admin-organization-page-wrapper .table-card {
     background: #ffffff;
     padding: .75rem;
@@ -56,4 +62,356 @@
     color: #f59e0b;
     /* orange accent */
     font-weight: 700;
+}
+
+/* ==== Confirm Modal (matches your navy table UI) ==== */
+.kc-confirmOverlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(3, 10, 24, 0.62);
+    /* deep navy overlay */
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    z-index: 9999;
+}
+
+.kc-confirmModal {
+    width: min(520px, 100%);
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 16px;
+    box-shadow: 0 18px 60px rgba(2, 8, 23, 0.35);
+    overflow: hidden;
+}
+
+.kc-confirmHeader {
+    background: #0b2a4a;
+    /* your table header navy vibe */
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.kc-confirmTitle {
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 0.98rem;
+    letter-spacing: 0.2px;
+}
+
+.kc-confirmBody {
+    padding: 14px 16px;
+    color: #0f172a;
+    font-weight: 600;
+    font-size: 0.92rem;
+    line-height: 1.4;
+}
+
+.kc-confirmFooter {
+    padding: 14px 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+/* Button tweaks so it matches your system */
+.kc-btn.kc-btn-danger {
+    background: #dc2626;
+    color: white;
+    border: 1px solid rgba(220, 38, 38, 0.35);
+}
+
+.kc-btn.kc-btn-danger:hover {
+    filter: brightness(0.95);
+}
+
+.kc-btn.kc-btn-ghost {
+    background: transparent;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    color: #0f172a;
+}
+
+.kc-btn.kc-btn-ghost:hover {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+/* ===== Toasts ===== */
+.kc-toastContainer {
+    position: fixed;
+    top: 24px;
+    right: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ===== Toast Stack Position ===== */
+.kc-toastStack {
+    position: fixed;
+    top: 14px;
+    right: 14px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+    /* clicks pass through except buttons */
+}
+
+/* ===== Toast Base (Glass) ===== */
+.kc-toast {
+    pointer-events: auto;
+    display: grid;
+    grid-template-columns: 10px 1fr 28px;
+    align-items: center;
+    gap: 10px;
+
+    min-width: 320px;
+    max-width: 460px;
+
+    padding: 10px 10px 10px 12px;
+    border-radius: 14px;
+
+    /* glassmorphism */
+    background: rgba(10, 32, 56, 0.55);
+    /* aligns w your navy */
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow:
+        0 10px 30px rgba(0, 0, 0, 0.28),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+
+    backdrop-filter: blur(14px) saturate(1.2);
+    -webkit-backdrop-filter: blur(14px) saturate(1.2);
+
+    color: rgba(255, 255, 255, 0.92);
+}
+
+/* Left status dot */
+.kc-toast_dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.65);
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.10);
+}
+
+/* Message */
+.kc-toast_msg {
+    font-weight: 700;
+    font-size: 0.86rem;
+    letter-spacing: 0.1px;
+    min-width: 0px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Close button */
+.kc-toast_close {
+    width: 28px;
+    height: 28px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    background: rgba(255, 255, 255, 0.06);
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 0;
+    display: grid;
+    place-items: center;
+}
+
+.kc-toast_close:hover {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* ===== Type accents (subtle, still "Casper") ===== */
+.kc-toast--success .kc-toast_dot {
+    background: rgba(34, 197, 94, 0.9);
+    box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18);
+}
+
+.kc-toast--info .kc-toast_dot {
+    background: rgba(59, 130, 246, 0.9);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+}
+
+.kc-toast--warning .kc-toast_dot {
+    background: rgba(245, 158, 11, 0.95);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.20);
+}
+
+.kc-toast--error .kc-toast_dot {
+    background: rgba(239, 68, 68, 0.95);
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.20);
+}
+
+/* ===== Animations ===== */
+@keyframes kcToastIn {
+    from {
+        transform: translateX(12px) translateY(-6px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes kcToastOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+
+    to {
+        transform: translateX(16px);
+        opacity: 0;
+    }
+}
+
+.kc-toast.is-entering {
+    animation: kcToastIn 220ms ease-out both;
+}
+
+.kc-toast.is-exiting {
+    animation: kcToastOut 220ms ease-in both;
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+
+    .kc-toast.is-entering,
+    .kc-toast.is-exiting {
+        animation: none;
+    }
+}
+
+@keyframes kc-toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes kc-spin {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.kc-realmCard {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+}
+
+.kc-realmCardHeader {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding-bottom: 10px;
+
+    /* keep same “card” look while sticky */
+    background: rgba(255, 255, 255, 0.92);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.kc_realmCardBody {
+    padding-top: 12px;
+}
+
+.kc_realmCardHeaderRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.kc_realmCardHeaderTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.kc_userStats {
+    margin-top: 6px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.kc_stat {
+    font-size: 0.82rem;
+    color: #64748b;
+    font-weight: 700;
+}
+
+.kc_stat b {
+    color: #0f172a;
+    font-weight: 900;
+}
+
+.kc_chipRow {
+    margin-top: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.kc_chip {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: #ffffff;
+    color: #0f172a;
+    border-radius: 999px;
+    padding: 6px 10px;
+    font-size: 0.82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.kc_chip:hover {
+    background: rgba(15, 23, 42, 0.04);
+}
+
+.kc_chip.is-active {
+    border-color: rgba(37, 99, 235, 0.35);
+    background: rgba(37, 99, 235, 0.08);
+    color: #1d4ed8;
+}
+
+.kc_accordion {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+}
+
+.kc_accordion.is-open {
+    max-height: 1000px;
+    /* big enough to fit content */
+}
+
+.multiSelectDropdown {
+    position: absolute;
+    z-index: 9999;
 }

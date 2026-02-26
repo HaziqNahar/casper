@@ -37,6 +37,8 @@ const App: React.FC = () => {
 
               <Route path={ROUTES.REALMS} element={<RealmsPage />} />
               <Route path={ROUTES.MANAGE_REALMS} element={<ManageRealmsPage />} />
+              // Example
+              <Route path="/realms/new" element={<CreateRealmPage />} />
 
               <Route path={ROUTES.USERS} element={<UsersPage />} />
               <Route path={ROUTES.CREATE_USER} element={<CreateUserPage />} />

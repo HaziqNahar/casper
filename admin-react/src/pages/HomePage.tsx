@@ -174,6 +174,77 @@ const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onClick, color, 
         <span className="dash-qaLabel">{label}</span>
     </button>
 );
+type PostureVariant = "good" | "warn" | "bad" | "info";
+
+const postureStyles: Record<PostureVariant, { bg: string; border: string; color: string }> = {
+    good: { bg: "rgba(16,185,129,0.12)", border: "rgba(16,185,129,0.35)", color: "#059669" },
+    warn: { bg: "rgba(245,158,11,0.14)", border: "rgba(245,158,11,0.38)", color: "#d97706" },
+    bad: { bg: "rgba(239,68,68,0.12)", border: "rgba(239,68,68,0.38)", color: "#dc2626" },
+    info: { bg: "rgba(59,130,246,0.12)", border: "rgba(59,130,246,0.35)", color: "#2563eb" },
+};
+
+const PostureChip: React.FC<{
+    label: string;
+    value: string | number;
+    variant: PostureVariant;
+    icon: React.ReactNode;
+    onClick?: () => void;
+    hint?: string;
+}> = ({ label, value, variant, icon, onClick, hint }) => {
+    const s = postureStyles[variant];
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title={hint}
+            style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "0.75rem 0.9rem",
+                borderRadius: 14,
+                border: `1px solid ${s.border}`,
+                background: s.bg,
+                cursor: onClick ? "pointer" : "default",
+                transition: "transform 0.15s ease, box-shadow 0.15s ease",
+                textAlign: "left",
+            }}
+            onMouseEnter={(e) => {
+                if (!onClick) return;
+                e.currentTarget.style.transform = "translateY(-1px)";
+                e.currentTarget.style.boxShadow = "0 12px 26px rgba(0,0,0,0.12)";
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.transform = "translateY(0)";
+                e.currentTarget.style.boxShadow = "none";
+            }}
+        >
+            <div
+                style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 12,
+                    display: "grid",
+                    placeItems: "center",
+                    background: "rgba(255,255,255,0.22)",
+                    boxShadow: "inset 0 1px 0 rgba(255,255,255,0.35)",
+                    color: s.color,
+                }}
+            >
+                {icon}
+            </div>
+
+            <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: 0.3, color: "rgba(0,0,0,0.72)" }}>
+                    {label}
+                </div>
+                <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a", lineHeight: 1.1 }}>
+                    {value}
+                </div>
+            </div>
+        </button>
+    );
+};
 
 // ==========================================
 // HOME PAGE COMPONENT
@@ -181,7 +252,14 @@ const QuickAction: React.FC<QuickActionProps> = ({ icon, label, onClick, color, 
 
 const HomePage: React.FC = () => {
     const navigate = useNavigate();
-    const { totalUsers, totalRealms, loading } = useData();
+    const { securityPosture, totalRealms, loading, } = useData();
+
+    const overallStyle = {
+        good: { bg: "#dcfce7", color: "#166534" },
+        warn: { bg: "#fef3c7", color: "#92400e" },
+        info: { bg: "#dbeafe", color: "#1e3a8a" },
+        bad: { bg: "#fee2e2", color: "#991b1b" },
+    }[securityPosture.overall];
 
     // Mock activity data
     const recentActivity: ActivityItem[] = [
@@ -201,10 +279,19 @@ const HomePage: React.FC = () => {
         },
     ];
 
+    // inside HomePage
+    const pendingUsers = securityPosture.pendingUsers ?? 0;
+    const inactiveUsers = securityPosture.inactiveUsers ?? 0;
+
+    // If your realm objects have `status` in DataContext later, this works.
+    // For now if not available, keep as 0 or adapt once DataContext exposes it.
+    const nonActiveRealms = totalRealms.filter((r: any) => (r.status ?? "Active") !== "Active").length;
+
+
     return (
         <div style={{ width: '100%', maxWidth: '100%' }}>
             {/* Stats Grid */}
-            <div style={{
+            {/* <div style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
                 gap: '1rem',
@@ -234,50 +321,123 @@ const HomePage: React.FC = () => {
                     bgColor="#d1fae5"
                     onClick={() => navigate(ROUTES.AUDIT_LOGS)}
                 />
+         </div> */}
+            {/* <div
+                style={{
+                    marginTop: "1rem",
+                    padding: "0.85rem 1rem",
+                    borderRadius: 12,
+                    fontWeight: 800,
+                    background: overallStyle.bg,
+                    color: overallStyle.color,
+                }}
+            >
+                Overall Security Status: {securityPosture.overall.toUpperCase()}
+            </div> */}
+            <div className="glass-surface glass-surface--soft" style={{ padding: "1.1rem 1.25rem", marginBottom: "1.25rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
+                    <div>
+                        <div style={{ fontSize: 18, fontWeight: 900, color: "#0f172a" }}>Security Command Center</div>
+
+                    </div>
+
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        <button className="dash-linkBtn" onClick={() => navigate(ROUTES.AUDIT_LOGS)}>Open Audit Logs</button>
+                    </div>
+                </div>
+
+                <div
+                    style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: "0.9rem",
+                        marginTop: "1rem",
+                    }}
+                >
+                    <PostureChip
+                        label="Pending Users"
+                        value={loading ? "…" : pendingUsers}
+                        variant={pendingUsers > 0 ? "warn" : "good"}
+                        icon={<UserPlus size={18} />}
+                        onClick={() => navigate(ROUTES.USERS)}
+                        hint="Review pending identities"
+                    />
+                    <PostureChip
+                        label="Inactive Users"
+                        value={loading ? "…" : inactiveUsers}
+                        variant={inactiveUsers > 0 ? "info" : "good"}
+                        icon={<Users size={18} />}
+                        onClick={() => navigate(ROUTES.USERS)}
+                        hint="Review inactive accounts"
+                    />
+                    <PostureChip
+                        label="Non-Active Realms"
+                        value={loading ? "…" : nonActiveRealms}
+                        variant={nonActiveRealms > 0 ? "warn" : "good"}
+                        icon={<Globe size={18} />}
+                        onClick={() => navigate("realms?status=nonactive")}
+                        hint="Draft/Inactive realms may imply incomplete controls"
+                    />
+                    <PostureChip
+                        label="Audit Log Events"
+                        value={8}
+                        variant="info"
+                        icon={<ScrollText size={18} />}
+                        onClick={() => navigate(ROUTES.AUDIT_LOGS)}
+                        hint="Open audit history"
+                    />
+                </div>
             </div>
 
             {/* Main Content Grid */}
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 400px)',
-                gap: '1.5rem',
-                width: '100%',
-            }}>
-                {/* Left Column - Quick Actions */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}>
-                    {/* Quick Actions */}
+            <div
+                style={{
+                    display: "grid",
+                    gridTemplateColumns: "minmax(0, 1fr) minmax(300px, 400px)",
+                    gap: "1.5rem",
+                    width: "100%",
+                }}
+            >
+                {/* Left Column */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", minWidth: 0 }}>
+                    {/* Security Actions */}
                     <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
-                        <h3 className="dash-sectionTitle">
-                            Quick Actions
-                        </h3>
-                        <div className="dash-quickRow">
+                        <h3 className="dash-sectionTitle">Security Actions</h3>
 
+                        <div className="dash-quickRow">
                             <QuickAction
-                                icon={<UserPlus size={20} />}
-                                label="Create User"
-                                onClick={() => navigate(ROUTES.CREATE_USER)}
+                                icon={<AlertTriangle size={20} />}
+                                label="Review Pending Users"
+                                onClick={() => navigate(ROUTES.USERS)}
+                                color="#d97706"
+                                bgColor="#fef3c7"
+                            />
+                            <QuickAction
+                                icon={<Globe size={20} />}
+                                label="Review Realms"
+                                onClick={() => navigate(ROUTES.REALMS)}
                                 color="#2563eb"
                                 bgColor="#dbeafe"
                             />
                             <QuickAction
-                                icon={<SquarePlus size={20} />}
-                                label="Register Application"
-                                onClick={() => navigate(ROUTES.REGISTER_APPS)}
-                                color="#7c3aed"
-                                bgColor="#ede9fe"
+                                icon={<ScrollText size={20} />}
+                                label="Audit Logs"
+                                onClick={() => navigate(ROUTES.AUDIT_LOGS)}
+                                color="#059669"
+                                bgColor="#d1fae5"
                             />
-                            <QuickAction
-                                icon={<PlusCircle size={20} />}
-                                label="Manage Realms"
-                                onClick={() => navigate(ROUTES.MANAGE_REALMS)}
-                                color="#d97706"
-                                bgColor="#fef3c7"
-                            />
+                        </div>
+
+                        {/* (Optional) keep admin actions as secondary row */}
+                        <div style={{ marginTop: 12, display: "flex", gap: 10, flexWrap: "wrap" }}>
+                            <button className="dash-linkBtn" onClick={() => navigate(ROUTES.CREATE_USER)}>Create User</button>
+                            <button className="dash-linkBtn" onClick={() => navigate(ROUTES.REGISTER_APPS)}>Register Application</button>
+                            <button className="dash-linkBtn" onClick={() => navigate(ROUTES.MANAGE_REALMS)}>Manage Realms</button>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Column - Recent Activity */}
+                {/* Right Column - Recent Activity (keep) */}
                 <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
                     <div className="dash-sectionHead">
                         <h3 className="dash-sectionTitle">
@@ -310,7 +470,82 @@ const HomePage: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Main Content Grid */}
+            {/* <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(0, 1fr) minmax(300px, 400px)',
+                gap: '1.5rem',
+                width: '100%',
+            }}> */}
+            {/* Left Column - Quick Actions */}
+            {/* <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: 0 }}> */}
+            {/* Quick Actions */}
+            {/* <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
+                        <h3 className="dash-sectionTitle">
+                            Quick Actions
+                        </h3>
+                        <div className="dash-quickRow">
+
+                            <QuickAction
+                                icon={<UserPlus size={20} />}
+                                label="Create User"
+                                onClick={() => navigate(ROUTES.CREATE_USER)}
+                                color="#2563eb"
+                                bgColor="#dbeafe"
+                            />
+                            <QuickAction
+                                icon={<SquarePlus size={20} />}
+                                label="Register Application"
+                                onClick={() => navigate(ROUTES.REGISTER_APPS)}
+                                color="#7c3aed"
+                                bgColor="#ede9fe"
+                            />
+                            <QuickAction
+                                icon={<PlusCircle size={20} />}
+                                label="Manage Realms"
+                                onClick={() => navigate(ROUTES.MANAGE_REALMS)}
+                                color="#d97706"
+                                bgColor="#fef3c7"
+                            />
+                        </div>
+                    </div> */}
+            {/* </div> */}
+
+            {/* Right Column - Recent Activity */}
+            {/* <div className="glass-surface glass-surface--soft" style={{ padding: "1.25rem", height: "fit-content", minWidth: 0 }}>
+                    <div className="dash-sectionHead">
+                        <h3 className="dash-sectionTitle">
+                            Recent Activity
+                        </h3>
+                        <button className="dash-linkBtn">
+                            View All
+                        </button>
+                    </div>
+
+                    <div className="dash-activityList">
+                        {recentActivity.map((activity) => {
+                            const colors = getActivityColor(activity.type);
+
+                            return (
+                                <div key={activity.id} className="dash-activityItem">
+                                    <div className={`dash-activityIcon is-${activity.type}`}>
+                                        <ActivityIcon type={activity.type} />
+                                    </div>
+
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div className="dash-activityTitle">{activity.title}</div>
+                                        <div className="dash-activityDesc">{activity.description}</div>
+                                        <div className="dash-activityTime">{activity.time}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+
+                    </div>
+                </div> */}
         </div>
+        // </div >
     );
 }
 
