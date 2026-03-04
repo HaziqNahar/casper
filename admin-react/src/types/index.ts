@@ -15,6 +15,9 @@ export interface UserRow extends TableData {
     status: UserStatus;
     isDeleted: boolean;
     lastLogin?: string;
+
+    userType?: string;
+    localRealmId?: string;
 }
 
 export interface RealmRow extends TableData {

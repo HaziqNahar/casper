@@ -15,6 +15,7 @@ import ManageUsersPage from "./pages/Users/ManageUsers";
 import CreateUserPage from "./pages/Users/CreateUser";
 import Login from "./pages/Authentication/Login";
 import RegisterAppsPage from "./pages/Application/Registerapps";
+import CreateRealmPage from "./pages/Realms/CreateRealm";
 
 const App: React.FC = () => {
   return (
@@ -37,8 +38,7 @@ const App: React.FC = () => {
 
               <Route path={ROUTES.REALMS} element={<RealmsPage />} />
               <Route path={ROUTES.MANAGE_REALMS} element={<ManageRealmsPage />} />
-              // Example
-              <Route path="/realms/new" element={<CreateRealmPage />} />
+              <Route path={ROUTES.CREATE_REALM} element={<CreateRealmPage />} />
 
               <Route path={ROUTES.USERS} element={<UsersPage />} />
               <Route path={ROUTES.CREATE_USER} element={<CreateUserPage />} />

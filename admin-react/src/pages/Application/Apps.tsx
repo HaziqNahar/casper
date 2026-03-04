@@ -1,11 +1,11 @@
 import React, { useCallback, useMemo, useState } from "react";
 
 import TabPanel from "../../components/common/tabs/TabPanel";
-import DataTable2, { TableColumn } from "../../components/common/DataTable";
+import DataTable, { TableColumn } from "../../components/common/DataTable";
 import { useTabs } from "../../hooks/useTabs";
 import type { Tab } from "../../hooks/useTabs";
 
-import { Badge, LinkCell } from "../../components/common/Bagde";
+import { Badge, LinkCell } from "../../components/common/Badge";
 import { ArrowLeft, Eye, Globe, Key, Layers, Shield } from "lucide-react";
 
 // ============================================================================
@@ -262,7 +262,7 @@ const ApplicationsContent: React.FC<{
     return (
         <div className="tab-table-container" style={{ position: "relative" }}>
             <div className="table-card" style={{ flex: 1 }}>
-                <DataTable2<ApplicationRow>
+                <DataTable<ApplicationRow>
                     data={Array.isArray(apps) ? apps : []}
                     columns={columns}
                     keyField="id"

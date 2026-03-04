@@ -71,7 +71,8 @@
 /* Scroll region (important for rounded corners + sticky header) */
 .kc-table-wrap {
     width: 100%;
-    overflow: auto;
+    overflow-y: visible;
+    overflow-x: auto;
 
     /* This makes the inner scroll content respect the rounded corners */
     clip-path: inset(0 round var(--kc-radius, 14px));
@@ -268,7 +269,7 @@
 .kc-btn-primary {
     background: var(--kc-primary);
     border: 1px solid var(--kc-primary);
-    color: #fff;
+    color: #ffff;
 }
 
 .kc-btn-primary:hover:not(:disabled) {
@@ -329,7 +330,6 @@
     overflow: hidden;
     /* IMPORTANT for rounded corners + sticky header */
 }
-
 
 /* ---------------------------
    Toolbar
@@ -833,6 +833,20 @@
 .kc-row-actions .kc-select {
     flex: 1;
     min-width: 180px;
+}
+
+.kc-row-disabled {
+    opacity: 0.55;
+}
+
+.kc-row-disabled td {
+    pointer-events: none;
+    /* blocks dropdown interactions */
+}
+
+.kc-row-disabled td:last-child {
+    pointer-events: auto;
+    /* allow tooltip hover on the action cell if needed */
 }
 
 /* ===========================
@@ -1354,120 +1368,3 @@
     padding: 10px 12px;
     border-top: 1px solid rgba(15, 23, 42, 0.06);
 }
-
-import React,
-{
-useEffect,
-useRef,
-useState
-}
-
-from "react";
-
-import {
-    MoreVertical
-}
-
-from "lucide-react";
-
-type Action= {
-    label: string;
-    onClick: ()=> void;
-    danger?: boolean;
-}
-
-;
-
-export const RowActionMenu: React.FC< {
-    actions: Action[];
-}
-
->=({
-    actions
-
-})=> {
-    const [open,
-    setOpen]=useState(false);
-    const wrapRef=useRef<HTMLDivElement | null>(null);
-
-    useEffect(()=> {
-            const onDown=(e: MouseEvent)=> {
-                if ( !open) return;
-                if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-            }
-
-            ;
-            document.addEventListener("mousedown", onDown);
-            return ()=> document.removeEventListener("mousedown", onDown);
-        }
-
-        , [open]);
-
-    return (<div ref= {
-            wrapRef
-        }
-
-        style= {
-                {
-                position: "relative", display: "inline-flex"
-            }
-        }
-
-        > <button type="button"
-        className="kc_btn kc_btn_icon"
-
-        onClick= {
-            (e)=> {
-                e.stopPropagation();
-                setOpen((s)=> !s);
-            }
-        }
-
-        title="Actions"
-
-        aria-expanded= {
-            open
-        }
-
-        > <MoreVertical size= {
-            16
-        }
-
-        /> </button> {
-            open && (<div className="kc-rowMenu" role="menu" > {
-                    actions.map((a)=> (<button key= {
-                                a.label
-                            }
-
-                            type="button"
-
-                            className= {
-                                `kc-rowMenuItem $ {
-                                    a.danger ? "is-danger" : ""
-                                }
-
-                                `
-                            }
-
-                            onClick= {
-                                (e)=> {
-                                    e.stopPropagation();
-                                    setOpen(false);
-                                    a.onClick();
-                                }
-                            }
-
-                            > {
-                                a.label
-                            }
-
-                            </button>))
-                }
-
-                </div>)
-        }
-
-        </div>);
-}
-
-;

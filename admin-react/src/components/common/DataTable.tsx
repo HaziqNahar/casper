@@ -68,6 +68,7 @@ export interface DataTableProps<T extends TableData> {
         left?: React.ReactNode;
         right?: React.ReactNode;
     };
+    rowClassName?: string | ((row: T, rowIndex: number) => string);
 }
 
 // ==========================================
@@ -137,6 +138,8 @@ export default function DataTable<T extends TableData>({
 }: DataTableProps<T>): React.ReactElement {
     const rootRef = useRef<HTMLDivElement | null>(null);
     const toolbarRef = useRef<HTMLDivElement | null>(null);
+    const colsBtnRef = useRef<HTMLButtonElement | null>(null);
+    const colsMenuRef = useRef<HTMLDivElement | null>(null);
 
     const [searchTerm, setSearchTerm] = useState("");
     const [sortField, setSortField] = useState<keyof T | null>(null);
@@ -219,14 +222,14 @@ export default function DataTable<T extends TableData>({
     useEffect(() => {
         const onDoc = (e: MouseEvent) => {
             if (!showCols) return;
-            const root = rootRef.current;
-            if (!root) return;
-            if (root.contains(e.target as Node)) {
-                // click inside table: allow
-                return;
-            }
+            const t = e.target as Node;
+
+            if (colsBtnRef.current?.contains(t)) return;
+            if (colsMenuRef.current?.contains(t)) return;
+
             setShowCols(false);
         };
+
         document.addEventListener("mousedown", onDoc);
         return () => document.removeEventListener("mousedown", onDoc);
     }, [showCols]);
@@ -379,6 +382,7 @@ export default function DataTable<T extends TableData>({
                         {enableColumnVisibility && (
                             <div className="kc_colsWrap" style={{ position: "relative" }}>
                                 <button
+                                    ref={colsBtnRef}
                                     type="button"
                                     className="kc_btn kc_btn_icon"
                                     title={`Columns (${visibleCountLabel})`}
@@ -389,7 +393,7 @@ export default function DataTable<T extends TableData>({
                                 </button>
 
                                 {showCols && (
-                                    <div className="kc-colsDropdown" role="menu" aria-label="Column visibility">
+                                    <div ref={colsMenuRef} className="kc-colsDropdown" role="menu" aria-label="Column visibility">
                                         <div className="kc-colsHeader">
                                             <span>Columns</span>
                                             <span className="kc-colsMeta">{visibleCountLabel}</span>
@@ -436,6 +440,13 @@ export default function DataTable<T extends TableData>({
                                         </div>
 
                                         <div className="kc-colsFooter">
+                                            <button
+                                                type="button"
+                                                className="kc-btn kc-btn-ghost"
+                                                onClick={() => setVisibleKeys(new Set(Array.from(initialVisibleKeys)))}
+                                            >
+                                                Reset
+                                            </button>
                                             <button
                                                 type="button"
                                                 className="kc-btn kc-btn-ghost"
@@ -489,6 +500,7 @@ export default function DataTable<T extends TableData>({
                                             textAlign: col.align ?? "left",
                                             position: stickyHeader ? "sticky" : "static",
                                         }}
+
                                         onClick={() => toggleSort(col.key, col.sortable)}
                                         role={isSortable ? "button" : undefined}
                                     >
@@ -526,7 +538,13 @@ export default function DataTable<T extends TableData>({
                         ) : (
                             paginatedData.map((row, rowIndex) => {
                                 const rowKey = row[keyField] !== undefined ? String(row[keyField]) : String(rowIndex);
-
+                                const baseRowClassName = (rowIndex: number) => {
+                                    const classes = ["kc-table-tr"];
+                                    if (striped && rowIndex % 2 === 1) classes.push("is-striped");
+                                    if (hoverable) classes.push("is-hoverable");
+                                    if (onRowClick) classes.push("is-clickable");
+                                    return classes.join(" ");
+                                };
                                 return (
                                     <tr
                                         key={rowKey}

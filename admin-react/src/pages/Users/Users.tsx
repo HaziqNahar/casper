@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 
 import TabPanel from "../../components/common/tabs/TabPanel";
-import DataTable2, { TableColumn } from "../../components/common/DataTable";
+import DataTable, { TableColumn } from "../../components/common/DataTable";
 import { useTabs } from "../../hooks/useTabs";
 import type { Tab } from "../../hooks/useTabs";
 import {
@@ -21,7 +21,23 @@ import {
     Clock,
     LogIn
 } from 'lucide-react';
-import { Badge, LinkCell } from "../../components/common/Bagde";
+import { Badge, LinkCell } from "../../components/common/Badge";
+import { MultiSelectCheckbox } from "../../components/common/MultiSelectCheckbox";
+
+export type OnboardingStage = "Requested" | "Approved" | "Verified" | "Rejected" | "Activated";
+
+export interface RealmRow {
+    id: string;
+    name: string;
+    status: "Active" | "Inactive" | "Draft";
+}
+
+export interface RealmUserMapping {
+    userId: string;
+    realmId: string;
+    roleIds: string[];
+    isRoot?: boolean;
+}
 
 export interface UserRow {
     id: string;
@@ -33,13 +49,28 @@ export interface UserRow {
     lastName: string;
 
     role: string;
-    userType: string;
     department?: string;
-    status: 'Active' | 'Inactive' | 'Pending';
+    status: "Active" | "Inactive" | "Pending";
     lastLogin?: string;
+
+    onboardingStage?: OnboardingStage | null;
+    onboardingReason?: string | null;
+    isBreakGlass?: boolean;
 
     isDeleted?: boolean;
     deletedAt?: string | null;
+
+    userType: string;
+    localRealmId?: string;
+
+    requestedBy?: string;
+    requestedAt?: string;
+    approvedBy?: string;
+    approvedAt?: string;
+    verifiedBy?: string;
+    verifiedAt?: string;
+    rejectedBy?: string;
+    rejectedAt?: string;
 }
 
 export interface UserTypeRow {
@@ -52,10 +83,6 @@ export interface UserTypeRow {
     useCase: string;
 }
 
-export interface RoleRow {
-    id: string;
-    title: string;
-}
 
 interface CreateUserDto {
     username: string;
@@ -72,66 +99,6 @@ interface CreateUserDto {
 // ============================================================================
 const USERS_DATA: UserRow[] = [
     {
-        id: "2b2f5b9b-6b2b-4ae9-9f7a-4f4f8f8b0c01",
-        staffId: "S123",
-        username: "admin",
-        email: "admin@bos.sg",
-        firstName: "Admin",
-        lastName: "User",
-        role: "Administrator",
-        userType: "Certis Full User",
-        department: "IT",
-        status: "Active",
-        lastLogin: "19 Dec 2025, 03:30 pm",
-        isDeleted: false,
-        deletedAt: null,
-    },
-    {
-        id: "f6c3a0a4-2e1b-46d3-8e0e-8a3b8b6a6a11",
-        staffId: "S234",
-        username: "john.doe",
-        email: "john.doe@bos.sg",
-        firstName: "John",
-        lastName: "Doe",
-        role: "User",
-        userType: "Certis Half User",
-        department: "Operations",
-        status: "Active",
-        lastLogin: "19 Dec 2025, 02:20 pm",
-        isDeleted: false,
-        deletedAt: null,
-    },
-    {
-        id: "c2de49b3-0c8e-4f3b-9b1d-9b22a9cb9e12",
-        staffId: "S345",
-        username: "jane.smith",
-        email: "jane.smith@bos.sg",
-        firstName: "Jane",
-        lastName: "Smith",
-        role: "User",
-        userType: "Certis Contractor",
-        department: "Operations",
-        status: "Active",
-        lastLogin: "18 Dec 2025, 04:45 pm",
-        isDeleted: false,
-        deletedAt: null,
-    },
-    {
-        id: "91a1d9e6-2f74-4a91-9c94-1e2b9c4a77c1",
-        staffId: "S456",
-        username: "mike.tan",
-        email: "mike.tan@bos.sg",
-        firstName: "Mike",
-        lastName: "Tan",
-        role: "User",
-        userType: "External User",
-        department: "Finance",
-        status: "Inactive",
-        lastLogin: "-",
-        isDeleted: false,
-        deletedAt: null,
-    },
-    {
         id: "a8f8d8e4-8a21-4c36-8cfa-8dbefc9c1122",
         staffId: "S567",
         username: "sarah.lee",
@@ -143,39 +110,14 @@ const USERS_DATA: UserRow[] = [
         department: "Operations",
         status: "Pending",
         lastLogin: "-",
+        onboardingStage: "Requested",
+        onboardingReason: "-",
+        isBreakGlass: true,
         isDeleted: false,
         deletedAt: null,
+        localRealmId: "root"
     },
-    {
-        id: "e3f0a6c1-1f3a-4d1f-9c8f-9b02f45a7710",
-        staffId: "S678",
-        username: "alex.wong",
-        email: "alex.wong@bos.sg",
-        firstName: "Alex",
-        lastName: "Wong",
-        role: "User",
-        userType: "Local User",
-        department: "Operations",
-        status: "Inactive",
-        lastLogin: "10 Oct 2025, 09:10 am",
-        isDeleted: true,
-        deletedAt: "2025-11-01T00:00:00.000Z",
-    },
-    {
-        id: "7c19f82d-6d89-4c25-b5b7-1b0d4b3b1abc",
-        staffId: "S901",
-        username: "alex.wong",
-        email: "alex.wong@bos.sg",
-        firstName: "Alex",
-        lastName: "Wong",
-        role: "User",
-        userType: "Local User",
-        department: "Operations",
-        status: "Active",
-        lastLogin: "20 Dec 2025, 10:05 am",
-        isDeleted: false,
-        deletedAt: null,
-    },
+
 ];
 
 const USER_TYPES_DATA: UserTypeRow[] = [
@@ -226,15 +168,26 @@ const USER_TYPES_DATA: UserTypeRow[] = [
     },
 ];
 
-const ROLES_DATA: RoleRow[] = [
-    {
-        id: "admin",
-        title: "Administrator",
-    },
-    {
-        id: "user",
-        title: "User",
-    },
+export type RealmRoleId = string;
+
+export interface RealmRole {
+    id: RealmRoleId;
+    name: string;
+    permissions: string[];
+}
+
+const ROLES_DATA: RealmRole[] = [
+    { id: "realm_admin", name: "Realm Administrator", permissions: ["realm:read", "realm:write", "realm:delete", "user:read", "user:write", "user:delete", "app:read", "app:write", "app:delete"] },
+    { id: "realm_manager", name: "Realm Manager", permissions: ["realm:read", "realm:write", "user:read", "user:write", "app:read", "app:write"] },
+    { id: "realm_auditor", name: "Realm Auditor", permissions: ["realm:read", "user:read", "app:read"] },
+    { id: "realm_user", name: "Standard User", permissions: ["realm:read", "user:read"] },
+    { id: "realm_restricted", name: "Restricted User", permissions: ["realm:read"] },
+];
+
+const REALMS_DATA: RealmRow[] = [
+    { id: "root", name: "Root Realm", status: "Active" },
+    { id: "ops", name: "Operations", status: "Active" },
+    { id: "finance", name: "Finance", status: "Active" },
 ];
 
 // ============================================================================
@@ -325,16 +278,33 @@ const createUserColumns = (
             render: (value) => (value as string) || '-',
         },
         {
-            key: 'status',
-            label: 'Status',
-            width: '130px',
-            render: (value) => (
-                <Badge variant={getStatusVariant(value as string)}>
-                    <span className="kc-badge">
-                        {getStatusIcon(value as string)}
-                        {value as string}
-                    </span>
-                </Badge>
+            key: "status",
+            label: "Status",
+            width: "200px",
+            render: (value, row) => (
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                    {/* main status */}
+                    <Badge variant={getStatusVariant(value as string)}>
+                        <span className="kc-badge">
+                            {getStatusIcon(value as string)}
+                            {value as string}
+                        </span>
+                    </Badge>
+
+                    {/* onboarding badge (optional) */}
+                    {row.onboardingStage && (
+                        <Badge variant="warning">
+                            <span className="kc-badge">{row.onboardingStage}</span>
+                        </Badge>
+                    )}
+
+                    {/* break glass badge (optional) */}
+                    {row.isBreakGlass && (
+                        <Badge variant="error">
+                            <span className="kc-badge">Break Glass</span>
+                        </Badge>
+                    )}
+                </div>
             ),
         },
         {
@@ -446,8 +416,8 @@ const createUserTypeColumns = (
     ];
 
 const createRoleColumns = (
-    onView: (row: RoleRow) => void
-): TableColumn<RoleRow>[] => [
+    onView: (row: RealmRole) => void
+): TableColumn<RealmRole>[] => [
         {
             key: "id",
             label: "ID",
@@ -470,10 +440,51 @@ const createRoleColumns = (
 
 interface UserDetailContentProps {
     user: UserRow;
+    realms: RealmRow[];
+    roles: RealmRole[];
+    realmUserMappings: RealmUserMapping[];
+    assignRealmRole: (userId: string, realmId: string, roleId: string) => void;
+    unassignRealmRole: (userId: string, realmId: string, roleId: string) => void;
+    removeUserFromRealm: (userId: string, realmId: string) => void;
+    removeRoleFromRealmUser: (userId: string, realmId: string, roleId: string) => void;
+
     onBack?: () => void;
+    approveUser: (id: string) => void;
+    verifyUser: (id: string) => void;
+    activateUser: (id: string) => void;
+    rejectUser: (id: string, reason?: string) => void;
 }
 
-const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) => {
+const UserDetailContent: React.FC<UserDetailContentProps> = ({
+    user,
+    realms,
+    roles,
+    realmUserMappings,
+    assignRealmRole,
+    unassignRealmRole,
+    removeUserFromRealm,
+    removeRoleFromRealmUser,
+    onBack,
+    approveUser,
+    verifyUser,
+    activateUser,
+    rejectUser
+}) => {
+    const stage = user.onboardingStage ?? (user.status === "Pending" ? "Requested" : undefined);
+
+    const canApprove = user.status === "Pending" && stage === "Requested";
+    const canVerify = user.status === "Pending" && stage === "Approved";
+    const canActivate = user.status === "Pending" && stage === "Verified";
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState("");
+    const [rejectError, setRejectError] = useState<string | null>(null);
+    const isInactive = user.status === "Inactive";
+
+    const [selectedRealmId, setSelectedRealmId] = useState<string>("");
+    const [selectedRoleId, setSelectedRoleId] = useState<string>("");
+    const canReject =
+        user.status === "Pending" && (stage === "Requested" || stage === "Approved" || stage === "Verified");
+
     return (
         <div style={{ padding: '0.5rem' }}>
             {/* Header with Back Button */}
@@ -517,7 +528,41 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                 </div>
 
                 <div style={{ display: "flex", gap: "0.5rem" }}>
-                    <button className="btn btn-primary">
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                        <div style={{ display: "flex", gap: "0.5rem" }}>
+                            {canApprove && (
+                                <button className="btn btn-primary" onClick={() => approveUser?.(user.id)}>
+                                    Approve
+                                </button>
+                            )}
+                            {canVerify && (
+                                <button className="btn btn-primary" onClick={() => verifyUser?.(user.id)}>
+                                    Verify
+                                </button>
+                            )}
+                            {canActivate && (
+                                <button className="btn btn-success" onClick={() => activateUser?.(user.id)}>
+                                    Activate
+                                </button>
+                            )}
+                            {canReject && (
+                                <button className="btn btn-danger" onClick={() => rejectUser?.(user.id)}>
+                                    Reject
+                                </button>
+                            )}
+
+                            {/* keep these if you still want */}
+                            <button className="btn btn-primary">
+                                <Edit size={16} />
+                                Edit
+                            </button>
+                            <button className="btn btn-danger">
+                                <Trash2 size={16} />
+                                Delete
+                            </button>
+                        </div>
+                    </div>
+                    {/*<button className="btn btn-primary">
                         <Edit size={16} />
                         Edit
                     </button>
@@ -525,7 +570,7 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                     <button className="btn btn-danger">
                         <Trash2 size={16} />
                         Delete
-                    </button>
+                    </button>*/}
                 </div>
 
             </div>
@@ -715,7 +760,282 @@ const UserDetailContent: React.FC<UserDetailContentProps> = ({ user, onBack }) =
                         </div> */}
                     </div>
                 </div>
+
+                {/* Onboarding */}
+                <div
+                    style={{
+                        background: "#f9fafb",
+                        borderRadius: "0.5rem",
+                        padding: "1rem",
+                        border: "1px solid #e5e7eb",
+                    }}
+                >
+                    <h3
+                        style={{
+                            margin: "0 0 1rem 0",
+                            fontSize: "0.875rem",
+                            fontWeight: 600,
+                            color: "#374151",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "0.5rem",
+                        }}
+                    >
+                        <Shield size={16} />
+                        Onboarding
+                    </h3>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                        <div>
+                            <label style={{ fontSize: "0.75rem", color: "#6b7280", display: "block" }}>
+                                Current Stage
+                            </label>
+
+                            <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "#1f2937" }}>
+                                {stage ?? "-"}
+                            </p>
+                        </div>
+
+                        {user.onboardingReason && (
+                            <div>
+                                <label style={{ fontSize: "0.75rem", color: "#6b7280", display: "block" }}>
+                                    Rejection Reason
+                                </label>
+                                <p style={{ margin: "0.25rem 0 0 0", fontSize: "0.875rem", color: "#991b1b" }}>
+                                    {user.onboardingReason}
+                                </p>
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                            <span
+                                className="kc-badge"
+                                style={{
+                                    padding: "0.25rem 0.75rem",
+                                    borderRadius: "9999px",
+                                    fontSize: "0.75rem",
+                                    fontWeight: 600,
+                                    background:
+                                        stage === "Approved"
+                                            ? "#dbeafe"
+                                            : stage === "Verified"
+                                                ? "#dcfce7"
+                                                : stage === "Rejected"
+                                                    ? "#fee2e2"
+                                                    : "#fef3c7",
+                                    color:
+                                        stage === "Approved"
+                                            ? "#2563eb"
+                                            : stage === "Verified"
+                                                ? "#16a34a"
+                                                : stage === "Rejected"
+                                                    ? "#dc2626"
+                                                    : "#d97706",
+                                }}
+                            >
+                                {stage ?? "—"}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Realm Access */}
+                {!isInactive && (
+                    <div style={{ background: "#f9fafb", borderRadius: "0.5rem", padding: "1rem", border: "1px solid #e5e7eb" }}>
+                        <h3 style={{ margin: "0 0 1rem 0", fontSize: "0.875rem", fontWeight: 600, color: "#374151" }}>
+                            Realm Access
+                        </h3>
+
+                        {/* Add access */}
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: "0.75rem", marginBottom: "0.75rem" }}>
+
+                            <select
+                                value={selectedRealmId}
+                                onChange={(e) => setSelectedRealmId(e.target.value)}
+                                style={{
+                                    width: "100%",
+                                    padding: "0.5rem",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "0.375rem"
+                                }}
+                            >
+                                <option value="">Select realm</option>
+                                {realms
+                                    .filter(r => r.status === "Active")
+                                    .map(r => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.name}
+                                        </option>
+                                    ))}
+                            </select>
+
+                            <select
+                                value={selectedRoleId}
+                                onChange={(e) => setSelectedRoleId(e.target.value)}
+                                style={{
+                                    width: "100%",
+                                    padding: "0.5rem",
+                                    border: "1px solid #d1d5db",
+                                    borderRadius: "0.375rem"
+                                }}
+                            >
+                                <option value="">Select role</option>
+                                {roles.map(r => (
+                                    <option key={r.id} value={r.id}>
+                                        {r.name}
+                                    </option>
+                                ))}
+                            </select>
+
+                            <button
+                                className="btn btn-primary"
+                                disabled={!selectedRealmId || !selectedRoleId}
+                                onClick={() => {
+                                    const existing = realmUserMappings.find(
+                                        m => m.realmId === selectedRealmId && m.userId === user.id
+                                    );
+
+                                    if (existing?.roleIds?.includes(selectedRoleId)) {
+                                        return;
+                                    }
+                                    assignRealmRole(user.id, selectedRealmId, selectedRoleId);
+                                    setSelectedRealmId("");
+                                    setSelectedRoleId("");
+                                }}
+                            >
+                                Assign
+                            </button>
+
+                        </div>
+
+                        {/* Show assigned */}
+                        {realmUserMappings.length === 0 ? (
+                            <p style={{ margin: 0, fontSize: "0.875rem", color: "#6b7280" }}>No realm access assigned.</p>
+                        ) : (
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                                {realmUserMappings.map(m => {
+                                    const realm = realms.find(r => r.id === m.realmId);
+                                    return (
+                                        <div key={m.realmId} style={{ border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "0.75rem", background: "white" }}>
+                                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "0.5rem" }}>
+                                                <div style={{ fontWeight: 600, color: "#111827" }}>{realm?.name ?? m.realmId}</div>
+                                                <button
+                                                    className="btn btn-danger"
+                                                    onClick={() => removeUserFromRealm(user.id, m.realmId)}
+                                                >
+                                                    Remove
+                                                </button>
+                                            </div>
+
+                                            <div style={{ marginTop: "0.5rem", display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                                                {(m.roleIds ?? []).map(roleId => {
+                                                    const role = roles.find(r => r.id === roleId);
+                                                    return (
+                                                        <span
+                                                            key={roleId}
+                                                            style={{
+                                                                display: "inline-flex",
+                                                                alignItems: "center",
+                                                                gap: "0.4rem",
+                                                                padding: "0.25rem 0.5rem",
+                                                                borderRadius: "9999px",
+                                                                border: "1px solid #e5e7eb",
+                                                                background: "#f9fafb",
+                                                                fontSize: "0.75rem",
+                                                                fontWeight: 600,
+                                                                color: "#374151"
+                                                            }}
+                                                        >
+                                                            {role?.name ?? roleId}
+                                                            <button
+                                                                onClick={() => removeRoleFromRealmUser(user.id, m.realmId, roleId)}
+                                                                style={{ border: "none", background: "transparent", cursor: "pointer", color: "#dc2626", fontWeight: 900 }}
+                                                                title="Remove role"
+                                                            >
+                                                                ×
+                                                            </button>
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+            {showRejectModal && (
+                <div className="kc-modal-overlay">
+                    <div className="kc-modal">
+                        <div className="kc-modal-header">
+                            <h3>Reject User</h3>
+                        </div>
+
+                        <div className="kc-modal-body">
+                            <p style={{ marginBottom: "0.75rem", fontSize: "0.875rem", color: "#374151" }}>
+                                Please provide a reason for rejecting this user.
+                            </p>
+
+                            <textarea
+                                value={rejectReason}
+                                onChange={(e) => {
+                                    setRejectReason(e.target.value);
+                                    if (rejectError) setRejectError(null);
+                                }}
+                                placeholder="Enter rejection reason..."
+                                rows={4}
+                                style={{
+                                    width: "100%",
+                                    padding: "0.75rem",
+                                    borderRadius: "0.375rem",
+                                    border: "1px solid #d1d5db",
+                                    fontSize: "0.875rem",
+                                    resize: "vertical"
+                                }}
+                            />
+
+                            {rejectError && (
+                                <div style={{ color: "#dc2626", fontSize: "0.75rem", marginTop: "0.5rem" }}>
+                                    {rejectError}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="kc-modal-footer">
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => {
+                                    setShowRejectModal(false);
+                                    setRejectReason("");
+                                    setRejectError(null);
+                                }}
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                className="btn btn-danger"
+                                onClick={() => {
+                                    if (!rejectReason.trim()) {
+                                        setRejectError("Rejection reason is required.");
+                                        return;
+                                    }
+
+                                    rejectUser(user.id, rejectReason.trim());
+
+                                    setShowRejectModal(false);
+                                    setRejectReason("");
+                                    setRejectError(null);
+                                }}
+                            >
+                                Confirm Reject
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
@@ -1014,13 +1334,13 @@ const UserTypesDetailContent: React.FC<UserTypesDetailContentProps> = ({
 // ============================================================================
 
 interface RoleDetailProps {
-    role: RoleRow;
+    role: RealmRole;
 }
 
 const RoleDetailContent: React.FC<RoleDetailProps> = ({ role }) => {
     return (
         <div>
-            <h2>{role.title}</h2>
+            <h2>{role.name}</h2>
         </div>
     );
 };
@@ -1033,12 +1353,15 @@ interface UsersContentProps {
     users: UserRow[];
     loading: boolean;
     error: string | null;
-    onRowClick: (user: UserTypeRow) => void;
+    onRowClick: (user: UserRow) => void;
+
     isFilterOpen: boolean;
     statusFilter: string;
-    roleFilter: string;
+    userTypeFilter: string;
+
     onStatusFilterChange: (value: string) => void;
     onUserTypesFilterChange: (value: string) => void;
+
     showArchivedUsers: boolean;
     setShowArchivedUsers: (value: boolean) => void;
     filteredUsers: UserRow[];
@@ -1051,7 +1374,7 @@ const UsersContent: React.FC<UsersContentProps> = ({
     onRowClick,
     isFilterOpen,
     statusFilter,
-    roleFilter,
+    userTypeFilter,
     onStatusFilterChange,
     onUserTypesFilterChange,
     showArchivedUsers,
@@ -1099,7 +1422,7 @@ const UsersContent: React.FC<UsersContentProps> = ({
                         {showArchivedUsers ? "Hide archived" : "Show archived"}
                     </button>
                 </div>
-                <DataTable2<UserRow>
+                <DataTable<UserRow>
                     data={filteredUsers}
                     columns={columns}
                     keyField="id"
@@ -1167,7 +1490,7 @@ const UsersContent: React.FC<UsersContentProps> = ({
                                 User Types
                             </label>
                             <select
-                                value={roleFilter}
+                                value={userTypeFilter}
                                 onChange={(e) => onUserTypesFilterChange(e.target.value)}
                                 style={{
                                     width: '100%',
@@ -1253,7 +1576,7 @@ const UserTypeContent: React.FC<UserTypesContentProps> = ({
     return (
         <div className="tab-table-container" style={{ position: "relative" }}>
             <div className="table-card" style={{ flex: 1 }}>
-                <DataTable2<UserTypeRow>
+                <DataTable<UserTypeRow>
                     data={filteredUserTypes}
                     columns={columns}
                     keyField="id"
@@ -1270,6 +1593,43 @@ const UserTypeContent: React.FC<UserTypesContentProps> = ({
                     stickyHeader={true}
                     emptyMessage="No user types found"
                     minHeight="100%"
+                // toolbarFilters={{
+                //     left: (
+                //         <div className="kc_toolbarFilters">
+                //             <MultiSelectCheckbox<RealmStatus>
+                //                 inline
+                //                 label="Status"
+                //                 options={[
+                //                     { value: "Active", label: "Active" },
+                //                     { value: "Inactive", label: "Inactive" },
+                //                     { value: "Draft", label: "Draft" },
+                //                 ]}
+                //                 value={ }
+                //                 onChange={ }
+                //                 placeholder="All"
+                //                 portal
+                //             />
+
+                //             {/* {realmStatusFilter.length > 0 && (
+                //                 <>
+                //                     <span className="kc_filterBadge" title={`Status: ${filterLabel}`}>
+                //                         Status: {filterLabel}
+                //                     </span>
+
+                //                     <button
+                //                         type="button"
+                //                         className="kc_btn kc_btn_icon"
+                //                         title="Clear filters"
+                //                         onClick={() => setRealmStatusFilter([])}
+                //                         aria-label="Clear filters"
+                //                     >
+                //                         <X size={16} />
+                //                     </button>
+                //                 </>
+                //             )} */}
+                //         </div>
+                //     ), right: (),
+                // }}
                 />
             </div>
 
@@ -1303,16 +1663,16 @@ const UserTypeContent: React.FC<UserTypesContentProps> = ({
 // ============================================================================
 
 interface RolesContentProps {
-    roles: RoleRow[];
+    roles: RealmRole[];
     loading: boolean;
     error: string | null;
-    onRowClick: (role: RoleRow) => void;
+    onRowClick: (role: RealmRole) => void;
     isFilterOpen: boolean;
     statusFilter: string;
     roleFilter: string;
     onStatusFilterChange: (value: string) => void;
     onRoleFilterChange: (value: string) => void;
-    filteredRoles: RoleRow[];
+    filteredRoles: RealmRole[];
 }
 
 const RolesContent: React.FC<RolesContentProps> = ({
@@ -1333,13 +1693,13 @@ const RolesContent: React.FC<RolesContentProps> = ({
     );
 
     const uniqueRoles = React.useMemo(() => {
-        return [...new Set(roles.map(r => r.title))];
+        return [...new Set(roles.map(r => r.name))];
     }, [roles]);
 
     return (
         <div className="tab-table-container" style={{ position: 'relative' }}>
             <div className="table-card" style={{ flex: 1 }}>
-                <DataTable2<RoleRow>
+                <DataTable<RealmRole>
                     data={filteredRoles}
                     columns={columns}
                     keyField="id"
@@ -1485,10 +1845,19 @@ const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave,
             await new Promise(resolve => setTimeout(resolve, 1000));
 
             const newUser: UserRow = {
-                id: Date.now(),
+                id: String(Date.now()),
+                staffId: null,
+                role: "User",
+                status: "Pending",
+                lastLogin: "-",
+                isDeleted: false,
+                deletedAt: null,
+
+                onboardingStage: "Requested",
+                requestedBy: "admin",
+                requestedAt: new Date().toISOString(),
+
                 ...formData,
-                status: 'Pending',
-                createdAt: new Date().toISOString(),
             };
 
             setSuccess(true);
@@ -1659,7 +2028,7 @@ const CreateUserContent: React.FC<CreateUserContentProps> = ({ onCancel, onSave,
                             <label style={{ fontSize: '0.75rem', color: '#6b7280', display: 'block', marginBottom: '0.25rem' }}>User Type *</label>
                             <select value={formData.userType} onChange={(e) => handleChange('userType', e.target.value)} style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem', fontSize: '0.875rem', background: 'white' }}>
                                 <option value="">Select a user type</option>
-                                {userTypes.filter(userType => userType.status === 'Active').map(userType => (
+                                {userTypes.map(userType => (
                                     <option key={userType.title} value={userType.title}>{userType.title}</option>
                                 ))}
                             </select>
@@ -1693,7 +2062,9 @@ const UsersPage: React.FC = () => {
     const [users, setUsers] = useState<UserRow[]>(USERS_DATA);
     // const [roles, setRoles] = useState<UserTypeRow[]>(USER_TYPES_DATA);
     const [usertypes, setUserTypes] = useState<UserTypeRow[]>(USER_TYPES_DATA);
-    const [roles, setRoles] = useState<RoleRow[]>(ROLES_DATA);
+    const [roles, setRoles] = useState<RealmRole[]>(ROLES_DATA);
+    const [realms, setRealms] = useState<RealmRow[]>(REALMS_DATA);
+    const [realmUserMappings, setRealmUserMappings] = useState<RealmUserMapping[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [enabled2FAByType, setEnabled2FAByType] = useState<Record<string, string[]>>({});
@@ -1787,12 +2158,12 @@ const UsersPage: React.FC = () => {
                 title: `${user.firstName} ${user.lastName}`,
                 type: 'user-detail',
                 closable: true,
-                content: user,
+                content: { userId: user.id },
             });
         }
     }, [tabs, setActiveTab, addTab]);
 
-    const handleRoleRowClick = useCallback((role: RoleRow) => {
+    const handleRoleRowClick = useCallback((role: RealmRole) => {
         const existingTabIndex = tabs.findIndex(
             (tab: Tab) => tab.type === 'role-detail' && tab.id === `role-${role.id}`
         );
@@ -1802,10 +2173,10 @@ const UsersPage: React.FC = () => {
         } else {
             addTab({
                 id: `role-${role.id}`,
-                title: role.title,
+                title: role.name,
                 type: 'role-detail',
                 closable: true,
-                content: role,
+                content: { roleId: role.id },
             });
         }
     }, [tabs, setActiveTab, addTab]);
@@ -1823,7 +2194,7 @@ const UsersPage: React.FC = () => {
                 title: usertypes.title,
                 type: 'usertypes-detail',
                 closable: true,
-                content: usertypes,
+                content: { userTypeId: usertypes.id },
             });
         }
     }, [tabs, setActiveTab, addTab]);
@@ -1893,6 +2264,86 @@ const UsersPage: React.FC = () => {
         return 'New User';
     };
 
+    const updateUser = useCallback((id: string, patch: Partial<UserRow>) => {
+        setUsers(prev => prev.map(u => (u.id === id ? { ...u, ...patch } : u)));
+    }, []);
+
+    const approveUser = useCallback((id: string) => {
+        updateUser(id, {
+            onboardingStage: "Approved",
+            approvedBy: "admin",
+            approvedAt: new Date().toISOString(),
+        });
+    }, [updateUser]);
+
+    const verifyUser = useCallback((id: string) => {
+        updateUser(id, {
+            onboardingStage: "Verified",
+            verifiedBy: "admin",
+            verifiedAt: new Date().toISOString(),
+        });
+    }, [updateUser]);
+
+    const activateUser = useCallback((id: string) => {
+        updateUser(id, {
+            onboardingStage: "Activated",
+            status: "Active",
+        });
+    }, [updateUser]);
+
+    const rejectUser = useCallback((id: string, reason?: string) => {
+        updateUser(id, {
+            onboardingStage: "Rejected",
+            status: "Inactive",
+            rejectedBy: "admin",
+            rejectedAt: new Date().toISOString(),
+            onboardingReason: reason ?? "Rejected",
+        });
+    }, [updateUser]);
+
+    const assignUserToRealm = useCallback((userId: string, realmId: string, roleId: string) => {
+        setRealmUserMappings(prev => {
+            const existing = prev.find(m => m.userId === userId && m.realmId === realmId);
+
+            if (!existing) return [...prev, { userId, realmId, roleIds: [roleId] }];
+
+            const nextRoles = Array.from(new Set([...(existing.roleIds ?? []), roleId]));
+            return prev.map(m =>
+                m.userId === userId && m.realmId === realmId
+                    ? { ...m, roleIds: nextRoles }
+                    : m
+            );
+        });
+    }, []);
+
+    const unassignRealmRole = useCallback((userId: string, realmId: string, roleId: string) => {
+        setRealmUserMappings(prev =>
+            prev
+                .map(m => {
+                    if (m.userId !== userId || m.realmId !== realmId) return m;
+                    const next = (m.roleIds ?? []).filter(r => r !== roleId);
+                    return { ...m, roleIds: next };
+                })
+                .filter(m => m.roleIds.length > 0) // if no roles left, remove mapping
+        );
+    }, []);
+
+    const removeUserFromRealm = useCallback((userId: string, realmId: string) => {
+        setRealmUserMappings(prev => prev.filter(m => !(m.userId === userId && m.realmId === realmId)));
+    }, []);
+
+    const removeRoleFromRealmUser = useCallback((userId: string, realmId: string, roleId: string) => {
+        setRealmUserMappings(prev =>
+            prev
+                .map(m => {
+                    if (m.userId !== userId || m.realmId !== realmId) return m;
+                    const next = (m.roleIds ?? []).filter(r => r !== roleId);
+                    return { ...m, roleIds: next };
+                })
+                .filter(m => m.roleIds.length > 0) // if no roles left, remove mapping
+        );
+    }, []);
+
     const renderTabContent = (tab: Tab, _index: number): React.ReactNode => {
         switch (tab.type) {
             case 'users':
@@ -1906,7 +2357,7 @@ const UsersPage: React.FC = () => {
                         statusFilter={userStatusFilter}
                         userTypeFilter={userTypeFilter}
                         onStatusFilterChange={setUserStatusFilter}
-                        onUserTypeFilterChange={setUserTypeFilter}
+                        onUserTypesFilterChange={setUserTypeFilter}
                         showArchivedUsers={showArchivedUsers}
                         setShowArchivedUsers={setShowArchivedUsers}
                         filteredUsers={filteredUsers}
@@ -1929,13 +2380,33 @@ const UsersPage: React.FC = () => {
                         filteredUserTypes={filteredUserTypes}
                     />
                 );
-            case 'user-detail':
+            case 'user-detail': {
+                const { userId } = tab.content as { userId: string };
+                const user = (users ?? []).find(u => u.id === userId);
+
+                const realmMappingsForUser =
+                    realmUserMappings.filter(m => m.userId === userId);
+
+                if (!user) return <div>User not found</div>;
+
                 return (
                     <UserDetailContent
-                        user={tab.content as UserRow}
+                        user={user}
+                        realms={realms}
+                        roles={roles}
+                        realmUserMappings={realmMappingsForUser}
+                        assignRealmRole={assignUserToRealm}
+                        unassignRealmRole={unassignRealmRole}
+                        removeUserFromRealm={removeUserFromRealm}
+                        removeRoleFromRealmUser={removeRoleFromRealmUser}
                         onBack={handleBackToUsers}
+                        approveUser={approveUser}
+                        verifyUser={verifyUser}
+                        activateUser={activateUser}
+                        rejectUser={rejectUser}
                     />
                 );
+            }
             case 'usertypes-detail':
                 return (
                     <UserTypesDetailContent
@@ -1982,7 +2453,7 @@ const UsersPage: React.FC = () => {
             case 'role-detail':
                 return (
                     <RoleDetailContent
-                        role={tab.content as RoleRow}
+                        role={tab.content as RealmRole}
                         onCancel={() => {
                             const tabIndex = tabs.findIndex((t: Tab) => t.id === tab.id);
                             if (tabIndex !== -1) {
@@ -2021,7 +2492,7 @@ const UsersPage: React.FC = () => {
                     onRefresh={handleRefresh}
                     onFilterToggle={() => setIsFilterOpen(!isFilterOpen)}
                     isFilterOpen={isFilterOpen}
-                    showActions={true}
+                    showActions={false}
                     addButtonLabel={getAddButtonLabel()}
                     renderContent={renderTabContent}
                     minHeight="100%"

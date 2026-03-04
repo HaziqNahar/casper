@@ -20,6 +20,7 @@ export const ROUTES = {
 
     REALMS: '/realms',
     MANAGE_REALMS: '/realms/manage',
+    CREATE_REALM: '/realms/new',
 
     APPS: '/apps',
     REGISTER_APPS: '/apps/register',
@@ -39,21 +40,16 @@ export type RoutePath = typeof ROUTES[keyof typeof ROUTES];
 
 // Route metadata for titles and breadcrumbs
 export const ROUTE_CONFIG: Record<string, RouteConfig> = {
-    // Home
     [ROUTES.HOME]: {
         path: ROUTES.HOME,
         title: 'Home',
         breadcrumbs: [{ label: 'Home' }],
     },
-
-    // Login
     [ROUTES.LOGIN]: {
         path: ROUTES.LOGIN,
         title: 'Login',
         breadcrumbs: [{ label: 'Login' }],
     },
-
-    // Realms
     [ROUTES.MANAGE_REALMS]: {
         path: ROUTES.MANAGE_REALMS,
         title: 'Manage Realms',
@@ -72,8 +68,14 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
             { label: 'Realm', path: ROUTES.REALMS },
         ],
     },
-
-    // Users
+    [ROUTES.CREATE_REALM]: {
+        path: ROUTES.CREATE_REALM,
+        title: 'Create Realm',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Create Realm', path: ROUTES.CREATE_REALM },
+        ],
+    },
     [ROUTES.USERS]: {
         path: ROUTES.USERS,
         title: 'Users',
@@ -83,7 +85,6 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
             { label: 'Users', path: ROUTES.USERS },
         ],
     },
-
     [ROUTES.CREATE_USER]: {
         path: ROUTES.CREATE_USER,
         title: 'Create User',

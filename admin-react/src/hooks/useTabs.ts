@@ -30,9 +30,9 @@ const DEFAULT_TABS: Tab[] = [
 ];
 
 export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
-  const { 
+  const {
     storageKey = 'ces-ccms-tabs',
-    defaultTabs = DEFAULT_TABS 
+    defaultTabs = DEFAULT_TABS
   } = options;
 
   // Initialize tabs from localStorage
@@ -80,13 +80,22 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
   // Add a new tab
   const addTab = (tab?: Partial<Tab>) => {
     setTabs((prev) => {
+      const id = tab?.id ?? Date.now();
+
+      const existingIndex = prev.findIndex(t => t.id === id);
+      if (existingIndex !== -1) {
+        setActiveTab(existingIndex);
+        return prev;
+      }
+
       const newTab: Tab = {
-        id: tab?.id || Date.now(),
+        id,
         title: tab?.title || `Tab ${prev.length + 1}`,
         content: tab?.content,
-        type: tab?.type || 'custom',
+        type: tab?.type || "custom",
         closable: tab?.closable !== undefined ? tab.closable : true,
       };
+
       const updated = [...prev, newTab];
       setActiveTab(updated.length - 1);
       return updated;
@@ -96,7 +105,7 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
   // Close a tab at a given index
   const closeTab = (index: number) => {
     const tabToClose = tabs[index];
-    
+
     // Don't close non-closable tabs
     if (tabToClose?.closable === false) {
       return;
