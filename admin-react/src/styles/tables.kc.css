@@ -73,9 +73,7 @@
     width: 100%;
     overflow-y: visible;
     overflow-x: auto;
-
-    /* This makes the inner scroll content respect the rounded corners */
-    clip-path: inset(0 round var(--kc-radius, 14px));
+    border-radius: var(--kc-radius, 14px);
 }
 
 /* Table */
@@ -266,7 +264,7 @@
     background: rgba(255, 255, 255, 0.20);
 }
 
-.kc-btn-primary {
+.kc-btn.kc-btn-primary {
     background: var(--kc-primary);
     border: 1px solid var(--kc-primary);
     color: #ffff;
@@ -327,7 +325,7 @@
     border: 1px solid var(--kc-border, #e5e7eb);
     border-radius: var(--kc-radius, 12px);
     box-shadow: var(--kc-shadow, 0 8px 24px rgba(0, 0, 0, 0.08));
-    overflow: hidden;
+    overflow: visible;
     /* IMPORTANT for rounded corners + sticky header */
 }
 
@@ -433,14 +431,6 @@
     white-space: nowrap;
 }
 
-/* Round the header corners so it doesn't look "square" inside the rounded container */
-.kc-table thead tr th:first-child {
-    border-top-left-radius: var(--kc-radius, 12px);
-}
-
-.kc-table thead tr th:last-child {
-    border-top-right-radius: var(--kc-radius, 12px);
-}
 
 .kc-table .kc-table-thInner {
     display: flex;
@@ -609,7 +599,6 @@
     border-radius: var(--kc-radius-sm, 8px);
     border: 1px solid rgba(255, 255, 255, 0.18);
 
-    background: rgba(255, 255, 255, 0.12);
 
     font: inherit;
     cursor: pointer;
@@ -960,6 +949,8 @@
     padding: 10px 12px;
     background: #ffffff;
     border-bottom: 1px solid #e5e7eb;
+    position: relative;
+    z-index: 60;
 }
 
 .kc_tableToolbar.is_sticky {
@@ -1016,23 +1007,86 @@
 }
 
 .kc_toolbarFilters {
-    display: inline-flex;
-    align-items: center;
+    display: flex;
     gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.kc_filterGroup {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 140px;
+}
+
+.kc_filterLabel {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.kc_filterSelect {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+}
+
+.kc_filterGroupRow {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.kc_filterDate {
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 10px;
+}
+
+.kc_filterDash {
+    opacity: .6;
+    font-weight: 900;
 }
 
 .kc_filterBadge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    overflow: auto;
+    white-space: nowrap;
+    flex-shrink: 1;
+    padding: 6px 10px;
+    max-width: 320px;
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    background: rgba(15, 23, 42, 0.04);
     font-size: 12px;
     font-weight: 800;
     color: #0f172a;
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    padding: 4px 8px;
+}
+
+.kc_filterBadge::-webkit-scrollbar {
+    height: 6px;
+}
+
+.kc_filterBadges::-webkit-scrollbar {
+    height: 6px;
+}
+
+.kc_filterBadges::-webkit-scrollbar-thumb {
+    background: rgba(15, 23, 42, .18);
     border-radius: 999px;
-    max-width: 220px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+}
+
+.kc_filterBadges::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.kc_textMuted {
+    color: #64748b;
 }
 
 .kc_btn_icon {
@@ -1106,28 +1160,48 @@
     white-space: nowrap;
 }
 
-/* Dropdown: enterprise glass */
+/* =========================================================
+   FILTER DROPDOWNS (Enterprise glass) - SINGLE SOURCE OF TRUTH
+   ========================================================= */
+
+/* IMPORTANT:
+   If your dropdown is inside any container with overflow:hidden/auto,
+   it can be clipped. Best is portal to body. If you can't, keep z-index high.
+*/
+
 .kc-filterDropdown,
 .kc-filterDropdown * {
     font-family: inherit;
+    box-sizing: border-box;
 }
 
+/* Main dropdown panel */
 .kc-filterDropdown {
-    position: relative;
-    /* needed for ::before sheen */
-    background: rgba(255, 255, 255, 0.78);
+    position: absolute;
+    /* anchor to trigger */
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 260px;
+    max-width: 360px;
+
+    background: rgba(255, 255, 255, 0.82);
     border: 1px solid rgba(15, 23, 42, 0.10);
     border-radius: 14px;
     box-shadow:
         0 18px 46px rgba(15, 23, 42, 0.14),
         0 2px 10px rgba(15, 23, 42, 0.08);
+
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
+
     overflow: hidden;
     color: var(--kc-text, #0f172a);
     font-size: 0.875rem;
     line-height: 1.4;
     font-weight: 650;
+
+    z-index: 9999;
+    /* ✅ above sticky header + table */
     transform: translateZ(0);
     animation: kcDropIn 120ms ease-out;
 }
@@ -1137,8 +1211,7 @@
     position: absolute;
     inset: 0;
     pointer-events: none;
-    background:
-        linear-gradient(180deg,
+    background: linear-gradient(180deg,
             rgba(255, 255, 255, 0.72) 0%,
             rgba(255, 255, 255, 0.22) 22%,
             rgba(255, 255, 255, 0.08) 58%,
@@ -1161,13 +1234,20 @@
 .kc-filterHeader {
     position: relative;
     z-index: 1;
+
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
+
     padding: 10px 12px;
     background: rgba(248, 250, 252, 0.68);
     border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+}
+
+.kc-filterHeaderLeft {
+    display: grid;
+    min-width: 0;
 }
 
 .kc-filterHeaderTitle {
@@ -1183,13 +1263,10 @@
     color: var(--kc-text-muted, #64748b);
 }
 
-.kc-filterHeaderLeft {
-    display: grid;
-}
-
 .kc-filterHeaderRight {
     display: inline-flex;
     gap: 8px;
+    flex-shrink: 0;
 }
 
 .kc-filterHeaderBtn {
@@ -1213,11 +1290,15 @@
     background: rgba(255, 255, 255, 0.92);
 }
 
-/* Body rows */
+/* Body */
 .kc-filterBody {
     position: relative;
     z-index: 1;
     padding: 8px;
+
+    max-height: 320px;
+    /* ✅ prevents huge dropdown */
+    overflow: auto;
 }
 
 .kc-filterRow {
@@ -1225,6 +1306,7 @@
     grid-template-columns: 18px 1fr auto;
     align-items: center;
     gap: 10px;
+
     padding: 8px 10px;
     border-radius: 12px;
     transition: background 140ms ease;
@@ -1243,6 +1325,10 @@
 .kc-filterRowLabel {
     font-weight: 650;
     color: var(--kc-text, #0f172a);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .kc-filterRowMeta {
@@ -1262,26 +1348,32 @@
     margin: 8px 6px;
 }
 
-/* Sticky toolbar elevation (enterprise subtle) */
+/* Sticky toolbar elevation */
 .kc_tableToolbar.is_scrolled {
     box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08), 0 2px 6px rgba(15, 23, 42, 0.05);
     border-bottom-color: rgba(15, 23, 42, 0.10);
 }
 
-/* Column dropdown */
+/* =========================================================
+   COLUMN DROPDOWN (same stacking rules)
+   ========================================================= */
 .kc-colsDropdown {
     position: absolute;
     right: 0;
     top: calc(100% + 10px);
     width: 260px;
+
     border-radius: 14px;
     border: 1px solid rgba(15, 23, 42, 0.08);
     background: rgba(252, 253, 255, 0.96);
+
     box-shadow: 0 14px 34px rgba(15, 23, 42, 0.10), 0 2px 8px rgba(15, 23, 42, 0.05);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+
     overflow: hidden;
-    z-index: 80;
+    z-index: 9999;
+    /* ✅ above table */
     font-family: inherit;
 }
 
@@ -1305,6 +1397,8 @@
     display: grid;
     padding: 8px;
     gap: 4px;
+    max-height: 320px;
+    overflow: auto;
 }
 
 .kc-colsItem {
@@ -1367,4 +1461,331 @@
     gap: 10px;
     padding: 10px 12px;
     border-top: 1px solid rgba(15, 23, 42, 0.06);
+}
+
+/* =========================================================
+   DATE MENU (dropdown-only, no header expansion)
+   ========================================================= */
+.kc_dateFilterWrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.kc_dateMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 320px;
+
+    padding: 12px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.18);
+
+    z-index: 99999;
+}
+
+.kc_dateMenuTitle {
+    font-weight: 900;
+    font-size: 12px;
+    margin-bottom: 10px;
+    color: #0f172a;
+}
+
+.kc_dateMenuRow {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-top: 8px;
+}
+
+.kc_dateMenuLabel {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.kc_dateMenuActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 12px;
+}
+
+.kcToolbarRow,
+.kcToolbarLeft,
+.kcToolbarMid,
+.kcToolbarRight,
+.kcToolbarRightMeta {
+    min-width: 0;
+}
+
+.kcToolbarRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* left side: filters */
+.kcToolbarLeft {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: center;
+    gap: 10px;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* middle: badges (this is the scroll container) */
+.kcToolbarMid {
+    flex: 0 1 360px;
+    min-width: 0;
+}
+
+.kc_filterBadges {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 8px;
+    align-items: center;
+
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    white-space: nowrap;
+
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* keep each badge from shrinking weirdly */
+.kc_filterBadge {
+    flex: 0 0 auto;
+}
+
+/* right side: clear + showing + icons */
+.kcToolbarRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+/* ==============================
+   TABLE STACKING CONTEXT FIX
+   ============================== */
+
+/* toolbar must sit above table */
+.kc_tableToolbar {
+    position: relative;
+    z-index: 50;
+    overflow: visible;
+}
+
+/* allow dropdowns to escape toolbar */
+.kcToolbarRow,
+.kcToolbarLeft,
+.kc_toolbarFilters {
+    overflow: visible;
+}
+
+/* sticky table header should stay BELOW dropdowns */
+.kc-table-th {
+    z-index: 5 !important;
+}
+
+/* ==============================
+   DATE DROPDOWN
+   ============================== */
+
+.kc_dateFilterWrap {
+    position: relative;
+}
+
+.kc_dateMenu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+
+    width: 320px;
+    max-width: min(360px, 92vw);
+
+    padding: 12px;
+    border-radius: 14px;
+
+    background: rgba(255, 255, 255, 0.96);
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: 0 20px 40px rgba(2, 6, 23, 0.18);
+
+    z-index: 9999;
+    /* always above table */
+}
+
+/* ============================
+   Fix: weird rounding under toolbar
+   ============================ */
+
+/* Outer shell keeps the border + radius */
+.kc-table {
+    border-radius: var(--kc-radius, 14px);
+    overflow: visible !important;
+    /* keep dropdowns working */
+}
+
+/* Toolbar gets the TOP corners */
+.kc-table-toolbar,
+.kc_tableToolbar {
+    border-top-left-radius: var(--kc-radius, 14px);
+    border-top-right-radius: var(--kc-radius, 14px);
+}
+
+/* Wrap should NOT have top rounding (only bottom) */
+.kc-table-wrap,
+.kc-table .kc-table-wrap {
+    border-radius: 0 0 var(--kc-radius, 14px) var(--kc-radius, 14px);
+    overflow: auto;
+}
+
+/* If you still see a seam line, make sure wrap doesn't "fight" the toolbar border */
+.kc-table-wrap {
+    border-top: 0 !important;
+}
+
+/* =========================================================
+   Drawer Workflow Stepper (fix "(active)" overlap)
+   Works with classnames:
+   kcWorkflow, kcWorkflowGrid, kcWorkflowStep, kcWorkflowHead,
+   kcWorkflowDot, kcWorkflowMain, kcWorkflowTitleRow,
+   kcWorkflowStepLabel, kcWorkflowState, kcWorkflowMeta,
+   kcWorkflowLineWrap, kcWorkflowLine
+   ========================================================= */
+
+.kcWorkflow {
+    position: relative;
+    z-index: 1;
+}
+
+.kcWorkflowGrid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.kcWorkflowStep {
+    min-width: 0;
+}
+
+/* header row inside each step */
+.kcWorkflowHead {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    min-width: 0;
+}
+
+/* number dot */
+.kcWorkflowDot {
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.14);
+    background: rgba(15, 23, 42, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    flex: 0 0 auto;
+}
+
+/* right side */
+.kcWorkflowMain {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+}
+
+/* title row: label + (active) */
+.kcWorkflowTitleRow {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    min-width: 0;
+    /* critical: allows ellipsis instead of overlap */
+    line-height: 1.15;
+}
+
+/* label text */
+.kcWorkflowStepLabel {
+    font-weight: 900;
+    font-size: 0.85rem;
+    color: var(--kc-text, #0f172a);
+
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* active text (never overlaps) */
+.kcWorkflowState {
+    flex: 0 0 auto;
+    font-size: 12px;
+    font-weight: 800;
+    color: var(--kc-text-muted, #64748b);
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+/* meta line */
+.kcWorkflowMeta {
+    margin-top: 2px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--kc-text-muted, #64748b);
+
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* connector line */
+.kcWorkflowLineWrap {
+    height: 10px;
+    margin-top: 10px;
+    position: relative;
+}
+
+.kcWorkflowLine {
+    height: 2px;
+    width: 100%;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.12);
+}
+
+/* Optional: on narrower widths, allow (active) to drop to next line */
+@media (max-width: 1100px) {
+    .kcWorkflowGrid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .kcWorkflowTitleRow {
+        flex-wrap: wrap;
+    }
+
+    .kcWorkflowState {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 680px) {
+    .kcWorkflowGrid {
+        grid-template-columns: 1fr;
+    }
 }

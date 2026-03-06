@@ -16,6 +16,10 @@ import CreateUserPage from "./pages/Users/CreateUser";
 import Login from "./pages/Authentication/Login";
 import RegisterAppsPage from "./pages/Application/Registerapps";
 import CreateRealmPage from "./pages/Realms/CreateRealm";
+import RealmAccessRequest from "./pages/Realms/access/RealmAccessRequest";
+import RealmAccessApprove from "./pages/Realms/access/RealmAccessApprove";
+import RealmAccessVerify from "./pages/Realms/access/RealmAccessVerify";
+import RealmAccessAudit from "./pages/Realms/access/RealmAccessAudit";
 
 const App: React.FC = () => {
   return (
@@ -39,6 +43,11 @@ const App: React.FC = () => {
               <Route path={ROUTES.REALMS} element={<RealmsPage />} />
               <Route path={ROUTES.MANAGE_REALMS} element={<ManageRealmsPage />} />
               <Route path={ROUTES.CREATE_REALM} element={<CreateRealmPage />} />
+
+              <Route path={ROUTES.REALM_ACCESS_REQUEST} element={<RealmAccessRequest />} />
+              <Route path={ROUTES.REALM_ACCESS_APPROVE} element={<RealmAccessApprove />} />
+              <Route path={ROUTES.REALM_ACCESS_VERIFY} element={<RealmAccessVerify />} />
+              <Route path={ROUTES.REALM_ACCESS_AUDIT} element={<RealmAccessAudit />} />
 
               <Route path={ROUTES.USERS} element={<UsersPage />} />
               <Route path={ROUTES.CREATE_USER} element={<CreateUserPage />} />

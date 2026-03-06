@@ -34,6 +34,11 @@ export const ROUTES = {
     AUDIT_LOGS: '/audit-logs',
     LOGIN: '/login',
 
+    REALM_ACCESS_REQUEST: '/realms/access/request',
+    REALM_ACCESS_APPROVE: '/realms/access/approve',
+    REALM_ACCESS_VERIFY: '/realms/access/verify',
+    REALM_ACCESS_AUDIT: '/realms/access/audit',
+
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];
@@ -133,6 +138,38 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
         breadcrumbs: [
             { label: 'Home', path: ROUTES.HOME },
             { label: 'Audit Logs', path: ROUTES.AUDIT_LOGS },
+        ],
+    },
+    [ROUTES.REALM_ACCESS_REQUEST]: {
+        path: ROUTES.REALM_ACCESS_REQUEST,
+        title: 'Realm Access Request',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Realm Access Request', path: ROUTES.REALM_ACCESS_REQUEST },
+        ],
+    },
+    [ROUTES.REALM_ACCESS_APPROVE]: {
+        path: ROUTES.REALM_ACCESS_APPROVE,
+        title: 'Realm Access Approve',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Realm Access Approve', path: ROUTES.REALM_ACCESS_APPROVE },
+        ],
+    },
+    [ROUTES.REALM_ACCESS_VERIFY]: {
+        path: ROUTES.REALM_ACCESS_VERIFY,
+        title: 'Realm Access Verify',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Realm Access Verify', path: ROUTES.REALM_ACCESS_VERIFY },
+        ],
+    },
+    [ROUTES.REALM_ACCESS_AUDIT]: {
+        path: ROUTES.REALM_ACCESS_AUDIT,
+        title: 'Realm Access Audit',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Realm Access Audit', path: ROUTES.REALM_ACCESS_AUDIT },
         ],
     },
 };

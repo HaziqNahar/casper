@@ -74,6 +74,30 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         description: "View all realms",
                         path: ROUTES.REALMS,
                     },
+                    {
+                        id: "realms-access-request",
+                        label: "Realm Access Request",
+                        description: "Request access to a realm",
+                        path: ROUTES.REALM_ACCESS_REQUEST,
+                    },
+                    {
+                        id: "realms-access-approve",
+                        label: "Realm Access Approve",
+                        description: "Approve realm access requests",
+                        path: ROUTES.REALM_ACCESS_APPROVE,
+                    },
+                    {
+                        id: "realms-access-verify",
+                        label: "Realm Access Verify",
+                        description: "Verify realm access",
+                        path: ROUTES.REALM_ACCESS_VERIFY,
+                    },
+                    {
+                        id: "realms-access-audit",
+                        label: "Realm Access Audit",
+                        description: "Audit realm access",
+                        path: ROUTES.REALM_ACCESS_AUDIT,
+                    },
                 ],
             },
             {

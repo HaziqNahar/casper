@@ -31,6 +31,9 @@ import { useData } from "../../context/DataContext";
 import { AppRow, RealmRow, UserRow } from "../../types";
 import { MultiSelectCheckbox } from "../../components/common/MultiSelectCheckbox";
 import { RowActionMenu } from "../../components/common/RowsActionMenu";
+import { ROUTES } from "../../config/routes";
+import { loadAccessRequests } from "./access/accessRequestsStore";
+import { useAccessRequestsLive } from "./access/useAccessRequestsLive";
 
 // ============================================================================
 // TYPES
@@ -38,7 +41,7 @@ import { RowActionMenu } from "../../components/common/RowsActionMenu";
 
 type RealmStatus = "Active" | "Inactive" | "Draft";
 type UserStatus = "Active" | "Inactive" | "Pending";
-type UserPanelMode = "closed" | "add-users" | "create-local-user";
+type UserPanelMode = "closed" | "create-local-user";
 
 type ConfirmState = {
     open: boolean;
@@ -203,6 +206,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "Admin",
         lastName: "User",
         status: "Active",
+        userType: "certis_full_user",
         isDeleted: false,
         lastLogin: "19 Dec 2025, 15:30:00",
     },
@@ -215,6 +219,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "John",
         lastName: "Doe",
         status: "Active",
+        userType: "certis_full_user",
         isDeleted: false,
         lastLogin: "19 Dec 2025, 14:20:00",
     },
@@ -227,6 +232,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "Jane",
         lastName: "Smith",
         status: "Active",
+        userType: "external_user",
         isDeleted: false,
         lastLogin: "18 Dec 2025, 16:45:00",
     },
@@ -239,6 +245,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "Mike",
         lastName: "Tan",
         status: "Inactive",
+        userType: "certis_contractor",
         isDeleted: false,
         lastLogin: "-",
     },
@@ -251,6 +258,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "Sarah",
         lastName: "Lee",
         status: "Pending",
+        userType: "certis_half_user",
         isDeleted: false,
         lastLogin: "-",
     },
@@ -263,6 +271,7 @@ const USERS_DATA: UserRow[] = [
         firstName: "Jason",
         lastName: "Ng",
         status: "Inactive",
+        userType: "certis_full_user",
         isDeleted: true,
         lastLogin: "01 Nov 2025, 10:00:00",
     },
@@ -508,7 +517,7 @@ const LockedHint: React.FC<{ text?: string }> = ({ text = "Terminated" }) => (
 // TABLE COLUMNS
 // ============================================================================
 
-const createRealmColumns = (onView: (row: RealmRow) => void, onToggleRealm: (row: RealmRow) => void, openConfirmDialog: (next: Omit<ConfirmState, "open">) => void): TableColumn<RealmRow>[] => [
+const createRealmColumns = (onView: (row: RealmRow) => void, onToggleRealm: (row: RealmRow) => void, openConfirmDialog: (next: Omit<ConfirmState, "open">) => void, pendingByRealm: Record<string, number>): TableColumn<RealmRow>[] => [
     {
         key: "name",
         label: "Realm",
@@ -535,6 +544,14 @@ const createRealmColumns = (onView: (row: RealmRow) => void, onToggleRealm: (row
         width: "110px",
         align: "center",
         render: (value) => (value ?? 0) as any,
+    },
+    {
+        key: "id",
+        label: "Pending Requests",
+        width: "160px",
+        align: "center",
+        sortable: false,
+        render: (_v, row) => pendingByRealm[row.id] ?? 0,
     },
     {
         key: "updatedAt",
@@ -614,27 +631,47 @@ const createRealmUsersColumns = (
         {
             key: "roleId",
             label: "Realm Role",
-            width: "240px",
+            width: "280px",
             sortable: false,
-            render: (_v, row) => (
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <select
-                        className="kc-select"
-                        value={row.roleId ?? ""}
-                        disabled={updatingUsers.has(row.uuid)}
-                        onChange={(e) => onChangeRole(row.uuid, e.target.value as RealmRoleId)}
-                    >
-                        <option value="">Select role</option>
-                        {roles.map((r) => (
-                            <option key={r.id} value={r.id}>
-                                {r.name}
-                            </option>
-                        ))}
-                    </select>
+            render: (_v, row) => {
+                const currentRole = roles.find((r) => r.id === row.roleId)?.name ?? "—";
 
-                    {updatingUsers.has(row.uuid) && <InlineSpinner />}
-                </div>
-            ),
+                return (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <Badge variant="neutral">{currentRole}</Badge>
+
+                            {updatingUsers.has(row.uuid) && <InlineSpinner />}
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <select
+                                className="kc-select"
+                                value={row.roleId ?? ""}
+                                disabled={updatingUsers.has(row.uuid)}
+                                onChange={(e) => {
+                                    const next = e.target.value as RealmRoleId;
+                                    if (!next || next === row.roleId) return;
+                                    onChangeRole(row.uuid, next); // should navigate to workflow now
+                                }}
+                            >
+                                <option value={row.roleId ?? ""}>Request role change…</option>
+                                {roles
+                                    .filter((r) => r.id !== row.roleId)
+                                    .map((r) => (
+                                        <option key={r.id} value={r.id}>
+                                            {r.name}
+                                        </option>
+                                    ))}
+                            </select>
+
+                            {/* <span className="kc-text-muted" style={{ fontSize: "0.72rem", fontWeight: 700 }}>
+                                Routes to approval workflow
+                            </span> */}
+                        </div>
+                    </div>
+                );
+            },
         },
         {
             key: "uuid",
@@ -661,7 +698,6 @@ const createAddUserColumns = (
     defaultRoleId: RealmRoleId | "",
     selectedRoleByUser: Record<string, RealmRoleId | "">,
     setSelectedRoleByUser: React.Dispatch<React.SetStateAction<Record<string, RealmRoleId | "">>>,
-    onAddToRealm: (userUuid: string, roleId: RealmRoleId) => void,
     roleCounts: Record<string, number>,
     closePanel: () => void
 ): TableColumn<UserRow>[] => [
@@ -739,10 +775,10 @@ const createAddUserColumns = (
                             e.stopPropagation();
                             if (disabled) return;
 
-                            onAddToRealm(row.uuid, roleId as RealmRoleId);
+                            // onAddToRealm(row.uuid, roleId as RealmRoleId);
 
-                            const ok = onAddToRealm(row.uuid, roleId as RealmRoleId);
-                            if (!ok) return;
+                            // const ok = onAddToRealm(row.uuid, roleId as RealmRoleId);
+                            // if (!ok) return;
 
                             setSelectedRoleByUser((prev) => {
                                 const next = { ...prev };
@@ -1005,7 +1041,6 @@ const RealmDetailContent: React.FC<{
 
     onBack?: () => void;
     onRemoveUser: (userUuid: string) => void;
-    onAddUser: (userUuid: string, roleId: RealmRoleId) => void;
     onCreateUser: (newUser: UserRow) => void;
     onUpdateRealm: (patch: Partial<RealmRow>) => void;
     onToast: (message: string, type: "success" | "error" | "warning" | "info") => void;
@@ -1020,7 +1055,6 @@ const RealmDetailContent: React.FC<{
     onGrantAppUser,
     onBack,
     onRemoveUser,
-    onAddUser,
     onCreateUser,
     onUpdateRealm,
     onToast }) => {
@@ -1034,6 +1068,7 @@ const RealmDetailContent: React.FC<{
         const [errors, setErrors] = useState<Partial<Record<keyof UserForm, string>>>({});
 
         const [updatingUsers, setUpdatingUsers] = useState<Set<string>>(new Set());
+        const navigate = useNavigate();
 
         const markUpdating = (uuid: string, isUpdating: boolean) => {
             setUpdatingUsers((prev) => {
@@ -1055,16 +1090,8 @@ const RealmDetailContent: React.FC<{
 
         const openPanel = useCallback((mode: Exclude<UserPanelMode, "closed">) => {
             setUserPanelMode(mode);
-
-            // optional resets (recommended)
-            if (mode === "add-users") {
-                setQuery("");
-                setDefaultRoleId("");
-                setSelectedRoleByUser({});
-            } else {
-                setFormError(null);
-                setErrors({});
-            }
+            setFormError(null);
+            setErrors({});
         }, []);
 
         const closePanel = useCallback(() => {
@@ -1107,22 +1134,6 @@ const RealmDetailContent: React.FC<{
 
         const closeConfirm = () => setConfirm((p) => ({ ...p, open: false }));
 
-        const handleChangeRole = useCallback(
-            async (userUuid: string, roleId: RealmRoleId) => {
-                markUpdating(userUuid, true);
-
-                try {
-                    // simulate API latency (remove later)
-                    await new Promise((r) => setTimeout(r, 450));
-
-                    onAddUser(userUuid, roleId); // upsert
-                } finally {
-                    markUpdating(userUuid, false);
-                }
-            },
-            [onAddUser]
-        );
-
         const usersInRealm = useMemo<RealmUserViewRow[]>(() => {
             const safeUsers = Array.isArray(allUsers) ? allUsers : [];
 
@@ -1143,6 +1154,24 @@ const RealmDetailContent: React.FC<{
                 })
                 .filter(Boolean) as RealmUserViewRow[];
         }, [allUsers, realmMemberships, realm.id]);
+
+        const handleChangeRole = useCallback(
+            async (userUuid: string, roleId: RealmRoleId) => {
+                const u = usersInRealm.find((x) => x.uuid === userUuid);
+
+                // Navigate to workflow instead of direct grant
+                navigate(
+                    `${ROUTES.REALM_ACCESS_REQUEST}` +
+                    `?realmId=${encodeURIComponent(realm.id)}` +
+                    `&realmName=${encodeURIComponent(realm.name)}` +
+                    `&targetUser=${encodeURIComponent(u?.username ?? userUuid)}` +
+                    `&roleRequested=${encodeURIComponent(roleId)}`
+                );
+
+                onToast("Redirected to access workflow (no direct grants).", "info");
+            },
+            [navigate, realm.id, realm.name, usersInRealm, onToast]
+        );
 
         const [userFilter, setUserFilter] = useState<UserFilter>("all");
 
@@ -1202,11 +1231,10 @@ const RealmDetailContent: React.FC<{
                     defaultRoleId,
                     selectedRoleByUser,
                     setSelectedRoleByUser,
-                    onAddUser,
                     roleCounts,
                     closePanel
                 ),
-            [roles, defaultRoleId, selectedRoleByUser, onAddUser, roleCounts, closePanel]
+            [roles, defaultRoleId, selectedRoleByUser, roleCounts, closePanel]
         );
 
         // Create user form
@@ -1287,10 +1315,10 @@ const RealmDetailContent: React.FC<{
                 if (isTerminated(u)) continue;
                 const roleId = selectedRoleByUser[u.uuid] ?? defaultRoleId ?? "";
                 if (!roleId) continue;
-                onAddUser(u.uuid, roleId as RealmRoleId);
+                handleChangeRole(u.uuid, roleId as RealmRoleId);
             }
             setSelectedRoleByUser({});
-        }, [eligibleFilteredToBulkAdd, selectedRoleByUser, defaultRoleId, onAddUser, setSelectedRoleByUser]);
+        }, [eligibleFilteredToBulkAdd, selectedRoleByUser, defaultRoleId, handleChangeRole, setSelectedRoleByUser]);
 
         const createLocalUserInRealm = (form: {
             username: string;
@@ -1355,16 +1383,19 @@ const RealmDetailContent: React.FC<{
             };
 
             onCreateUser(newUser);
-            onAddUser(newUser.uuid, roleIdToUse);
+
+            // Request access via workflow (no direct membership write)
+            navigate(
+                `${ROUTES.REALM_ACCESS_REQUEST}` +
+                `?realmId=${encodeURIComponent(realm.id)}` +
+                `&realmName=${encodeURIComponent(realm.name)}` +
+                `&targetUser=${encodeURIComponent(newUser.username)}` +
+                `&roleRequested=${encodeURIComponent(roleIdToUse)}`
+            );
+
+            onToast("Local user created. Access must be approved via workflow.", "success");
         };
 
-        const searchRef = useRef<HTMLInputElement>(null)
-
-        useEffect(() => {
-            if (userPanelMode === "add-users") {
-                searchRef.current?.focus();
-            }
-        }, [userPanelMode])
 
         useEffect(() => {
             if (!showManage) return;
@@ -1544,15 +1575,21 @@ const RealmDetailContent: React.FC<{
                                         <div style={{ display: "flex", gap: 10 }}>
                                             <button
                                                 className="kc-btn kc-btn-primary"
-                                                onClick={() => openPanel("add-users")}
+                                                onClick={() =>
+                                                    navigate(
+                                                        `${ROUTES.REALM_ACCESS_REQUEST}?realmId=${encodeURIComponent(
+                                                            realm.id
+                                                        )}&realmName=${encodeURIComponent(realm.name)}`
+                                                    )
+                                                }
                                                 disabled={realm.status !== "Active"}
-                                                title={realm.status !== "Active" ? "Realm must be Active" : "Add existing users"}
+                                                title={realm.status !== "Active" ? "Realm must be Active" : "Request access via workflow"}
                                             >
-                                                <Plus size={16} /> Add users
+                                                <Key size={16} /> Request Access
                                             </button>
 
                                             <button
-                                                className="kc-btn kc-btn-ghost"
+                                                className="kc-btn kc-btn-primary"
                                                 onClick={() => openPanel("create-local-user")}
                                                 disabled={realm.status !== "Active"}
                                                 title={realm.status !== "Active" ? "Realm must be Active" : "Create local user"}
@@ -1562,7 +1599,7 @@ const RealmDetailContent: React.FC<{
                                         </div>
                                     </div>
 
-                                    <div className="kc_chipRow">
+                                    {/* <div className="kc_chipRow">
                                         {([
                                             { id: "all", label: `All (${stats.total})` },
                                             { id: "active", label: `Active (${stats.active})` },
@@ -1578,7 +1615,7 @@ const RealmDetailContent: React.FC<{
                                                 {c.label}
                                             </button>
                                         ))}
-                                    </div>
+                                    </div> */}
                                 </div>
 
                                 {/* Body */}
@@ -1612,19 +1649,17 @@ const RealmDetailContent: React.FC<{
                                                 className="kcDrawer"
                                                 role="dialog"
                                                 aria-modal="true"
-                                                aria-label={userPanelMode === "add-users" ? "Add users drawer" : "Create local user drawer"}
+                                                aria-label="Create local user drawer"
                                                 onMouseDown={(e) => e.stopPropagation()}
                                             >
                                                 {/* Drawer header */}
                                                 <div className="kcDrawerHeader">
                                                     <div>
                                                         <div className="kcDrawerTitle">
-                                                            {userPanelMode === "add-users" ? "Add existing users" : "Create local user"}
+                                                            Create local user
                                                         </div>
                                                         <div className="kcDrawerSubtitle">
-                                                            {userPanelMode === "add-users"
-                                                                ? "Search users, assign role, then add them to this realm."
-                                                                : <>Local users belong to <b>{realm.name}</b> only.</>}
+                                                            Local users belong to <b>{realm.name}</b> only.
                                                         </div>
                                                     </div>
 
@@ -1635,16 +1670,6 @@ const RealmDetailContent: React.FC<{
 
                                                 {/* Segmented switch */}
                                                 <div className="kcDrawerSwitch" role="tablist" aria-label="User actions">
-                                                    <button
-                                                        type="button"
-                                                        className={`kcDrawerTab ${userPanelMode === "add-users" ? "is-active" : ""}`}
-                                                        onClick={() => openPanel("add-users")}
-                                                        role="tab"
-                                                        aria-selected={userPanelMode === "add-users"}
-                                                    >
-                                                        Add users
-                                                    </button>
-
                                                     <button
                                                         type="button"
                                                         className={`kcDrawerTab ${userPanelMode === "create-local-user" ? "is-active" : ""}`}
@@ -1658,90 +1683,6 @@ const RealmDetailContent: React.FC<{
 
                                                 {/* Drawer body (scrollable) */}
                                                 <div className="kcDrawerBody">
-                                                    {userPanelMode === "add-users" && (
-                                                        <>
-                                                            {/* Controls row */}
-                                                            <div className="kcDrawerRow">
-                                                                {/* Row A */}
-                                                                <div className="kcDrawerRowTop">
-                                                                    <label className="kcInlineCheck">
-                                                                        <input
-                                                                            type="checkbox"
-                                                                            checked={showInactiveInAddList}
-                                                                            onChange={(e) => setShowInactiveInAddList(e.target.checked)}
-                                                                        />
-                                                                        Show inactive users
-                                                                    </label>
-
-                                                                    <div className="kcDefaultRole">
-                                                                        <span className="kcDefaultRoleLabel">Default role</span>
-                                                                        <select
-                                                                            className="kc-select"
-                                                                            value={defaultRoleId}
-                                                                            onChange={(e) => setDefaultRoleId(e.target.value as RealmRoleId)}
-                                                                        >
-                                                                            <option value="">None</option>
-                                                                            {(roles ?? []).map((r) => (
-                                                                                <option key={r.id} value={r.id}>
-                                                                                    {r.name} ({roleCounts[r.id] ?? 0})
-                                                                                </option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Row B */}
-                                                                <div className="kcDrawerRowBottom">
-                                                                    <button
-                                                                        type="button"
-                                                                        className="kc-btn kc-btn-ghost"
-                                                                        onClick={() => setSelectedRoleByUser({})}
-                                                                    >
-                                                                        Clear
-                                                                    </button>
-
-                                                                    <button
-                                                                        type="button"
-                                                                        className="kc-btn kc-btn-primary"
-                                                                        disabled={!canBulkAdd}
-                                                                        onClick={handleBulkAddFiltered}
-                                                                    >
-                                                                        <Plus size={16} /> Add filtered ({eligibleFilteredToBulkAdd.length})
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-
-                                                            {/* Search */}
-                                                            <div style={{ marginTop: 12 }}>
-                                                                <input
-                                                                    value={query}
-                                                                    onChange={(e) => setQuery(e.target.value)}
-                                                                    placeholder="Search by username, email, name, staff id..."
-                                                                    className="kcDrawerSearch"
-                                                                />
-                                                            </div>
-
-                                                            {/* Add-users table */}
-                                                            <div style={{ marginTop: 12 }}>
-                                                                <DataTable<UserRow>
-                                                                    data={availableUsersToAdd}
-                                                                    rowClassName={(row) => (isTerminated(row) ? "kc-row-locked" : "")}
-                                                                    columns={addColumns}
-                                                                    keyField="uuid"
-                                                                    paginated
-                                                                    pageSize={10}
-                                                                    pageSizeOptions={[10, 25, 50]}
-                                                                    striped
-                                                                    hoverable
-                                                                    searchable={false}
-                                                                    stickyHeader
-                                                                    emptyMessage="No users match your search"
-                                                                    minHeight="100%"
-                                                                />
-                                                            </div>
-                                                        </>
-                                                    )}
-
                                                     {userPanelMode === "create-local-user" && (
                                                         <>
                                                             {/* <div className="kc-text-title">Create local user</div>
@@ -2720,11 +2661,12 @@ const RealmsContent: React.FC<{
     onRefresh?: () => void;
     onToggleStatus: (realm: RealmRow) => void;
     openConfirmDialog: (next: Omit<ConfirmState, "open">) => void;
-}> = ({ realms, loading, error, onRowClick, realmStatusFilter, setRealmStatusFilter, onRefresh, onToggleStatus, openConfirmDialog }) => {
+    pendingByRealm: Record<string, number>;
+}> = ({ realms, loading, error, onRowClick, realmStatusFilter, setRealmStatusFilter, onRefresh, onToggleStatus, openConfirmDialog, pendingByRealm }) => {
 
     const columns = useMemo(
-        () => createRealmColumns(onRowClick, onToggleStatus, openConfirmDialog),
-        [onRowClick, onToggleStatus, openConfirmDialog]
+        () => createRealmColumns(onRowClick, onToggleStatus, openConfirmDialog, pendingByRealm),
+        [onRowClick, onToggleStatus, openConfirmDialog, pendingByRealm]
     );
 
     const filterLabel = useMemo(() => {
@@ -2809,6 +2751,23 @@ const RealmsContent: React.FC<{
 // ============================================================================
 
 const RealmsPage: React.FC = () => {
+
+    const [accessTick, setAccessTick] = useState(0);
+    useAccessRequestsLive(() => setAccessTick((x) => x + 1));
+
+    const pendingByRealm = useMemo(() => {
+        const reqs = loadAccessRequests();
+
+        const isPending = (s: string) =>
+            s === "Draft" || s === "Submitted" || s === "Approved";
+
+        const map: Record<string, number> = {};
+        for (const r of reqs) {
+            if (!isPending(r.status)) continue;
+            map[r.realmId] = (map[r.realmId] ?? 0) + 1;
+        }
+        return map;
+    }, [accessTick]);
     const [confirm, setConfirm] = useState<ConfirmState>({
         open: false,
         title: "",
@@ -2852,6 +2811,8 @@ const RealmsPage: React.FC = () => {
     const toastGuardRef = useRef<Record<string, number>>({});
     const { setTotalUsers, setTotalRealms, setTotalApps } = useData();
     const [realmAppUsers, setRealmAppUsers] = useState<RealmAppUsersMap>(REALM_APP_USERS_INITIAL);
+
+    const navigate = useNavigate();
 
     useEffect(() => setTotalUsers(users), [users, setTotalUsers]);
     useEffect(() => setTotalRealms(realms), [realms, setTotalRealms]);
@@ -3084,39 +3045,39 @@ const RealmsPage: React.FC = () => {
         [syncRealmUserCounts]
     );
 
-    const addUserToRealm = useCallback(
-        (realmId: string, userUuid: string, roleId: RealmRoleId) => {
-            const u = users.find(x => x.uuid === userUuid);
-            if (u?.status === "Inactive") {
-                pushToast("Cannot add terminated (inactive) user to a realm", "error");
-                return false;
-            }
-            let didSucceed = true;
+    // const addUserToRealm = useCallback(
+    //     (realmId: string, userUuid: string, roleId: RealmRoleId) => {
+    //         const u = users.find(x => x.uuid === userUuid);
+    //         if (u?.status === "Inactive") {
+    //             pushToast("Cannot add terminated (inactive) user to a realm", "error");
+    //             return false;
+    //         }
+    //         let didSucceed = true;
 
-            setRealmUsers((prev) => {
-                const next: RealmUserMap = { ...(prev ?? {}) };
-                const list = next[realmId] ?? [];
+    //         setRealmUsers((prev) => {
+    //             const next: RealmUserMap = { ...(prev ?? {}) };
+    //             const list = next[realmId] ?? [];
 
-                const exists = list.some((m) => m.userUuid === userUuid);
+    //             const exists = list.some((m) => m.userUuid === userUuid);
 
-                next[realmId] = exists
-                    ? list.map((m) => (m.userUuid === userUuid ? { ...m, roleId } : m))
-                    : [...list, { userUuid, roleId }];
+    //             next[realmId] = exists
+    //                 ? list.map((m) => (m.userUuid === userUuid ? { ...m, roleId } : m))
+    //                 : [...list, { userUuid, roleId }];
 
-                queueMicrotask(() => syncRealmUserCounts(next));
+    //             queueMicrotask(() => syncRealmUserCounts(next));
 
-                if (exists) {
-                    guardedToast(`role:${realmId}:${userUuid}:${roleId}`, "User role updated", "info");
-                } else {
-                    guardedToast(`add:${realmId}:${userUuid}`, "User added to realm", "success");
-                }
+    //             if (exists) {
+    //                 guardedToast(`role:${realmId}:${userUuid}:${roleId}`, "User role updated", "info");
+    //             } else {
+    //                 guardedToast(`add:${realmId}:${userUuid}`, "User added to realm", "success");
+    //             }
 
-                return next;
-            });
-            return didSucceed;
-        },
-        [syncRealmUserCounts, guardedToast, users, pushToast]
-    );
+    //             return next;
+    //         });
+    //         return didSucceed;
+    //     },
+    //     [syncRealmUserCounts, guardedToast, users, pushToast]
+    // );
 
     const createUser = useCallback((newUser: UserRow) => {
         setUsers((prev) => [newUser, ...(prev ?? [])]);
@@ -3168,6 +3129,7 @@ const RealmsPage: React.FC = () => {
                             onRefresh={handleRefresh}
                             onToggleStatus={toggleRealmStatus}
                             openConfirmDialog={openConfirmDialog}
+                            pendingByRealm={pendingByRealm}
                         />
                     );
                 case "realm-detail": {
@@ -3209,7 +3171,6 @@ const RealmsPage: React.FC = () => {
                             realmMemberships={realmMemberships}
                             roles={REALM_ROLES}
                             roleCounts={roleCounts}
-                            onAddUser={(uuid, roleId) => addUserToRealm(realm.id, uuid, roleId)}
                             onRemoveUser={(uuid) => removeUserFromRealm(realm.id, uuid)}
                             onCreateUser={(u) => {
                                 const uuid =
@@ -3231,7 +3192,9 @@ const RealmsPage: React.FC = () => {
                                 const defaultRoleId = (REALM_ROLES?.[0]?.id ?? "none") as RealmRoleId;
 
                                 if (defaultRoleId !== "none") {
-                                    addUserToRealm(realm.id, localUser.uuid, defaultRoleId);
+                                    navigate(
+                                        `${ROUTES.REALM_ACCESS_REQUEST}?realmId=${encodeURIComponent(realm.id)}&realmName=${encodeURIComponent(realm.name)}`
+                                    )
                                 }
 
                                 pushToast("Local user created in realm", "success");
@@ -3266,7 +3229,6 @@ const RealmsPage: React.FC = () => {
             users,
             backToRealms,
             removeUserFromRealm,
-            addUserToRealm,
             createUser,
             updateRealm,
         ]

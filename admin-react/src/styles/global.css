@@ -200,6 +200,9 @@ body,
     --component-radius: var(--kc-radius);
     --component-shadow: var(--kc-shadow);
     --primary: var(--kc-primary);
+
+    --kc-header-height: 72px;
+    --kc-drawer-w: 650px;
 }
 
 /* Dark mode support (future enhancement) */
@@ -636,57 +639,80 @@ body {
     font-family: inherit;
 }
 
+/* overlay sits BELOW header */
 .kcDrawerOverlay {
     position: fixed;
-    inset: 0;
-    background: rgba(2, 6, 23, 0.45);
-    z-index: 999;
-    display: flex;
-    justify-content: flex-end;
+    top: var(--kc-header-height);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 300;
+    background: rgba(2, 6, 23, 0.40);
+    backdrop-filter: blur(2px);
 }
 
+/* drawer fills remaining space */
 .kcDrawer {
-    width: min(650px, 92vw);
-    height: 100%;
-    background: #fff;
-    border-left: 1px solid rgba(15, 23, 42, 0.12);
-    box-shadow: -24px 0 60px rgba(2, 6, 23, 0.20);
+    height: calc(100vh - var(--kc-header-height));
+    margin-left: auto;
+}
+
+/* Drawer base */
+.kcDrawer {
+    position: absolute;
+    top: 0;
+    right: 0;
+
+    width: min(var(--kc-drawer-w), 92vw);
+    height: calc(100vh - var(--kc-header-height));
+
     display: flex;
     flex-direction: column;
-    animation: kcDrawerIn 180ms ease-out;
+
+    background: rgba(255, 255, 255, 0.96);
+    border-left: 1px solid rgba(15, 23, 42, 0.12);
+    box-shadow: -18px 0 50px rgba(2, 6, 23, 0.22);
+
+    overflow: hidden;
+
+    transform: translateX(14px);
+    opacity: 0;
+    animation: kcDrawerIn 160ms ease-out forwards;
+}
+
+/* Header stays clean + sticky */
+.kcDrawerHeader {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    padding: 14px 16px;
+
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.10);
 }
 
 @keyframes kcDrawerIn {
-    from {
-        transform: translateX(16px);
-        opacity: 0.6;
-    }
-
     to {
         transform: translateX(0);
         opacity: 1;
     }
 }
 
-.kcDrawerHeader {
-    padding: 16px 16px 12px;
-    border-bottom: 1px solid #e5e7eb;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-}
-
 .kcDrawerTitle {
     font-size: 16px;
-    font-weight: 900;
+    font-weight: 950;
     color: #0f172a;
 }
 
 .kcDrawerSubtitle {
     margin-top: 4px;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 800;
     color: #64748b;
 }
 
@@ -698,35 +724,126 @@ body {
 }
 
 .kcDrawerTab {
-    border: 1px solid #e5e7eb;
-    background: #fff;
-    padding: 8px 12px;
-    border-radius: 999px;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    background: rgba(15, 23, 42, 0.02);
+    padding: 7px 12px;
+    border-radius: 10px;
     font-weight: 800;
-    font-size: 13px;
-    color: #334155;
+    font-size: 12px;
+    color: #0f172a;
     cursor: pointer;
 }
 
 .kcDrawerTab.is-active {
-    background: #eef2ff;
-    border-color: #c7d2fe;
-    color: #3730a3;
+    background: rgba(15, 23, 42, 0.06);
+    border-color: rgba(15, 23, 42, 0.18);
+    color: #0f172a;
 }
 
+/* Body scroll */
 .kcDrawerBody {
-    padding: 16px;
-    overflow: auto;
     flex: 1;
+    overflow: auto;
+    padding: 14px 16px 90px;
 }
 
-.kcDrawerFooter {
-    padding: 12px 16px;
-    border-top: 1px solid #e5e7eb;
+/* Sticky risk banner under header */
+.kcDrawerRiskBar {
+    position: sticky;
+    top: 64px;
+    /* header height inside drawer; tweak if needed */
+    z-index: 2;
+
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+    background: rgba(248, 250, 252, 0.92);
+    backdrop-filter: blur(10px);
+}
+
+.kcRiskRow {
     display: flex;
-    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Section styling */
+.kcDrawerSectionTitle {
+    font-size: 13px;
+    font-weight: 950;
+    color: #0f172a;
+    margin: 18px 0 8px;
+}
+
+.kcSectionHeader {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 8px 0 10px;
+}
+
+.kcSectionHeaderLeft {
+    min-width: 0;
+}
+
+.kcSectionMeta {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.kcDot {
+    opacity: .5;
+    padding: 0 6px;
+}
+
+.kcSectionHeaderRight {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+@media (max-width: 720px) {
+    .kcSectionHeader {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .kcSectionHeaderRight {
+        justify-content: flex-end;
+    }
+}
+
+.kcSectionCard {
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    background: rgba(15, 23, 42, 0.02);
+    border-radius: 14px;
+    padding: 12px;
+}
+
+/* Footer sticky */
+.kcDrawerFooter {
     position: sticky;
     bottom: 0;
+    z-index: 3;
+
+    padding: 12px 16px;
+    border-top: 1px solid rgba(15, 23, 42, 0.10);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 -12px 26px rgba(2, 6, 23, 0.08);
+
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.kcDrawerFooterRight {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
 }
 
 .kcDrawerSearch {
@@ -790,16 +907,21 @@ body {
 
 .kcDrawerSectionGrid {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+}
+
+@media (max-width: 520px) {
+    .kcDrawerSectionGrid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .kcDrawerSectionTitle {
-    font-size: 1.05rem;
-    font-weight: 700;
-    margin: 10px 0 6px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #e5e7eb;
+    font-size: 0.9rem;
+    font-weight: 800;
+    margin: 14px 0 8px;
+    color: #0f172a;
 }
 
 .kcDrawerRow {
@@ -857,4 +979,182 @@ body {
         justify-content: flex-start;
         flex-wrap: wrap;
     }
+}
+
+.kcFieldLabel {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.kcFieldValue {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f172a;
+    line-height: 1.35;
+}
+
+/* Timeline: vertical connector */
+.kcTimeline {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.kcTimelineItem {
+    position: relative;
+    padding-left: 18px;
+}
+
+.kcTimelineItem::before {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 12px;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    background: #0b1f3a;
+    box-shadow: 0 0 0 3px rgba(11, 31, 58, 0.15);
+}
+
+.kcTimelineItem::after {
+    content: "";
+    position: absolute;
+    left: 10px;
+    top: 24px;
+    bottom: -12px;
+    width: 2px;
+    background: rgba(15, 23, 42, 0.10);
+}
+
+.kcTimelineItem:last-child::after {
+    display: none;
+}
+
+.kcTimelineCard {
+    border: 1px solid rgba(15, 23, 42, 0.10);
+    background: #fff;
+    border-radius: 14px;
+    padding: 10px 12px;
+
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.kcTimelineLeft {
+    min-width: 0;
+}
+
+.kcTimelineType {
+    font-weight: 950;
+    font-size: 12px;
+    letter-spacing: .02em;
+    color: #0f172a;
+}
+
+.kcTimelineMsg {
+    margin-top: 4px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #475569;
+}
+
+.kcTimelineRight {
+    text-align: right;
+    flex-shrink: 0;
+}
+
+.kcTimelineActor {
+    font-size: 12px;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.kcTimelineAt {
+    margin-top: 4px;
+    font-size: 11px;
+    font-weight: 800;
+    color: #64748b;
+}
+
+.kcPageTop {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin: 6px 0 12px;
+}
+
+.kcPageTopLeft {
+    min-width: 0;
+}
+
+.kcPageTitle {
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.15;
+}
+
+.kcPageSubtitle {
+    margin-top: 4px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.kcPageTopRight {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* On small screens, stack button below title */
+@media (max-width: 720px) {
+    .kcPageTop {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .kcPageTopRight {
+        justify-content: flex-end;
+    }
+}
+
+.kc_dateFilter {
+    position: relative;
+}
+
+.kc_dateMenu {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    width: 260px;
+    padding: 14px;
+
+    background: #fff;
+    border: 1px solid rgba(15, 23, 42, 0.12);
+    border-radius: 12px;
+
+    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.18);
+    z-index: 100;
+}
+
+.kc_dateMenuRow {
+    display: grid;
+    grid-template-columns: 50px 1fr;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.kc_dateMenuActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Clock, Calendar, ChevronRight } from "lucide-react";
 import { LayoutGrid } from "lucide-react";
 import { ROUTES } from "../../config/routes";
@@ -18,12 +18,18 @@ interface HeaderProps {
     subtitle?: string;
     breadcrumbs?: BreadcrumbItem[];
     onMenuClick: () => void;
+    tabs?: { label: string; path: string }[];
+    activePath?: string;
 }
 
-const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuClick, tabs, activePath }) => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+
+    const { pathname } = useLocation();
+    const currentPath = activePath ?? pathname;
 
     // ===== Portal quick menu state =====
     const [showQuickMenu, setShowQuickMenu] = useState(false);
@@ -211,6 +217,45 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
             </nav>
         );
     };
+
+    {
+        tabs && tabs.length > 0 && (
+            <div
+                style={{
+                    display: "flex",
+                    gap: "0.5rem",
+                    marginTop: "0.65rem",
+                    flexWrap: "wrap",
+                }}
+            >
+                {tabs.map((t) => {
+                    const isActive = currentPath === t.path;
+                    return (
+                        <button
+                            key={t.path}
+                            onClick={() => navigate(t.path)}
+                            style={{
+                                border: "1px solid rgba(255,255,255,0.22)",
+                                background: isActive ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.14)",
+                                backdropFilter: "blur(10px)",
+                                WebkitBackdropFilter: "blur(10px)",
+                                color: "#ffffff",
+                                padding: "0.45rem 0.7rem",
+                                borderRadius: "0.65rem",
+                                cursor: "pointer",
+                                fontSize: "0.78rem",
+                                fontWeight: 700,
+                                letterSpacing: "0.02em",
+                                boxShadow: isActive ? "inset 0 1px 0 rgba(255,255,255,0.22)" : "none",
+                            }}
+                        >
+                            {t.label}
+                        </button>
+                    );
+                })}
+            </div>
+        )
+    }
 
     return (
         <header
