@@ -288,21 +288,6 @@ const ApplicationsContent: React.FC<{
 // ============================================================================
 // DETAIL VIEW
 // ============================================================================
-const cardStyle: React.CSSProperties = {
-    background: "#fff",
-    border: "1px solid #e5e7eb",
-    borderRadius: 16,
-    padding: "1rem",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-    display: "flex",
-    alignItems: "center",
-    gap: 8,
-    fontWeight: 900,
-    color: "#111827",
-    marginBottom: 10,
-};
 
 const monoStyle: React.CSSProperties = {
     fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
@@ -378,8 +363,8 @@ const ApplicationDetailContent: React.FC<{
 
             {/* Cards */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
-                <div style={cardStyle}>
-                    <div style={cardTitleStyle}>
+                <div className="cardStyle">
+                    <div className="cardTitleStyle">
                         <Key size={16} /> Client Basics
                     </div>
                     <Row label="Client ID" value={app.clientId} mono />
@@ -389,8 +374,8 @@ const ApplicationDetailContent: React.FC<{
                     <Row label="Last Updated" value={dt ? formatFull(dt) : "-"} />
                 </div>
 
-                <div style={cardStyle}>
-                    <div style={cardTitleStyle}>
+                <div className="cardStyle">
+                    <div className="cardTitleStyle">
                         <Globe size={16} /> URLs
                     </div>
                     <Row label="Root URL" value={app.rootUrl || "—"} mono />
@@ -398,8 +383,8 @@ const ApplicationDetailContent: React.FC<{
                     <Row label="Admin URL" value={app.adminUrl || "—"} mono />
                 </div>
 
-                <div style={cardStyle}>
-                    <div style={cardTitleStyle}>
+                <div className="cardStyle">
+                    <div className="cardTitleStyle">
                         <Layers size={16} /> Redirect URIs
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -422,8 +407,8 @@ const ApplicationDetailContent: React.FC<{
                     </div>
                 </div>
 
-                <div style={cardStyle}>
-                    <div style={cardTitleStyle}>
+                <div className="cardStyle">
+                    <div className="cardTitleStyle">
                         <Shield size={16} /> Web Origins
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -447,8 +432,8 @@ const ApplicationDetailContent: React.FC<{
                 </div>
 
                 {app.description && (
-                    <div style={{ ...cardStyle, gridColumn: "1 / -1" }}>
-                        <div style={cardTitleStyle}>
+                    <div className="cardStyle" style={{ gridColumn: "1 / -1" }}>
+                        <div className="cardTitleStyle">
                             <Shield size={16} /> Description
                         </div>
                         <div style={{ color: "#374151", fontSize: "0.95rem", fontWeight: 600 }}>{app.description}</div>

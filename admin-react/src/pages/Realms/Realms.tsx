@@ -2503,12 +2503,12 @@ const RealmDetailContent: React.FC<{
                             <div className="kc-confirmHeader" style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                                 <div>
                                     <div className="kc-confirmTitle">Manage Realm</div>
-                                    <div className="kc-text-subtitle kc-text-muted" style={{ marginTop: 4 }}>
+                                    <div className="kc-text-subtitle kc-text-muted" style={{ marginTop: 4, color: "#7dd3fc" }}>
                                         {realm.name} • Security controls and lifecycle settings
                                     </div>
                                 </div>
 
-                                <button className="kc-btn kc-btn-ghost" onClick={handleCloseManage}>
+                                <button className="kc-btn kc-btn-ghost" style={{ width: 40, color: "#7dd3fc" }} onClick={handleCloseManage}>
                                     <X size={16} />
                                 </button>
                             </div>
@@ -2516,7 +2516,7 @@ const RealmDetailContent: React.FC<{
                             <div className="kc-confirmBody" style={{ display: "grid", gap: 14 }}>
                                 {/* Status */}
                                 <div style={{ display: "grid", gap: 8 }}>
-                                    <div style={{ fontWeight: 900 }}>Realm Status</div>
+                                    <div style={{ fontWeight: 700 }}>Realm Status</div>
                                     <select
                                         className="kc-select"
                                         value={draft.status}
@@ -2542,7 +2542,7 @@ const RealmDetailContent: React.FC<{
                                     }}
                                 >
                                     <div>
-                                        <div style={{ fontWeight: 900 }}>Require MFA</div>
+                                        <div style={{ fontWeight: 700 }}>Require MFA</div>
                                         <div style={{ fontSize: 13, color: "#64748b", fontWeight: 700 }}>
                                             Enforce MFA for users accessing applications in this realm.
                                         </div>
@@ -2558,7 +2558,7 @@ const RealmDetailContent: React.FC<{
 
                                 {/* Password inheritance */}
                                 <div style={{ display: "grid", gap: 8 }}>
-                                    <div style={{ fontWeight: 900 }}>Password Policy</div>
+                                    <div style={{ fontWeight: 700 }}>Password Policy</div>
                                     <select
                                         className="kc-select"
                                         value={draft.passwordInheritance}
@@ -2573,7 +2573,7 @@ const RealmDetailContent: React.FC<{
 
                                 {/* Session timeout */}
                                 <div style={{ display: "grid", gap: 8 }}>
-                                    <div style={{ fontWeight: 900 }}>Session Timeout (minutes)</div>
+                                    <div style={{ fontWeight: 700 }}>Session Timeout (minutes)</div>
                                     <input
                                         className="kc-input"
                                         type="number"
@@ -2591,7 +2591,7 @@ const RealmDetailContent: React.FC<{
 
                                 {/* Danger zone */}
                                 <div style={{ display: "grid", gap: 10 }}>
-                                    <div style={{ fontWeight: 900, color: "#b91c1c" }}>Danger Zone</div>
+                                    <div style={{ fontWeight: 700, color: "#b91c1c" }}>Danger Zone</div>
                                     <button
                                         className={`kc-btn ${isActive ? "kc-btn-danger" : "kc-btn-primary"}`}
                                         onClick={() => {

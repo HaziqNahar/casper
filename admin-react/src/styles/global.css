@@ -329,6 +329,22 @@ body {
     border-radius: var(--r-sm);
 }
 
+.cardStyle {
+    background: "#fff";
+    border: "1px solid #e5e7eb";
+    border-radius: 16;
+    padding: "1rem";
+}
+
+.cardTitleStyle {
+    display: flex;
+    align-items: center;
+    gap: 8;
+    font-weight: 900;
+    color: "#111827";
+    margin-bottom: 10;
+}
+
 /* =========================================================
    4) GENERAL UI (kept from your old file)
    ========================================================= */

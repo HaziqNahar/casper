@@ -11,6 +11,7 @@ import { MultiSelectCheckbox } from "../../../components/common/MultiSelectCheck
 import AccessRequestDrawer from "./AccessRequestDrawer";
 import CreateAccessRequestModal from "./CreateAccessRequestModal";
 import { useAccessRequestsLive } from "./useAccessRequestsLive";
+import { getAccessActor } from "../../../context/accessCurrentUser";
 
 import {
     loadAccessRequests,
@@ -32,8 +33,6 @@ import {
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 
-const actor = "admin";
-
 const statusVariant = (s: string) => {
     if (s === "Draft") return "neutral";
     if (s === "Submitted") return "info";
@@ -45,6 +44,7 @@ const statusVariant = (s: string) => {
 };
 
 const RealmAccessRequest: React.FC = () => {
+    const actor = getAccessActor();
     const [rows, setRows] = useState<AccessRequest[]>(() => loadAccessRequests());
     const [events, setEvents] = useState(() => loadAccessEvents());
 

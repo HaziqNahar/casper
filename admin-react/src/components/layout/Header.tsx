@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Menu, Clock, Calendar, ChevronRight } from "lucide-react";
 import { LayoutGrid } from "lucide-react";
 import { ROUTES } from "../../config/routes";
+import AccessActorSwitcher from "../access/AccessActorSwitcher";
 
 const FONT_FAMILY =
     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
@@ -74,38 +75,6 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const widgetStyle: React.CSSProperties = {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        padding: '0.5rem 0.875rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        borderRadius: '0.375rem',
-        color: '#ffffff',
-        fontSize: '0.8rem',
-        fontWeight: 500,
-        height: '2.25rem',
-    };
-
-    const iconButtonStyle: React.CSSProperties = {
-        padding: '0.5rem',
-        borderRadius: '0.375rem',
-        backgroundColor: 'rgba(255, 255, 255, 0.15)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255, 255, 255, 0.2)',
-        color: 'var(--kc-primary, #3b82f6)',
-        // color: '#ffffff',
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'all 0.2s',
-        height: '2.25rem',
-        width: '2.25rem',
-        fontFamily: 'inherit',
-    };
 
     const closeQuickMenu = useCallback(() => {
         setShowQuickMenu(false);
@@ -309,8 +278,17 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                         boxShadow: "inset 0 1px 0 rgba(255,255,255,0.30), 0 8px 18px rgba(0,0,0,0.12)",
                     }}
                 >
+                    <div
+                        style={{
+                            display: "flex",
+                            alignItems: "center",
+                            marginRight: "0.25rem",
+                        }}
+                    >
+                        <AccessActorSwitcher />
+                    </div>
                     {/* Date/Time widget (KEEP orange icons + blue text) */}
-                    <div style={widgetStyle}>
+                    <div className="widgetstyle">
                         <Calendar style={{ height: "0.9rem", width: "0.9rem", color: "#F68D2E" }} />
                         <span style={{ color: "#002855" }}>{formatDate(currentTime)}</span>
 
@@ -338,9 +316,9 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                     {/* Quick Menu (dropdown kept EXACTLY as-is) */}
                     <div ref={quickMenuRef} style={{ position: "relative" }}>
                         <button
+                            className="iconButtonStyle"
                             onClick={() => setShowQuickMenu(!showQuickMenu)}
                             style={{
-                                ...iconButtonStyle,
                                 backgroundColor: showQuickMenu ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.15)",
                             }}
                             title="Quick Menu"

@@ -18,7 +18,11 @@ import {
   AccessRequestEvent,
 } from "./accessRequestsStore";
 
-import { evaluateGovernance, governanceSummary } from "./governancePolicy";
+import {
+  evaluateGovernance,
+  governanceSummary,
+  canProceed,
+} from "./governancePolicy";
 
 import {
   DateRange,
@@ -34,12 +38,11 @@ import {
 
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
-
-const actor = "approver.1";
+import { getAccessActor } from "../../../context/accessCurrentUser";
 
 type ApproveRow = AccessRequest & {
   applicationName?: string;
-  sortTimeISO?: string; // for date filter
+  sortTimeISO?: string;
   slaMinutes?: number | null;
 };
 
@@ -60,17 +63,15 @@ function diffHuman(ms: number) {
 }
 
 export default function RealmAccessApprove() {
+  const actor = getAccessActor();
   const todayISO = useMemo(() => getTodayISO(), []);
 
-  // data
   const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
   const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
 
-  // drawer
   const [selected, setSelected] = useState<AccessRequest | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // filters
   const [realmFilter, setRealmFilter] = useState<string[]>([]);
   const [appFilter, setAppFilter] = useState<string[]>([]);
   const [targetUserFilter, setTargetUserFilter] = useState<string[]>([]);
@@ -79,7 +80,6 @@ export default function RealmAccessApprove() {
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [dateRange, setDateRange] = useState<DateRange>({});
 
-  // date dropdown
   const [dateMenuOpen, setDateMenuOpen] = useState(false);
   const dateRef = useRef<HTMLDivElement>(null);
 
@@ -97,6 +97,7 @@ export default function RealmAccessApprove() {
     setRequests(loadAccessRequests());
     setEvents(loadAccessEvents());
   };
+
   useAccessRequestsLive(refresh);
 
   const clearAllFilters = () => {
@@ -110,27 +111,23 @@ export default function RealmAccessApprove() {
     setDateMenuOpen(false);
   };
 
-  // request lookup
   const reqById = useMemo(() => {
     const m = new Map<string, AccessRequest>();
     for (const r of requests) m.set(r.id, r);
     return m;
   }, [requests]);
 
-  // first SUBMITTED event per requestId (for SLA)
   const submittedAtByReqId = useMemo(() => {
     const m = new Map<string, string>();
     for (const e of events) {
       if (String(e.type) !== "SUBMITTED") continue;
       const id = String(e.requestId);
       const prev = m.get(id);
-      // keep earliest submitted
       if (!prev || String(e.at) < prev) m.set(id, String(e.at));
     }
     return m;
   }, [events]);
 
-  // enrich rows
   const rows: ApproveRow[] = useMemo(() => {
     const base = requests.map((r) => {
       const app =
@@ -157,14 +154,10 @@ export default function RealmAccessApprove() {
       };
     });
 
-    // Default “Approval Queue” feel:
-    // if user hasn't chosen a status filter, show only Submitted.
     if (!statusFilter.length) return base.filter((r) => r.status === "Submitted");
-
     return base;
   }, [requests, submittedAtByReqId, statusFilter.length]);
 
-  // ---- options (cascaded: App depends on Realm selection) ----
   const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
 
   const appOptions = useMemo(
@@ -178,7 +171,6 @@ export default function RealmAccessApprove() {
     [rows, realmFilter]
   );
 
-  // prune app selections when realm changes
   useEffect(() => {
     setAppFilter((prev) => pruneSelectedByOptions(prev, appOptions));
   }, [appOptions]);
@@ -186,13 +178,8 @@ export default function RealmAccessApprove() {
   const targetUserOptions = useMemo(() => buildOptions(rows, (r) => r.targetUser), [rows]);
   const roleOptions = useMemo(() => buildOptions(rows, (r) => r.roleRequested), [rows]);
   const requesterOptions = useMemo(() => buildOptions(rows, (r) => r.requester), [rows]);
+  const statusOptions = useMemo(() => buildOptions(requests, (r) => r.status), [requests]);
 
-  const statusOptions = useMemo(
-    () => buildOptions(requests as any, (r: AccessRequest) => r.status),
-    [requests]
-  );
-
-  // ---- filtered rows using accessFilterUtils ----
   const filteredRows: ApproveRow[] = useMemo(() => {
     return applyFiltersWithDate<ApproveRow>({
       rows,
@@ -206,7 +193,7 @@ export default function RealmAccessApprove() {
       },
       date: {
         range: dateRange,
-        getValue: (r) => r.sortTimeISO, // Updated-ish
+        getValue: (r) => r.sortTimeISO,
       },
     });
   }, [
@@ -257,8 +244,6 @@ export default function RealmAccessApprove() {
         align: "center",
         render: (v) => <Badge variant={statusVariant(String(v)) as any}>{String(v)}</Badge>,
       },
-
-      // SLA: waiting since SUBMITTED
       {
         key: "sla",
         label: "SLA",
@@ -271,8 +256,6 @@ export default function RealmAccessApprove() {
           return <span style={{ fontWeight: 800 }}>{diffHuman(row.slaMinutes * 60_000)}</span>;
         },
       },
-
-      // Governance
       {
         key: "governance",
         label: "Governance",
@@ -283,18 +266,31 @@ export default function RealmAccessApprove() {
           const g = evaluateGovernance({ request: row, actor, action: "approve" });
           const txt = governanceSummary(g);
 
-          // map to badge variants you already use
           const variant =
-            g.allowed ? ("success" as any) : g.severity === "warn" ? ("info" as any) : ("danger" as any);
+            g.blocks.length > 0
+              ? ("danger" as any)
+              : g.requires.length > 0
+                ? ("warning" as any)
+                : g.warns.length > 0
+                  ? ("info" as any)
+                  : ("success" as any);
+
+          const label =
+            g.blocks.length > 0
+              ? "Blocked"
+              : g.requires.length > 0
+                ? "Required"
+                : g.warns.length > 0
+                  ? "Warn"
+                  : "Pass";
 
           return (
-            <span title={txt}>
-              <Badge variant={variant}>{g.allowed ? "Pass" : "Block"}</Badge>
+            <span title={txt || "No governance issues"}>
+              <Badge variant={variant}>{label}</Badge>
             </span>
           );
         },
       },
-
       {
         key: "updatedAt",
         label: "Updated",
@@ -304,7 +300,6 @@ export default function RealmAccessApprove() {
           return v ? new Date(String(v)).toLocaleString() : "—";
         },
       },
-
       {
         key: "actions",
         label: "Actions",
@@ -318,12 +313,12 @@ export default function RealmAccessApprove() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 className="kc-btn kc-btn-primary"
-                title={title}
+                title={title || "Open request"}
                 onClick={(e) => {
                   e.stopPropagation();
                   openRequest(String(row.id));
                 }}
-                disabled={!g.allowed}
+                disabled={!canProceed(g)}
               >
                 Review
               </button>
@@ -445,7 +440,6 @@ export default function RealmAccessApprove() {
                     portal
                   />
 
-                  {/* Date dropdown */}
                   <div className="kc_filterGroup" ref={dateRef}>
                     <div className="kc_dateFilterWrap">
                       <button
@@ -506,7 +500,6 @@ export default function RealmAccessApprove() {
                     </div>
                   </div>
 
-                  {/* clear */}
                   {hasAnyFilters ? (
                     <button
                       type="button"
@@ -533,6 +526,7 @@ export default function RealmAccessApprove() {
           <AccessRequestDrawer
             open={drawerOpen}
             mode="approve"
+            actor={actor}
             request={selected}
             events={events}
             onClose={() => setDrawerOpen(false)}
@@ -541,7 +535,7 @@ export default function RealmAccessApprove() {
               if (!req) return;
 
               const g = evaluateGovernance({ request: req, actor, action: "approve" });
-              if (!g.allowed) {
+              if (!canProceed(g)) {
                 window.alert(governanceSummary(g));
                 return;
               }
@@ -560,8 +554,8 @@ export default function RealmAccessApprove() {
               const req = reqById.get(String(id));
               if (!req) return;
 
-              const g = evaluateGovernance({ request: req, actor, action: "approve" });
-              if (!g.allowed) {
+              const g = evaluateGovernance({ request: req, actor, action: "reject" });
+              if (!canProceed(g)) {
                 window.alert(governanceSummary(g));
                 return;
               }

@@ -1,4 +1,3 @@
-// src/pages/Realms/access/RealmAccessVerify.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -31,11 +30,10 @@ import {
 } from "./accessFilterUtils";
 
 import { evaluateGovernance, canProceed, governanceSummary } from "./governancePolicy";
+import { getAccessActor } from "../../../context/accessCurrentUser";
 
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
-
-const actor = "admin";
 
 const statusVariant = (s: string) => {
     if (s === "Draft") return "neutral";
@@ -52,6 +50,7 @@ type VerifyRow = AccessRequest & {
 };
 
 const RealmAccessVerify: React.FC = () => {
+    const actor = getAccessActor();
     const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
     const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
 
@@ -189,7 +188,7 @@ const RealmAccessVerify: React.FC = () => {
             return;
         }
 
-        updateRequest(id, { status: "Verified", verifier: actor }, actor, "VERIFIED", "Verified by verifier.");
+        updateRequest(id, { status: "Verified", verifier: String(actor) }, actor, "VERIFIED", "Verified by verifier");
         setDrawerOpen(false);
         refresh();
     };

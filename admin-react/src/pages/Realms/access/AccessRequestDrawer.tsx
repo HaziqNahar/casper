@@ -13,7 +13,6 @@ type Props = {
     events: AccessRequestEvent[];
     onClose: () => void;
 
-    /** IMPORTANT: pass the currently logged-in user/actor from each page */
     actor?: string;
 
     onSubmit?: (id: string) => void;
@@ -72,7 +71,6 @@ function pillStyle(kind: "neutral" | "info" | "success" | "danger" | "warn") {
     return base;
 }
 
-// ordering for downgrade (highest privilege first)
 const ROLE_ORDER = ["realm_admin", "realm_manager", "realm_user"];
 
 function roleRank(role?: string) {
@@ -81,7 +79,6 @@ function roleRank(role?: string) {
     return idx === -1 ? 999 : idx;
 }
 
-// workflow stepper helpers
 type StepState = "done" | "active" | "pending";
 
 function getStepState(requestStatus: string, step: "request" | "approve" | "verify" | "audit"): StepState {
@@ -135,6 +132,17 @@ function stepColors(state: StepState) {
     };
 }
 
+// governance helpers for your actual policy shape
+function govCanProceed(gov?: { blocks: string[]; requires: string[]; warns: string[] } | null) {
+    if (!gov) return true;
+    return gov.blocks.length === 0 && gov.requires.length === 0;
+}
+
+function govHasWarnOnly(gov?: { blocks: string[]; requires: string[]; warns: string[] } | null) {
+    if (!gov) return false;
+    return gov.blocks.length === 0 && gov.requires.length === 0 && gov.warns.length > 0;
+}
+
 export default function AccessRequestDrawer({
     open,
     mode,
@@ -150,7 +158,6 @@ export default function AccessRequestDrawer({
 }: Props) {
     if (!open || !request) return null;
 
-    // newest-first
     const reqEventsNewest = useMemo(() => {
         return events
             .filter((e) => e.requestId === request.id)
@@ -158,12 +165,10 @@ export default function AccessRequestDrawer({
             .sort((a, b) => (a.at < b.at ? 1 : -1));
     }, [events, request.id]);
 
-    // ascending for step meta lookups
     const reqEventsAsc = useMemo(() => {
         return reqEventsNewest.slice().sort((a, b) => (a.at > b.at ? 1 : -1));
     }, [reqEventsNewest]);
 
-    // --- Risk / SLA / Expiry ---
     const risk = useMemo(() => {
         const role = (request.roleRequested || "").toLowerCase();
         const highPrivilege = role.includes("admin") || role.includes("manager");
@@ -206,21 +211,18 @@ export default function AccessRequestDrawer({
         return { label: `Expires in ${days} days`, kind: "info" as const, sub: request.endDate };
     }, [request.timeBound, request.endDate]);
 
-    // --- Actions allowed by workflow state ---
     const canSubmit = mode === "request" && request.status === "Draft";
     const canCancel = mode === "request" && request.status !== "Verified" && request.status !== "Cancelled";
     const canApprove = mode === "approve" && request.status === "Submitted";
     const canVerify = mode === "verify" && request.status === "Approved";
 
-    // Actor resolution: prefer prop, fallback to request fields (safe)
     const currentActor = useMemo(() => {
-        if (actor && actor.trim()) return actor.trim();
+        if (actor && actor.toString().trim()) return actor.trim();
         if (mode === "approve") return request.approver || "";
         if (mode === "verify") return request.verifier || "";
         return request.requester || "";
     }, [actor, mode, request.approver, request.verifier, request.requester]);
 
-    // Governance
     const govSubmit = useMemo(
         () => evaluateGovernance({ request, actor: currentActor, action: "submit" }),
         [request, currentActor]
@@ -234,7 +236,6 @@ export default function AccessRequestDrawer({
         [request, currentActor]
     );
 
-    // show one banner relevant to the current mode/action surface
     const govForMode = useMemo(() => {
         if (mode === "request") return govSubmit;
         if (mode === "approve") return govApprove;
@@ -243,8 +244,9 @@ export default function AccessRequestDrawer({
     }, [mode, govSubmit, govApprove, govVerify]);
 
     const govTextForMode = useMemo(() => (govForMode ? governanceSummary(govForMode) : ""), [govForMode]);
+    const govAllowedForMode = useMemo(() => govCanProceed(govForMode), [govForMode]);
+    const govWarnOnlyForMode = useMemo(() => govHasWarnOnly(govForMode), [govForMode]);
 
-    // Approval Conditions
     const [approvalComment, setApprovalComment] = useState("");
     const [selectedRole, setSelectedRole] = useState<string>(request.roleRequested);
     const [makeTimeBound, setMakeTimeBound] = useState<boolean>(!!request.timeBound);
@@ -298,7 +300,6 @@ export default function AccessRequestDrawer({
         return parts.join(" | ");
     };
 
-    // --- Workflow stepper model ---
     const stepModel = useMemo(() => {
         const stReq = getStepState(request.status, "request");
         const stApp = getStepState(request.status, "approve");
@@ -328,9 +329,9 @@ export default function AccessRequestDrawer({
     }, [reqEventsAsc, request.status, mode]);
 
     const governanceBlocksAction =
-        (mode === "request" && canSubmit && govSubmit && !govSubmit.allowed) ||
-        (mode === "approve" && canApprove && govApprove && !govApprove.allowed) ||
-        (mode === "verify" && canVerify && govVerify && !govVerify.allowed);
+        (mode === "request" && canSubmit && !govCanProceed(govSubmit)) ||
+        (mode === "approve" && canApprove && !govCanProceed(govApprove)) ||
+        (mode === "verify" && canVerify && !govCanProceed(govVerify));
 
     return (
         <div
@@ -347,7 +348,6 @@ export default function AccessRequestDrawer({
                 aria-label="Access request details drawer"
                 onMouseDown={(e) => e.stopPropagation()}
             >
-                {/* Header */}
                 <div className="kcDrawerHeader">
                     <div>
                         <div className="kcDrawerTitle">Access Request</div>
@@ -361,7 +361,6 @@ export default function AccessRequestDrawer({
                     </button>
                 </div>
 
-                {/* Risk + SLA strip */}
                 <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(15,23,42,0.10)" }}>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <span style={pillStyle(risk.kind)}>
@@ -384,15 +383,22 @@ export default function AccessRequestDrawer({
                     </div>
                 </div>
 
-                {/* Governance banner */}
                 {govForMode && (
-                    <div className={`kcGovBanner ${govForMode.allowed ? "is-ok" : "is-blocked"}`}>
-                        <div className="kcGovBannerTitle">{govForMode.allowed ? "Governance check" : "Governance blocked"}</div>
+                    <div
+                        className={`kcGovBanner ${govAllowedForMode ? (govWarnOnlyForMode ? "is-warn" : "is-ok") : "is-blocked"
+                            }`}
+                    >
+                        <div className="kcGovBannerTitle">
+                            {govAllowedForMode
+                                ? govWarnOnlyForMode
+                                    ? "Governance warning"
+                                    : "Governance check"
+                                : "Governance blocked"}
+                        </div>
                         <div className="kcGovBannerText">{govTextForMode}</div>
                     </div>
                 )}
 
-                {/* Workflow stepper */}
                 <div className="kcWorkflow" style={{ padding: "14px", borderBottom: "1px solid rgba(15,23,42,0.08)" }}>
                     <div className="kcWorkflowTitle" style={{ fontWeight: 900, fontSize: "0.85rem", marginBottom: 10, color: "var(--kc-text,#0f172a)" }}>
                         Workflow
@@ -444,9 +450,7 @@ export default function AccessRequestDrawer({
                     </div>
                 </div>
 
-                {/* Body */}
                 <div className="kcDrawerBody">
-                    {/* Approval Conditions */}
                     {canApprove && (
                         <>
                             <div className="kcDrawerSectionTitle">Approval Conditions</div>
@@ -538,7 +542,6 @@ export default function AccessRequestDrawer({
                         </>
                     )}
 
-                    {/* Overview */}
                     <div className="kcDrawerSectionTitle">Overview</div>
                     <div className="kcSectionCard">
                         <div className="kcDrawerSectionGrid">
@@ -584,13 +587,11 @@ export default function AccessRequestDrawer({
                         </div>
                     </div>
 
-                    {/* Justification */}
                     <div className="kcDrawerSectionTitle">Justification</div>
                     <div className="kcSectionCard">
                         <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{request.justification || "—"}</div>
                     </div>
 
-                    {/* Duration */}
                     <div className="kcDrawerSectionTitle">Duration</div>
                     <div className="kcSectionCard">
                         <div className="kcDrawerSectionGrid">
@@ -609,7 +610,6 @@ export default function AccessRequestDrawer({
                         </div>
                     </div>
 
-                    {/* Timeline */}
                     <div className="kcDrawerSectionTitle">Timeline</div>
                     <div className="kcSectionCard">
                         {reqEventsNewest.length === 0 ? (
@@ -652,14 +652,13 @@ export default function AccessRequestDrawer({
                     </div>
                 </div>
 
-                {/* Sticky footer actions */}
                 <div className="kcDrawerFooter">
                     <div className="kcDrawerFooterRight">
                         {canSubmit && (
                             <button
                                 className="kc-btn kc-btn-primary"
-                                disabled={!!govSubmit && !govSubmit.allowed}
-                                title={govSubmit && !govSubmit.allowed ? govTextForMode : "Submit"}
+                                disabled={!govCanProceed(govSubmit)}
+                                title={!govCanProceed(govSubmit) ? governanceSummary(govSubmit) : "Submit"}
                                 onClick={() => onSubmit?.(request.id)}
                             >
                                 Submit
@@ -676,10 +675,10 @@ export default function AccessRequestDrawer({
                             <>
                                 <button
                                     className="kc-btn kc-btn-primary"
-                                    disabled={!!govApprove && !govApprove.allowed}
-                                    title={govApprove && !govApprove.allowed ? governanceSummary(govApprove) : "Approve"}
+                                    disabled={!govCanProceed(govApprove)}
+                                    title={!govCanProceed(govApprove) ? governanceSummary(govApprove) : "Approve"}
                                     onClick={() => {
-                                        if (govApprove && !govApprove.allowed) return;
+                                        if (!govCanProceed(govApprove)) return;
 
                                         const err = validateApproval();
                                         setApprovalError(err);
@@ -694,10 +693,10 @@ export default function AccessRequestDrawer({
 
                                 <button
                                     className="kc-btn kc-btn-ghost"
-                                    disabled={!!govApprove && !govApprove.allowed}
-                                    title={govApprove && !govApprove.allowed ? governanceSummary(govApprove) : "Reject"}
+                                    disabled={!govCanProceed(govApprove)}
+                                    title={!govCanProceed(govApprove) ? governanceSummary(govApprove) : "Reject"}
                                     onClick={() => {
-                                        if (govApprove && !govApprove.allowed) return;
+                                        if (!govCanProceed(govApprove)) return;
 
                                         if (!approvalComment.trim()) {
                                             setApprovalError("Rejection comment is required.");
@@ -714,10 +713,10 @@ export default function AccessRequestDrawer({
                         {canVerify && (
                             <button
                                 className="kc-btn kc-btn-primary"
-                                disabled={!!govVerify && !govVerify.allowed}
-                                title={govVerify && !govVerify.allowed ? governanceSummary(govVerify) : "Verify"}
+                                disabled={!govCanProceed(govVerify)}
+                                title={!govCanProceed(govVerify) ? governanceSummary(govVerify) : "Verify"}
                                 onClick={() => {
-                                    if (govVerify && !govVerify.allowed) return;
+                                    if (!govCanProceed(govVerify)) return;
                                     onVerify?.(request.id);
                                 }}
                             >
@@ -725,7 +724,6 @@ export default function AccessRequestDrawer({
                             </button>
                         )}
 
-                        {/* Optional helper hint if blocked */}
                         {governanceBlocksAction ? (
                             <span className="kcGovHint">Blocked by governance policy</span>
                         ) : null}
