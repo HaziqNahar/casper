@@ -120,8 +120,8 @@ export function canProceed(result: GovernanceResult) {
 /** Helper: produce a single message (for alerts) */
 export function governanceSummary(result: GovernanceResult) {
     const lines: string[] = [];
-    if (result.blocks.length) lines.push(`BLOCK:\n- ${result.blocks.join("\n- ")}`);
+    if (result.blocks.length) lines.push(`BLOCKED:\n- ${result.blocks.join("\n- ")}`);
     if (result.requires.length) lines.push(`REQUIRED:\n- ${result.requires.join("\n- ")}`);
-    if (result.warns.length) lines.push(`WARN:\n- ${result.warns.join("\n- ")}`);
+    if (result.warns.length) lines.push(`WARNING:\n- ${result.warns.join("\n- ")}`);
     return lines.join("\n\n");
 }

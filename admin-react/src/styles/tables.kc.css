@@ -88,20 +88,20 @@
 .kc-table-th {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 5 !important;
 
     background: var(--kc-primary, #0b1f3a);
     color: #fff;
 
-    padding: 12px 16px;
-    font-size: 0.75rem;
-    font-weight: 400;
-    text-transform: uppercase;
+    padding: 11px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
     letter-spacing: 0.04em;
-
+    text-transform: uppercase;
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     white-space: nowrap;
 }
+
 
 .kc-table-thInner {
     display: flex;
@@ -145,7 +145,8 @@
 }
 
 .kc-table-td {
-    padding: 12px 16px;
+    padding: 8px 14px;
+    vertical-align: middle;
     font-size: 0.875rem;
     color: var(--kc-text, #111827);
 
@@ -416,7 +417,7 @@
 .kc-table .kc-table-th {
     position: sticky;
     top: 0;
-    z-index: 2;
+    z-index: 5 !important;
 
     background: var(--kc-primary, #0b1f3a);
     color: #fff;
@@ -1593,10 +1594,7 @@
     overflow: visible;
 }
 
-/* sticky table header should stay BELOW dropdowns */
-.kc-table-th {
-    z-index: 5 !important;
-}
+
 
 /* ==============================
    DATE DROPDOWN
@@ -1788,4 +1786,140 @@
     .kcWorkflowGrid {
         grid-template-columns: 1fr;
     }
+}
+
+.kc-requestPrimaryCell {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 4px 0 4px 12px;
+    position: relative;
+    line-height: 1.1;
+}
+
+.kc-requestPrimaryCell::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 4px;
+    bottom: 4px;
+    width: 3px;
+    border-radius: 999px;
+    background: var(--kc-primary, #2563eb);
+    opacity: 0.7;
+}
+
+.kc-ellipsis {
+    max-width: 420px;
+    display: inline-block;
+}
+
+.kc-requestPrimaryId {
+    width: fit-content;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.15;
+    font-weight: 700;
+}
+
+.kc-requestPrimaryRealm {
+    font-size: 14px;
+    line-height: 1.2;
+    font-weight: 700;
+    color: #1f2937;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kc-requestPrimaryTuple {
+    font-size: 13px;
+    line-height: 1.2;
+    color: #64748b;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.kc-requestUpdatedCell {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-size: 13px;
+}
+
+.kc-requestUpdatedSub {
+    font-size: 12px;
+    color: #64748b;
+}
+
+.kc-requestActionBtns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+}
+
+.kc-requestActionBtns .kc-btn {
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 13px;
+    border-radius: 8px;
+}
+
+.kc-requestActionLink {
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
+    cursor: pointer;
+}
+
+.kc-requestActionLink:hover {
+    color: #0f172a;
+    text-decoration: underline;
+}
+
+.kc-requestActionLink:disabled {
+    color: #94a3b8;
+    cursor: not-allowed;
+    text-decoration: none;
+    opacity: 0.7;
+}
+
+.kc-requestSlaValue {
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.kc-requestPrimaryMeta {
+    font-size: 11px;
+    color: #94a3b8;
+}
+
+.kc-statusCell {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.kc-governanceCell {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    text-align: center;
+}
+
+.kc-governanceSub {
+    font-size: 11px;
+    line-height: 1.25;
+    color: #64748b;
+    max-width: 150px;
+    white-space: normal;
 }

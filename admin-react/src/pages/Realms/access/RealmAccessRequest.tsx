@@ -7,11 +7,14 @@ import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
 import DataTable, { TableColumn } from "../../../components/common/DataTable";
 import { Badge } from "../../../components/common/Badge";
 import { MultiSelectCheckbox } from "../../../components/common/MultiSelectCheckbox";
-
 import AccessRequestDrawer from "./AccessRequestDrawer";
 import CreateAccessRequestModal from "./CreateAccessRequestModal";
 import { useAccessRequestsLive } from "./useAccessRequestsLive";
 import { getAccessActor } from "../../../context/accessCurrentUser";
+import { useToast } from "../../../context/ToastContext";
+import { useData } from "../../../context/DataContext";
+import { REALM_APP_USERS_INITIAL } from "../data/realmUserMap";
+import { REALMS_DATA, USERS_DATA } from "../data/realmsData";
 
 import {
     loadAccessRequests,
@@ -30,6 +33,12 @@ import {
     getTodayISO,
 } from "./accessFilterUtils";
 
+import {
+    evaluateGovernance,
+    canProceed,
+    governanceSummary,
+} from "./governancePolicy";
+
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 
@@ -45,6 +54,7 @@ const statusVariant = (s: string) => {
 
 const RealmAccessRequest: React.FC = () => {
     const actor = getAccessActor();
+    const { pushToast } = useToast();
     const [rows, setRows] = useState<AccessRequest[]>(() => loadAccessRequests());
     const [events, setEvents] = useState(() => loadAccessEvents());
 
@@ -53,14 +63,12 @@ const RealmAccessRequest: React.FC = () => {
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
 
-    // ===== filters =====
     const [realmFilter, setRealmFilter] = useState<string[]>([]);
     const [statusFilter, setStatusFilter] = useState<string[]>([]);
     const [roleFilter, setRoleFilter] = useState<string[]>([]);
     const [targetUserFilter, setTargetUserFilter] = useState<string[]>([]);
-    const [dateRange, setDateRange] = useState<DateRange>({}); // Updated range
+    const [dateRange, setDateRange] = useState<DateRange>({});
 
-    // date dropdown + outside click
     const [dateMenuOpen, setDateMenuOpen] = useState(false);
     const dateRef = useRef<HTMLDivElement>(null);
 
@@ -80,13 +88,19 @@ const RealmAccessRequest: React.FC = () => {
 
     const setFrom = (v: string) => {
         setDateRange((prev) =>
-            normalizeDateRange({ ...prev, from: v || undefined }, { maxIso: todayISO, fixOrder: "snap" })
+            normalizeDateRange(
+                { ...prev, from: v || undefined },
+                { maxIso: todayISO, fixOrder: "snap" }
+            )
         );
     };
 
     const setTo = (v: string) => {
         setDateRange((prev) =>
-            normalizeDateRange({ ...prev, to: v || undefined }, { maxIso: todayISO, fixOrder: "snap" })
+            normalizeDateRange(
+                { ...prev, to: v || undefined },
+                { maxIso: todayISO, fixOrder: "snap" }
+            )
         );
     };
 
@@ -95,6 +109,7 @@ const RealmAccessRequest: React.FC = () => {
         setEvents(loadAccessEvents());
         setRequests(loadAccessRequests());
     };
+
     useAccessRequestsLive(refresh);
 
     const clearAllFilters = () => {
@@ -106,7 +121,6 @@ const RealmAccessRequest: React.FC = () => {
         setDateMenuOpen(false);
     };
 
-    // Build fast lookup by requestId
     const reqById = useMemo(() => {
         const m = new Map<string, AccessRequest>();
         for (const r of requests) m.set(r.id, r);
@@ -122,77 +136,137 @@ const RealmAccessRequest: React.FC = () => {
     const columns: TableColumn<AccessRequest>[] = useMemo(
         () => [
             {
-                key: "id",
-                label: "Request ID",
-                width: "150px",
-                render: (v, row) => (
-                    <button
-                        type="button"
-                        className="kc-linkcell kc-mono"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openRequest(String(row?.id || v));
-                        }}
-                        title="Open request details"
-                    >
-                        {String(v)}
-                    </button>
+                key: "request",
+                label: "Request",
+                width: "460px",
+                render: (_v, row) => (
+                    <div className="kc-requestPrimaryCell">
+                        <button
+                            type="button"
+                            className="kc-linkcell kc-mono kc-requestPrimaryId"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openRequest(String(row.id));
+                            }}
+                            title="Open request details"
+                        >
+                            {row.id}
+                        </button>
+
+                        <div className="kc-requestPrimaryRealm">
+                            {row.realmName}
+                        </div>
+
+                        <div className="kc-requestPrimaryTuple">
+                            {row.targetUser} → {row.roleRequested}
+                        </div>
+                    </div>
                 ),
             },
-            { key: "realmName", label: "Realm", width: "220px" },
-            { key: "targetUser", label: "Target User", width: "170px" },
-            { key: "roleRequested", label: "Role", width: "150px" },
             {
                 key: "status",
                 label: "Status",
                 width: "130px",
                 align: "center",
-                render: (v) => <Badge variant={statusVariant(String(v)) as any}>{String(v)}</Badge>,
+                render: (v) => (
+                    <Badge variant={statusVariant(String(v)) as any}>
+                        {String(v)}
+                    </Badge>
+                ),
             },
             {
                 key: "updatedAt",
                 label: "Updated",
-                width: "200px",
-                render: (v) => new Date(String(v)).toLocaleString(),
+                width: "180px",
+                render: (v) => {
+                    const dt = new Date(String(v));
+                    return (
+                        <div className="kc-requestUpdatedCell" title={dt.toLocaleString()}>
+                            <div>{dt.toLocaleDateString()}</div>
+                            <div className="kc-requestUpdatedSub">
+                                {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                        </div>
+                    );
+                },
             },
             {
                 key: "actions",
                 label: "Actions",
                 width: "220px",
                 sortable: false,
-                render: (_v, row) => (
-                    <div style={{ display: "flex", gap: 8 }}>
-                        <button
-                            className="kc-btn kc-btn-primary"
-                            disabled={row.status !== "Draft"}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateRequest(row.id, { status: "Submitted" }, actor, "SUBMITTED", "Submitted for approval");
-                                refresh();
-                            }}
-                        >
-                            Submit
-                        </button>
+                render: (_v, row) => {
+                    const canSubmitRow = row.status === "Draft";
+                    const canCancelRow =
+                        row.status === "Draft" || row.status === "Submitted";
 
-                        <button
-                            className="kc-btn kc-btn-ghost"
-                            disabled={row.status === "Verified" || row.status === "Cancelled"}
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                updateRequest(row.id, { status: "Cancelled" }, actor, "CANCELLED", "Cancelled by requester");
-                                refresh();
-                            }}
-                        >
-                            Cancel
-                        </button>
-                    </div>
-                ),
+                    return (
+                        <div className="kc-requestActionBtns">
+                            <button
+                                type="button"
+                                className="kc-btn kc-btn-primary"
+                                disabled={!canSubmitRow}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    const g = evaluateGovernance({
+                                        request: row,
+                                        actor,
+                                        action: "submit",
+                                    });
+
+                                    if (!canProceed(g)) {
+                                        pushToast(governanceSummary(g), "warning");
+                                        return;
+                                    }
+
+                                    updateRequest(
+                                        row.id,
+                                        { status: "Submitted" },
+                                        actor,
+                                        "SUBMITTED",
+                                        "Submitted for approval"
+                                    );
+
+                                    refresh();
+                                    pushToast("Access request submitted successfully", "success");
+                                }}
+                            >
+                                Submit
+                            </button>
+
+                            <button
+                                type="button"
+                                className="kc-btn kc-btn-ghost"
+                                disabled={!canCancelRow}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+
+                                    updateRequest(
+                                        row.id,
+                                        { status: "Cancelled" },
+                                        actor,
+                                        "CANCELLED",
+                                        "Cancelled by requester"
+                                    );
+
+                                    refresh();
+                                    pushToast("Access request cancelled", "warning");
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    );
+                },
             },
         ],
-        [reqById]
+        [actor, pushToast]
     );
 
-    // Prefill create modal from query params
     const location = useLocation();
     const prefill = useMemo(() => {
         const p = new URLSearchParams(location.search);
@@ -201,6 +275,7 @@ const RealmAccessRequest: React.FC = () => {
             realmName: p.get("realmName") ?? "",
             targetUser: p.get("targetUser") ?? "",
             roleRequested: p.get("roleRequested") ?? "",
+            justification: p.get("justification") ?? "",
         };
     }, [location.search]);
 
@@ -210,13 +285,11 @@ const RealmAccessRequest: React.FC = () => {
         }
     }, [prefill.realmId, prefill.targetUser, prefill.roleRequested]);
 
-    // ===== options (aligned with Audit utils) =====
     const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
     const targetUserOptions = useMemo(() => buildOptions(rows, (r) => r.targetUser), [rows]);
     const roleOptions = useMemo(() => buildOptions(rows, (r) => r.roleRequested), [rows]);
     const statusOptions = useMemo(() => buildOptions(rows, (r) => r.status), [rows]);
 
-    // ===== filtered rows (aligned with Audit applyFiltersWithDate) =====
     const filteredRows = useMemo(() => {
         return applyFiltersWithDate({
             rows,
@@ -306,7 +379,6 @@ const RealmAccessRequest: React.FC = () => {
                                         portal
                                     />
 
-                                    {/* Updated date range */}
                                     <div className="kc_filterGroup" ref={dateRef}>
                                         <div className="kc_dateFilterWrap">
                                             <button
@@ -321,7 +393,11 @@ const RealmAccessRequest: React.FC = () => {
                                             </button>
 
                                             {dateMenuOpen && (
-                                                <div className="kc_dateMenu" role="dialog" onMouseDown={(e) => e.stopPropagation()}>
+                                                <div
+                                                    className="kc_dateMenu"
+                                                    role="dialog"
+                                                    onMouseDown={(e) => e.stopPropagation()}
+                                                >
                                                     <div className="kc_dateMenuTitle">Updated date range</div>
 
                                                     <div className="kc_dateMenuRow">
@@ -358,7 +434,11 @@ const RealmAccessRequest: React.FC = () => {
                                                             Clear
                                                         </button>
 
-                                                        <button type="button" className="kc-btn kc-btn-primary" onClick={() => setDateMenuOpen(false)}>
+                                                        <button
+                                                            type="button"
+                                                            className="kc-btn kc-btn-primary"
+                                                            onClick={() => setDateMenuOpen(false)}
+                                                        >
                                                             Apply
                                                         </button>
                                                     </div>
@@ -367,12 +447,19 @@ const RealmAccessRequest: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* badges */}
                                     <div className="kc_filterBadges">
-                                        {realmFilter.length > 0 && <span className="kc_filterBadge">Realm: {realmFilter.length}</span>}
-                                        {targetUserFilter.length > 0 && <span className="kc_filterBadge">User: {targetUserFilter.length}</span>}
-                                        {roleFilter.length > 0 && <span className="kc_filterBadge">Role: {roleFilter.length}</span>}
-                                        {statusFilter.length > 0 && <span className="kc_filterBadge">Status: {statusFilter.length}</span>}
+                                        {realmFilter.length > 0 && (
+                                            <span className="kc_filterBadge">Realm: {realmFilter.length}</span>
+                                        )}
+                                        {targetUserFilter.length > 0 && (
+                                            <span className="kc_filterBadge">User: {targetUserFilter.length}</span>
+                                        )}
+                                        {roleFilter.length > 0 && (
+                                            <span className="kc_filterBadge">Role: {roleFilter.length}</span>
+                                        )}
+                                        {statusFilter.length > 0 && (
+                                            <span className="kc_filterBadge">Status: {statusFilter.length}</span>
+                                        )}
                                         {(dateRange.from || dateRange.to) && (
                                             <span className="kc_filterBadge">
                                                 Updated: {dateRange.from || "…"} – {dateRange.to || "…"}
@@ -380,7 +467,6 @@ const RealmAccessRequest: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* clear */}
                                     {hasAnyFilters ? (
                                         <button
                                             type="button"
@@ -400,7 +486,11 @@ const RealmAccessRequest: React.FC = () => {
                                         Showing <b>{filteredRows.length}</b>
                                     </span>
 
-                                    <button className="kc-btn kc-btn-primary" onClick={() => setCreateOpen(true)}>
+                                    <button
+                                        type="button"
+                                        className="kc-btn kc-btn-primary"
+                                        onClick={() => setCreateOpen(true)}
+                                    >
                                         + New Access Request
                                     </button>
                                 </div>
@@ -416,12 +506,44 @@ const RealmAccessRequest: React.FC = () => {
                         events={events}
                         onClose={() => setDrawerOpen(false)}
                         onSubmit={(id) => {
-                            updateRequest(id, { status: "Submitted" }, actor, "SUBMITTED", "Submitted for approval.");
+                            const req = reqById.get(String(id));
+                            if (!req) return;
+
+                            const g = evaluateGovernance({
+                                request: req,
+                                actor,
+                                action: "submit",
+                            });
+
+                            if (!canProceed(g)) {
+                                pushToast(governanceSummary(g), "warning");
+                                return;
+                            }
+
+                            updateRequest(
+                                id,
+                                { status: "Submitted" },
+                                actor,
+                                "SUBMITTED",
+                                "Submitted for approval."
+                            );
+
                             refresh();
+                            setDrawerOpen(false);
+                            pushToast("Access request submitted successfully", "success");
                         }}
                         onCancel={(id) => {
-                            updateRequest(id, { status: "Cancelled" }, actor, "CANCELLED", "Cancelled by requester.");
+                            updateRequest(
+                                id,
+                                { status: "Cancelled" },
+                                actor,
+                                "CANCELLED",
+                                "Cancelled by requester."
+                            );
+
                             refresh();
+                            setDrawerOpen(false);
+                            pushToast("Access request cancelled", "warning");
                         }}
                     />
 
@@ -435,7 +557,11 @@ const RealmAccessRequest: React.FC = () => {
                             refresh();
                             setSelected(req);
                             setDrawerOpen(true);
+                            pushToast("Access request created", "success");
                         }}
+                        allUsers={USERS_DATA}
+                        allRealms={REALMS_DATA}
+                        realmUsersMap={REALM_APP_USERS_INITIAL}
                     />
                 </div>
             </div>

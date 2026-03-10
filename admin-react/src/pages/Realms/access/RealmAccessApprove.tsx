@@ -6,6 +6,7 @@ import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
 import DataTable, { TableColumn } from "../../../components/common/DataTable";
 import { Badge } from "../../../components/common/Badge";
 import { MultiSelectCheckbox } from "../../../components/common/MultiSelectCheckbox";
+import { useToast } from "../../../context/ToastContext";
 
 import AccessRequestDrawer from "./AccessRequestDrawer";
 import { useAccessRequestsLive } from "./useAccessRequestsLive";
@@ -39,6 +40,11 @@ import {
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 import { getAccessActor } from "../../../context/accessCurrentUser";
+import {
+  canViewApprovalQueue,
+  canActOnApproval,
+  isSelfApproval,
+} from "./accessActorRules";
 
 type ApproveRow = AccessRequest & {
   applicationName?: string;
@@ -64,6 +70,7 @@ function diffHuman(ms: number) {
 
 export default function RealmAccessApprove() {
   const actor = getAccessActor();
+  const { pushToast } = useToast();
   const todayISO = useMemo(() => getTodayISO(), []);
 
   const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
@@ -154,9 +161,14 @@ export default function RealmAccessApprove() {
       };
     });
 
-    if (!statusFilter.length) return base.filter((r) => r.status === "Submitted");
-    return base;
-  }, [requests, submittedAtByReqId, statusFilter.length]);
+    const submittedOnly = !statusFilter.length
+      ? base.filter((r) => r.status === "Submitted")
+      : base;
+
+    if (!canViewApprovalQueue(actor)) return [];
+
+    return submittedOnly;
+  }, [requests, submittedAtByReqId, statusFilter.length, actor]);
 
   const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
 
@@ -206,9 +218,43 @@ export default function RealmAccessApprove() {
     statusFilter,
     dateRange,
   ]);
+  const ensureCanApprove = (req?: AccessRequest | null) => {
+    if (!req) {
+      pushToast("Request not found", "warning");
+      return false;
+    }
+
+    if (!canViewApprovalQueue(actor)) {
+      pushToast("Current actor cannot view approval items.", "warning");
+      return false;
+    }
+
+    if (!canActOnApproval(actor)) {
+      pushToast("Only approvers can approve or reject requests.", "warning");
+      return false;
+    }
+
+    if (isSelfApproval(actor, req.requester)) {
+      pushToast("Approver cannot approve a request raised by himself.", "warning");
+      return false;
+    }
+
+    return true;
+  };
 
   const openRequest = (requestId: string) => {
     const req = reqById.get(String(requestId)) || null;
+
+    if (!req) {
+      pushToast("Request not found", "warning");
+      return;
+    }
+
+    if (!canViewApprovalQueue(actor)) {
+      pushToast("Current actor cannot view approval items.", "warning");
+      return;
+    }
+
     setSelected(req);
     setDrawerOpen(true);
   };
@@ -216,53 +262,75 @@ export default function RealmAccessApprove() {
   const columns: TableColumn<ApproveRow>[] = useMemo(
     () => [
       {
-        key: "id",
-        label: "Request ID",
-        width: "170px",
-        render: (v, row) => (
-          <button
-            type="button"
-            className="kc-linkcell kc-mono"
-            onClick={(e) => {
-              e.stopPropagation();
-              openRequest(String(row?.id || v));
-            }}
-            title="Open request details"
-          >
-            {String(v)}
-          </button>
+        key: "request",
+        label: "Request",
+        width: "460px",
+        render: (_v, row) => (
+          <div className="kc-requestPrimaryCell">
+            <button
+              type="button"
+              className="kc-linkcell kc-mono kc-requestPrimaryId"
+              onClick={(e) => {
+                e.stopPropagation();
+                openRequest(String(row.id));
+              }}
+              title="Open request details"
+            >
+              {row.id}
+            </button>
+
+            <div className="kc-requestPrimaryRealm">
+              {row.realmName}
+            </div>
+
+            <div className="kc-requestPrimaryTuple">
+              {row.targetUser} → {row.roleRequested}
+            </div>
+          </div>
         ),
       },
-      { key: "realmName", label: "Realm", width: "220px" },
-      { key: "applicationName", label: "Application", width: "200px" },
-      { key: "targetUser", label: "Target User", width: "180px" },
-      { key: "roleRequested", label: "Role", width: "150px" },
       {
         key: "status",
         label: "Status",
         width: "130px",
         align: "center",
-        render: (v) => <Badge variant={statusVariant(String(v)) as any}>{String(v)}</Badge>,
+        render: (v) => (
+          <Badge variant={statusVariant(String(v)) as any}>
+            {String(v)}
+          </Badge>
+        ),
       },
       {
         key: "sla",
         label: "SLA",
-        width: "140px",
+        width: "120px",
         align: "center",
         sortable: false,
         render: (_v, row) => {
-          if (row.status !== "Submitted") return <span className="kc-text-muted">—</span>;
-          if (row.slaMinutes == null) return <span className="kc-text-muted">—</span>;
-          return <span style={{ fontWeight: 800 }}>{diffHuman(row.slaMinutes * 60_000)}</span>;
+          if (row.status !== "Submitted") {
+            return <span className="kc-text-muted">—</span>;
+          }
+          if (row.slaMinutes == null) {
+            return <span className="kc-text-muted">—</span>;
+          }
+          return <span className="kc-requestSlaValue">{diffHuman(row.slaMinutes * 60_000)}</span>;
         },
       },
       {
         key: "governance",
         label: "Governance",
-        width: "180px",
+        width: "140px",
         align: "center",
         sortable: false,
         render: (_v, row) => {
+          if (!canActOnApproval(actor)) {
+            return <Badge variant={"info" as any}>View Only</Badge>;
+          }
+
+          if (isSelfApproval(actor, row.requester)) {
+            return <Badge variant={"warning" as any}>Self Request</Badge>;
+          }
+
           const g = evaluateGovernance({ request: row, actor, action: "approve" });
           const txt = governanceSummary(g);
 
@@ -289,45 +357,76 @@ export default function RealmAccessApprove() {
               <Badge variant={variant}>{label}</Badge>
             </span>
           );
-        },
+        }
       },
       {
         key: "updatedAt",
         label: "Updated",
-        width: "200px",
+        width: "180px",
         render: (_v, row) => {
           const v = row.updatedAt || row.sortTimeISO;
-          return v ? new Date(String(v)).toLocaleString() : "—";
+          if (!v) return "—";
+
+          const dt = new Date(String(v));
+          return (
+            <div className="kc-requestUpdatedCell" title={dt.toLocaleString()}>
+              <div>{dt.toLocaleDateString()}</div>
+              <div className="kc-requestUpdatedSub">
+                {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </div>
+            </div>
+          );
         },
       },
       {
         key: "actions",
         label: "Actions",
-        width: "160px",
+        width: "150px",
         sortable: false,
         render: (_v, row) => {
+          const viewOnly = !canActOnApproval(actor);
+          const selfRequest = isSelfApproval(actor, row.requester);
           const g = evaluateGovernance({ request: row, actor, action: "approve" });
-          const title = governanceSummary(g);
+
+          const title = viewOnly
+            ? "View approval details"
+            : selfRequest
+              ? "Approver cannot approve a request raised by himself"
+              : governanceSummary(g) || "Open request";
+
+          const disabled = !canViewApprovalQueue(actor) || (!viewOnly && selfRequest);
 
           return (
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="kc-requestActionBtns">
               <button
+                type="button"
                 className="kc-btn kc-btn-primary"
-                title={title || "Open request"}
+                title={title}
                 onClick={(e) => {
                   e.stopPropagation();
+
+                  if (!canViewApprovalQueue(actor)) {
+                    pushToast("Current actor cannot view approval items.", "warning");
+                    return;
+                  }
+
+                  if (!viewOnly && selfRequest) {
+                    pushToast("Approver cannot approve a request raised by himself.", "warning");
+                    return;
+                  }
+
                   openRequest(String(row.id));
                 }}
-                disabled={!canProceed(g)}
+                disabled={disabled}
               >
-                Review
+                {viewOnly ? "View" : "Review"}
               </button>
             </div>
           );
         },
       },
     ],
-    [reqById]
+    [reqById, actor]
   );
 
   const dateChipText = useMemo(() => dateChipTextUtil(dateRange), [dateRange]);
@@ -370,11 +469,14 @@ export default function RealmAccessApprove() {
             striped
             hoverable
             stickyHeader
-            emptyMessage="No approval items"
+            emptyMessage={
+              canViewApprovalQueue(actor)
+                ? "No approval items"
+                : "Current actor cannot view approval items."
+            }
             minHeight="100%"
             onRowClick={(row) => {
-              setSelected(row);
-              setDrawerOpen(true);
+              openRequest(String(row.id));
             }}
             onRefresh={refresh}
             toolbarFilters={{
@@ -386,16 +488,6 @@ export default function RealmAccessApprove() {
                     options={realmOptions}
                     value={realmFilter}
                     onChange={setRealmFilter}
-                    placeholder="All"
-                    portal
-                  />
-
-                  <MultiSelectCheckbox<string>
-                    inline
-                    label="Application"
-                    options={appOptions}
-                    value={appFilter}
-                    onChange={setAppFilter}
                     placeholder="All"
                     portal
                   />
@@ -491,7 +583,11 @@ export default function RealmAccessApprove() {
                               Clear
                             </button>
 
-                            <button type="button" className="kc-btn kc-btn-primary" onClick={() => setDateMenuOpen(false)}>
+                            <button
+                              type="button"
+                              className="kc-btn kc-btn-primary"
+                              onClick={() => setDateMenuOpen(false)}
+                            >
                               Apply
                             </button>
                           </div>
@@ -530,33 +626,50 @@ export default function RealmAccessApprove() {
             request={selected}
             events={events}
             onClose={() => setDrawerOpen(false)}
-            onApprove={(id, note) => {
+            onApprove={(id, payload) => {
               const req = reqById.get(String(id));
-              if (!req) return;
+              if (!ensureCanApprove(req)) return;
 
-              const g = evaluateGovernance({ request: req, actor, action: "approve" });
+              const nextReq = {
+                ...req!,
+                roleRequested: payload.roleRequested,
+                timeBound: payload.timeBound,
+                endDate: payload.timeBound ? payload.endDate || "" : "",
+                approver: actor,
+                status: "Approved",
+              };
+
+              const g = evaluateGovernance({ request: nextReq, actor, action: "approve" });
               if (!canProceed(g)) {
-                window.alert(governanceSummary(g));
+                pushToast(governanceSummary(g), "warning");
                 return;
               }
 
               updateRequest(
                 id,
-                { status: "Approved", approver: actor },
+                {
+                  status: "Approved",
+                  approver: actor,
+                  roleRequested: payload.roleRequested,
+                  timeBound: payload.timeBound,
+                  endDate: payload.timeBound ? payload.endDate || "" : "",
+                },
                 actor,
                 "APPROVED",
-                note || "Approved by approver."
+                payload.note || "Approved by approver."
               );
+
               refresh();
               setDrawerOpen(false);
+              pushToast("Access request approved", "success");
             }}
             onReject={(id, note) => {
               const req = reqById.get(String(id));
-              if (!req) return;
+              if (!ensureCanApprove(req)) return;
 
-              const g = evaluateGovernance({ request: req, actor, action: "reject" });
+              const g = evaluateGovernance({ request: req!, actor, action: "reject" });
               if (!canProceed(g)) {
-                window.alert(governanceSummary(g));
+                pushToast(governanceSummary(g), "warning");
                 return;
               }
 
@@ -567,8 +680,10 @@ export default function RealmAccessApprove() {
                 "REJECTED",
                 note || "Rejected by approver."
               );
+
               refresh();
               setDrawerOpen(false);
+              pushToast("Access request rejected", "warning");
             }}
           />
         </div>

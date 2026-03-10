@@ -45,7 +45,6 @@ const typeVariant = (t: string) => {
 // --- Row enriched with realm/app for filtering ---
 type AuditRow = AccessRequestEvent & {
     realmName?: string;
-    applicationName?: string;
     targetUser?: string;
     roleRequested?: string;
     status?: string;
@@ -116,7 +115,6 @@ const RealmAccessAudit: React.FC = () => {
             return {
                 ...e,
                 realmName: r?.realmName ?? "",
-                applicationName: (r as any)?.applicationName ?? (r as any)?.appName ?? "",
                 targetUser: r?.targetUser ?? "",
                 roleRequested: r?.roleRequested ?? "",
                 status: r?.status ?? "",
@@ -129,16 +127,6 @@ const RealmAccessAudit: React.FC = () => {
         () => buildOptions(rows, (r) => r.realmName),
         [rows]
     );
-
-    // app options cascade by selected realms
-    const appOptions: Option[] = useMemo(() => {
-        return cascadedOptions({
-            rows,
-            parentSelected: realmFilter,
-            getParent: (r) => (r as AuditRow).realmName,
-            getChild: (r) => (r as AuditRow).applicationName,
-        });
-    }, [rows, realmFilter]);
 
     const typeOptions: Option[] = useMemo(
         () => buildOptions(rows, (r) => (r as AuditRow).type),
@@ -159,18 +147,12 @@ const RealmAccessAudit: React.FC = () => {
     const targetUserOptions: Option[] = useMemo(() => {
         const base = applyMultiFilters(rows, {
             realm: { selected: realmFilter, getValue: (r) => (r as AuditRow).realmName },
-            app: { selected: appFilter, getValue: (r) => (r as AuditRow).applicationName },
         });
 
         return buildOptions(base, (r) => (r as AuditRow).targetUser);
-    }, [rows, realmFilter, appFilter]);
+    }, [rows, realmFilter]);
 
     // prune cascaded selections when parent filters change
-    useEffect(() => {
-        setAppFilter((prev) => pruneSelectedByOptions(prev, appOptions));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [appOptions]);
-
     useEffect(() => {
         setTargetUserFilter((prev) => pruneSelectedByOptions(prev, targetUserOptions));
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -217,44 +199,72 @@ const RealmAccessAudit: React.FC = () => {
     const columns: TableColumn<AuditRow>[] = useMemo(
         () => [
             {
-                key: "requestId",
-                label: "Request ID",
-                width: "170px",
-                render: (v, row) => (
-                    <button
-                        type="button"
-                        className="kc-linkcell kc-mono"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openRequest(String(row.requestId));
-                        }}
-                        title="Open request details"
-                    >
-                        {String(v)}
-                    </button>
+                key: "request",
+                label: "Request",
+                width: "420px",
+                render: (_v, row) => (
+                    <div className="kc-requestPrimaryCell">
+
+                        <button
+                            type="button"
+                            className="kc-linkcell kc-mono kc-requestPrimaryId"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openRequest(String(row.requestId));
+                            }}
+                            title="Open request details"
+                        >
+                            {row.requestId}
+                        </button>
+
+                        <div className="kc-requestPrimaryRealm">
+                            {row.realmName}
+                        </div>
+
+                        <div className="kc-requestPrimaryTuple">
+                            {row.targetUser} → {row.roleRequested}
+                        </div>
+
+                    </div>
                 ),
             },
-            { key: "realmName", label: "Realm", width: "220px" },
-            { key: "applicationName", label: "Application", width: "200px" },
-            {
-                key: "targetUser",
-                label: "Target User",
-                width: "180px",
-            },
+
             {
                 key: "type",
                 label: "Event",
                 width: "140px",
                 align: "center",
-                render: (v) => <Badge variant={typeVariant(String(v)) as any}>{String(v)}</Badge>,
+                render: (v) => (
+                    <Badge variant={typeVariant(String(v)) as any}>
+                        {String(v)}
+                    </Badge>
+                ),
             },
-            { key: "actor", label: "Actor", width: "160px" },
+
+            {
+                key: "actor",
+                label: "Actor",
+                width: "160px",
+            },
+
             {
                 key: "at",
                 label: "Time",
-                width: "210px",
-                render: (v) => new Date(String(v)).toLocaleString(),
+                width: "180px",
+                render: (v) => {
+                    const dt = new Date(String(v));
+
+                    return (
+                        <div className="kc-requestUpdatedCell" title={dt.toLocaleString()}>
+                            <div>{dt.toLocaleDateString()}</div>
+                            <div className="kc-requestUpdatedSub">
+                                {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                        </div>
+                    );
+                },
             },
+
             {
                 key: "message",
                 label: "Message",
@@ -306,16 +316,6 @@ const RealmAccessAudit: React.FC = () => {
                                         value={realmFilter}
                                         onChange={setRealmFilter}
                                         placeholder="All"
-                                        portal
-                                    />
-
-                                    <MultiSelectCheckbox<string>
-                                        inline
-                                        label="Application"
-                                        options={appOptions}
-                                        value={appFilter}
-                                        onChange={setAppFilter}
-                                        placeholder={realmFilter.length ? "Apps in realm" : "All"}
                                         portal
                                     />
 

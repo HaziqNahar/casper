@@ -833,10 +833,10 @@ body {
 }
 
 .kcSectionCard {
-    border: 1px solid rgba(15, 23, 42, 0.10);
-    background: rgba(15, 23, 42, 0.02);
+    border: 1px solid rgba(15, 23, 42, 0.08);
     border-radius: 14px;
-    padding: 12px;
+    background: #fff;
+    padding: 14px;
 }
 
 /* Footer sticky */
@@ -934,10 +934,11 @@ body {
 }
 
 .kcDrawerSectionTitle {
-    font-size: 0.9rem;
-    font-weight: 800;
-    margin: 14px 0 8px;
+    font-size: 0.82rem;
+    font-weight: 900;
     color: #0f172a;
+    margin: 14px 0 8px;
+    letter-spacing: 0.02em;
 }
 
 .kcDrawerRow {
@@ -998,19 +999,17 @@ body {
 }
 
 .kcFieldLabel {
-    font-size: 11px;
+    font-size: 0.74rem;
     font-weight: 800;
-    letter-spacing: .06em;
-    text-transform: uppercase;
     color: #64748b;
-    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }
 
 .kcFieldValue {
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 0.92rem;
+    font-weight: 700;
     color: #0f172a;
-    line-height: 1.35;
 }
 
 /* Timeline: vertical connector */

@@ -1,6 +1,7 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import { DataProvider } from "./context/DataContext";
+import { ToastProvider } from "./context/ToastContext";
 import DashboardLayout from "./components/layout/DashboardLayout";
 import { ROUTES } from "./config/routes";
 
@@ -23,7 +24,7 @@ import RealmAccessAudit from "./pages/Realms/access/RealmAccessAudit";
 
 const App: React.FC = () => {
   return (
-    <DataProvider>
+    <ToastProvider>
       <Router>
         {/* 1) Fixed background image layer (no content inside it) */}
         <div className="app-bg" />
@@ -31,7 +32,10 @@ const App: React.FC = () => {
         {/* 2) App root overlay: holds material tokens + all UI */}
         <div className="app-glass-root" data-material="acrylic">
           <Routes>
-            <Route element={<DashboardLayout />}>
+            <Route element={
+              <DataProvider>
+                <DashboardLayout />
+              </DataProvider>}>
               {/* Routes */}
               <Route path={ROUTES.LOGIN} element={<Login />} />
               <Route path={ROUTES.HOME} element={<HomePage />} />
@@ -61,7 +65,7 @@ const App: React.FC = () => {
           </Routes>
         </div>
       </Router>
-    </DataProvider>
+    </ToastProvider>
   );
 };
 

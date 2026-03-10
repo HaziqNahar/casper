@@ -4,6 +4,8 @@ import TabPanel from "../../components/common/tabs/TabPanel";
 import DataTable, { TableColumn } from "../../components/common/DataTable";
 import { useTabs, Tab } from "../../hooks/useTabs";
 import { useLocation, useNavigate } from "react-router-dom";
+import { REALM_APP_USERS_INITIAL, type RealmUserMap, } from "./data/realmUserMap";
+import { REALMS_DATA, USERS_DATA, type RealmAppMap } from "./data/realmsData";
 
 import {
     ArrowLeft,
@@ -59,8 +61,6 @@ type RealmUserViewRow = UserRow & {
 
 export type RealmRoleId = string;
 
-export type RealmAppMap = Record<string, string[]>;
-
 type UserForm = {
     username: string;
     staffId: string;
@@ -74,6 +74,7 @@ type UserForm = {
     group: string;
     roleId: RealmRoleId | "";
     status: UserStatus; // or "Active" | "Inactive" | "Pending"
+    justification: string;
 };
 
 export interface RealmUserRow {
@@ -89,7 +90,6 @@ export interface RealmMembership {
     assignedBy?: string;
 }
 
-export type RealmUserMap = Record<string, RealmMembership[]>; // realmId -> memberships
 export type RealmAppUserKey = string;
 export type RealmAppUsersMap = Record<RealmAppUserKey, string[]>;
 
@@ -171,7 +171,6 @@ const Row: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label
     </div >
 );
 
-
 const SectionHeader: React.FC<{ title: string; right?: React.ReactNode; subtitle?: string }> = ({ title, right, subtitle }) => (
     <div
         style={{
@@ -196,142 +195,142 @@ const SectionHeader: React.FC<{ title: string; right?: React.ReactNode; subtitle
 // MOCK DATA (replace with API)
 // ============================================================================
 
-const USERS_DATA: UserRow[] = [
-    {
-        uuid: "u-5b9f2a2c-1",
-        id: 1,
-        staffId: "S1234567A",
-        username: "admin",
-        email: "admin@bos.sg",
-        firstName: "Admin",
-        lastName: "User",
-        status: "Active",
-        userType: "certis_full_user",
-        isDeleted: false,
-        lastLogin: "19 Dec 2025, 15:30:00",
-    },
-    {
-        uuid: "u-5b9f2a2c-2",
-        id: 2,
-        staffId: "S7654321B",
-        username: "john.doe",
-        email: "john.doe@bos.sg",
-        firstName: "John",
-        lastName: "Doe",
-        status: "Active",
-        userType: "certis_full_user",
-        isDeleted: false,
-        lastLogin: "19 Dec 2025, 14:20:00",
-    },
-    {
-        uuid: "u-5b9f2a2c-3",
-        id: 3,
-        staffId: "S2233445C",
-        username: "jane.smith",
-        email: "jane.smith@bos.sg",
-        firstName: "Jane",
-        lastName: "Smith",
-        status: "Active",
-        userType: "external_user",
-        isDeleted: false,
-        lastLogin: "18 Dec 2025, 16:45:00",
-    },
-    {
-        uuid: "u-5b9f2a2c-4",
-        id: 4,
-        staffId: "S9988776D",
-        username: "mike.tan",
-        email: "mike.tan@bos.sg",
-        firstName: "Mike",
-        lastName: "Tan",
-        status: "Inactive",
-        userType: "certis_contractor",
-        isDeleted: false,
-        lastLogin: "-",
-    },
-    {
-        uuid: "u-5b9f2a2c-5",
-        id: 5,
-        staffId: "S4455667E",
-        username: "sarah.lee",
-        email: "sarah.lee@bos.sg",
-        firstName: "Sarah",
-        lastName: "Lee",
-        status: "Pending",
-        userType: "certis_half_user",
-        isDeleted: false,
-        lastLogin: "-",
-    },
-    {
-        uuid: "u-legacy-0001",
-        id: 6,
-        staffId: "S1111222Z",
-        username: "jason.ng",
-        email: "jason.ng@bos.sg",
-        firstName: "Jason",
-        lastName: "Ng",
-        status: "Inactive",
-        userType: "certis_full_user",
-        isDeleted: true,
-        lastLogin: "01 Nov 2025, 10:00:00",
-    },
-];
+// const USERS_DATA: UserRow[] = [
+//     {
+//         uuid: "u-5b9f2a2c-1",
+//         id: 1,
+//         staffId: "S1234567A",
+//         username: "admin",
+//         email: "admin@bos.sg",
+//         firstName: "Admin",
+//         lastName: "User",
+//         status: "Active",
+//         userType: "certis_full_user",
+//         isDeleted: false,
+//         lastLogin: "19 Dec 2025, 15:30:00",
+//     },
+//     {
+//         uuid: "u-5b9f2a2c-2",
+//         id: 2,
+//         staffId: "S7654321B",
+//         username: "john.doe",
+//         email: "john.doe@bos.sg",
+//         firstName: "John",
+//         lastName: "Doe",
+//         status: "Active",
+//         userType: "certis_full_user",
+//         isDeleted: false,
+//         lastLogin: "19 Dec 2025, 14:20:00",
+//     },
+//     {
+//         uuid: "u-5b9f2a2c-3",
+//         id: 3,
+//         staffId: "S2233445C",
+//         username: "jane.smith",
+//         email: "jane.smith@bos.sg",
+//         firstName: "Jane",
+//         lastName: "Smith",
+//         status: "Active",
+//         userType: "external_user",
+//         isDeleted: false,
+//         lastLogin: "18 Dec 2025, 16:45:00",
+//     },
+//     {
+//         uuid: "u-5b9f2a2c-4",
+//         id: 4,
+//         staffId: "S9988776D",
+//         username: "mike.tan",
+//         email: "mike.tan@bos.sg",
+//         firstName: "Mike",
+//         lastName: "Tan",
+//         status: "Inactive",
+//         userType: "certis_contractor",
+//         isDeleted: false,
+//         lastLogin: "-",
+//     },
+//     {
+//         uuid: "u-5b9f2a2c-5",
+//         id: 5,
+//         staffId: "S4455667E",
+//         username: "sarah.lee",
+//         email: "sarah.lee@bos.sg",
+//         firstName: "Sarah",
+//         lastName: "Lee",
+//         status: "Pending",
+//         userType: "certis_half_user",
+//         isDeleted: false,
+//         lastLogin: "-",
+//     },
+//     {
+//         uuid: "u-legacy-0001",
+//         id: 6,
+//         staffId: "S1111222Z",
+//         username: "jason.ng",
+//         email: "jason.ng@bos.sg",
+//         firstName: "Jason",
+//         lastName: "Ng",
+//         status: "Inactive",
+//         userType: "certis_full_user",
+//         isDeleted: true,
+//         lastLogin: "01 Nov 2025, 10:00:00",
+//     },
+// ];
 
-const REALMS_DATA: RealmRow[] = [
-    {
-        id: "realm-ops",
-        name: "Operations Realm",
-        status: "Active",
-        createdAt: "2025-12-18T09:00:00.000Z",
-        updatedAt: "2025-12-19T09:00:00.000Z",
-        userCount: 0,
-        mfaRequired: true,
-        passwordInheritance: "inherit",
-        sessionTimeoutMins: 30,
-    },
-    {
-        id: "realm-fin",
-        name: "Finance Realm",
-        status: "Inactive",
-        createdAt: "2025-12-10T09:00:00.000Z",
-        updatedAt: "2025-12-12T09:00:00.000Z",
-        userCount: 0,
-        mfaRequired: false,
-        passwordInheritance: "override",
-        sessionTimeoutMins: 60,
-    },
-    {
-        id: "realm-dev",
-        name: "Sandbox Realm",
-        status: "Draft",
-        createdAt: "2025-12-01T09:00:00.000Z",
-        updatedAt: "2025-12-01T09:00:00.000Z",
-        userCount: 0,
-        mfaRequired: true,
-        passwordInheritance: "inherit",
-        sessionTimeoutMins: 15,
-    },
-];
+// const REALMS_DATA: RealmRow[] = [
+//     {
+//         id: "realm-ops",
+//         name: "Operations Realm",
+//         status: "Active",
+//         createdAt: "2025-12-18T09:00:00.000Z",
+//         updatedAt: "2025-12-19T09:00:00.000Z",
+//         userCount: 0,
+//         mfaRequired: true,
+//         passwordInheritance: "inherit",
+//         sessionTimeoutMins: 30,
+//     },
+//     {
+//         id: "realm-fin",
+//         name: "Finance Realm",
+//         status: "Inactive",
+//         createdAt: "2025-12-10T09:00:00.000Z",
+//         updatedAt: "2025-12-12T09:00:00.000Z",
+//         userCount: 0,
+//         mfaRequired: false,
+//         passwordInheritance: "override",
+//         sessionTimeoutMins: 60,
+//     },
+//     {
+//         id: "realm-dev",
+//         name: "Sandbox Realm",
+//         status: "Draft",
+//         createdAt: "2025-12-01T09:00:00.000Z",
+//         updatedAt: "2025-12-01T09:00:00.000Z",
+//         userCount: 0,
+//         mfaRequired: true,
+//         passwordInheritance: "inherit",
+//         sessionTimeoutMins: 15,
+//     },
+// ];
 
-const REALM_USERS_INITIAL: RealmUserMap = {
-    "realm-ops": [
-        { userUuid: "u-5b9f2a2c-1", roleId: "realm_admin", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-        { userUuid: "u-5b9f2a2c-2", roleId: "realm_manager", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-        { userUuid: "u-5b9f2a2c-3", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-    ],
-    "realm-fin": [
-        { userUuid: "u-5b9f2a2c-4", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-        { userUuid: "u-5b9f2a2c-5", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-    ],
-    "realm-dev": [
-        { userUuid: "u-5b9f2a2c-2", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
-    ],
-};
+// const REALM_USERS_INITIAL: RealmUserMap = {
+//     "realm-ops": [
+//         { userUuid: "u-5b9f2a2c-1", roleId: "realm_admin", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//         { userUuid: "u-5b9f2a2c-2", roleId: "realm_manager", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//         { userUuid: "u-5b9f2a2c-3", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//     ],
+//     "realm-fin": [
+//         { userUuid: "u-5b9f2a2c-4", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//         { userUuid: "u-5b9f2a2c-5", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//     ],
+//     "realm-dev": [
+//         { userUuid: "u-5b9f2a2c-2", roleId: "realm_user", assignedAt: "2025-12-18T09:00:00.000Z", assignedBy: "admin" },
+//     ],
+// };
 
-const REALM_APP_USERS_INITIAL: RealmAppUsersMap = {
-    "realm-ops::app-ops-web": ["u-5b9f2a2c-1", "u-5b9f2a2c-2"],
-    "realm-ops::app-ops-mobile": ["u-5b9f2a2c-2"], // john has mobile access only
-};
+// const REALM_APP_USERS_INITIAL: RealmAppUsersMap = {
+//     "realm-ops::app-ops-web": ["u-5b9f2a2c-1", "u-5b9f2a2c-2"],
+//     "realm-ops::app-ops-mobile": ["u-5b9f2a2c-2"], // john has mobile access only
+// };
 
 const APPS_DATA: AppRow[] = [
     {
@@ -1238,7 +1237,7 @@ const RealmDetailContent: React.FC<{
         );
 
         // Create user form
-        const [form, setForm] = useState({
+        const [form, setForm] = useState<UserForm>({
             staffId: "",
             username: "",
             email: "",
@@ -1250,6 +1249,7 @@ const RealmDetailContent: React.FC<{
             department: "",
             organization: "",
             phone: "",
+            justification: "",
             status: "Active",
         });
 
@@ -1320,19 +1320,21 @@ const RealmDetailContent: React.FC<{
             setSelectedRoleByUser({});
         }, [eligibleFilteredToBulkAdd, selectedRoleByUser, defaultRoleId, handleChangeRole, setSelectedRoleByUser]);
 
-        const createLocalUserInRealm = (form: {
-            username: string;
-            staffId: string;
-            firstName: string;
-            lastName: string;
-            email: string;
-            phone: string;
-            organization: string;
-            department: string;
-            staffType: string;
-            group: string;
-            roleId: string;
-        },
+        const createLocalUserInRealm = (
+            form: {
+                username: string;
+                staffId: string;
+                firstName: string;
+                lastName: string;
+                email: string;
+                phone: string;
+                organization: string;
+                department: string;
+                staffType: string;
+                group: string;
+                roleId: string;
+                justification: string;
+            },
             roleIdToUse: RealmRoleId
         ) => {
             const username = form.username.trim();
@@ -1345,8 +1347,8 @@ const RealmDetailContent: React.FC<{
             const department = form.department.trim();
             const staffType = form.staffType.trim();
             const group = form.group.trim();
+            const justification = form.justification.trim();
 
-            // duplicates check (ignore deleted)
             const safeUsers = Array.isArray(allUsers) ? allUsers : [];
             const exists = safeUsers.some(
                 (u) =>
@@ -1354,13 +1356,19 @@ const RealmDetailContent: React.FC<{
                     (u.username.toLowerCase() === username.toLowerCase() ||
                         u.email.toLowerCase() === email.toLowerCase())
             );
+
             if (exists) {
                 onToast(`User ${username} already exists`, "error");
                 return;
             }
 
             if (!roleIdToUse) {
-                onToast("Please select a ream role", "warning");
+                onToast("Please select a requested realm role", "warning");
+                return;
+            }
+
+            if (!justification) {
+                onToast("Please enter a justification", "warning");
                 return;
             }
 
@@ -1368,32 +1376,34 @@ const RealmDetailContent: React.FC<{
                 uuid: makeUuid(),
                 id: Date.now(),
                 staffId: staffId || undefined,
-                username, email, firstName, lastName,
+                username,
+                email,
+                firstName,
+                lastName,
                 status: "Pending",
                 isDeleted: false,
                 lastLogin: "-",
-
                 userType: "local_user",
                 localRealmId: realm.id,
                 phone,
                 organization,
                 department,
                 staffType,
-                group
+                group,
             };
 
             onCreateUser(newUser);
 
-            // Request access via workflow (no direct membership write)
             navigate(
                 `${ROUTES.REALM_ACCESS_REQUEST}` +
                 `?realmId=${encodeURIComponent(realm.id)}` +
                 `&realmName=${encodeURIComponent(realm.name)}` +
                 `&targetUser=${encodeURIComponent(newUser.username)}` +
-                `&roleRequested=${encodeURIComponent(roleIdToUse)}`
+                `&roleRequested=${encodeURIComponent(roleIdToUse)}` +
+                `&justification=${encodeURIComponent(justification)}`
             );
 
-            onToast("Local user created. Access must be approved via workflow.", "success");
+            onToast("Local user created. Continue with realm access request.", "success");
         };
 
 
@@ -1426,14 +1436,14 @@ const RealmDetailContent: React.FC<{
             if (!form.email.trim()) next.email = "Email is required";
             if (!form.firstName.trim()) next.firstName = "First name is required";
             if (!form.lastName.trim()) next.lastName = "Last name is required";
-            if (!form.roleId) next.roleId = "Role is required";
+            if (!form.roleId) next.roleId = "Requested realm role is required";
             if (!form.group) next.group = "Group is required";
             if (!form.staffType) next.staffType = "Staff type is required";
             if (!form.department) next.department = "Department is required";
             if (!form.organization) next.organization = "Organization is required";
             if (!form.phone.trim()) next.phone = "Phone number is required";
+            if (!form.justification.trim()) next.justification = "Justification is required";
 
-            // optional: basic email check
             if (form.email.trim() && !/^\S+@\S+\.\S+$/.test(form.email.trim())) {
                 next.email = "Invalid email format";
             }
@@ -2267,101 +2277,194 @@ const RealmDetailContent: React.FC<{
 
                                                                 {/* User Type and Realm Information Section */}
                                                                 <div>
-                                                                    <div className="kcDrawerSectionTitle">User Type and Realm Information</div>
+                                                                    <div className="kcDrawerSectionTitle">User Type and Access Request</div>
                                                                     <div className="kcDrawerSectionGrid">
                                                                         {/* User Type */}
                                                                         <div>
-                                                                            <label style={{
-                                                                                display: 'block',
-                                                                                fontSize: '0.875rem',
-                                                                                fontWeight: 500,
-                                                                                color: '#374151',
-                                                                                marginBottom: '0.5rem'
-                                                                            }}>
+                                                                            <label
+                                                                                style={{
+                                                                                    display: "block",
+                                                                                    fontSize: "0.875rem",
+                                                                                    fontWeight: 500,
+                                                                                    color: "#374151",
+                                                                                    marginBottom: "0.5rem",
+                                                                                }}
+                                                                            >
                                                                                 User Type
                                                                             </label>
                                                                             <input
                                                                                 type="text"
-                                                                                placeholder="Local User"
+                                                                                value="Local User"
                                                                                 style={{
-                                                                                    width: '100%',
-                                                                                    padding: '0.625rem 0.875rem',
-                                                                                    fontSize: '0.875rem',
-                                                                                    border: `1px solid #d1d5db`,
-                                                                                    borderRadius: '0.5rem',
-                                                                                    backgroundColor: 'white',
-                                                                                    outline: 'none',
-                                                                                    transition: 'border-color 0.2s',
-                                                                                    fontFamily: 'inherit',
-                                                                                    boxSizing: 'border-box'
+                                                                                    width: "100%",
+                                                                                    padding: "0.625rem 0.875rem",
+                                                                                    fontSize: "0.875rem",
+                                                                                    border: "1px solid #d1d5db",
+                                                                                    borderRadius: "0.5rem",
+                                                                                    backgroundColor: "#f8fafc",
+                                                                                    outline: "none",
+                                                                                    fontFamily: "inherit",
+                                                                                    boxSizing: "border-box",
+                                                                                    color: "#475569",
                                                                                 }}
                                                                                 disabled
                                                                             />
                                                                         </div>
 
-                                                                        {/* Realm Role */}
+                                                                        {/* Requested Realm Role */}
                                                                         <div>
-                                                                            <label style={{
-                                                                                display: 'block',
-                                                                                fontSize: '0.875rem',
-                                                                                fontWeight: 500,
-                                                                                color: '#374151',
-                                                                                marginBottom: '0.5rem'
-                                                                            }}>
-                                                                                Realm Role <span style={{ color: '#dc2626' }}>*</span>
+                                                                            <label
+                                                                                style={{
+                                                                                    display: "block",
+                                                                                    fontSize: "0.875rem",
+                                                                                    fontWeight: 500,
+                                                                                    color: "#374151",
+                                                                                    marginBottom: "0.5rem",
+                                                                                }}
+                                                                            >
+                                                                                Requested Realm Role <span style={{ color: "#dc2626" }}>*</span>
                                                                             </label>
                                                                             <select
                                                                                 value={form.roleId}
-                                                                                onChange={(e) => handleInputChange('roleId', e.target.value)}
+                                                                                onChange={(e) => handleInputChange("roleId", e.target.value)}
                                                                                 style={{
-                                                                                    width: '100%',
-                                                                                    padding: '0.625rem 0.875rem',
-                                                                                    fontSize: '0.875rem',
-                                                                                    border: `1px solid ${errors.roleId ? '#dc2626' : '#d1d5db'}`,
-                                                                                    borderRadius: '0.5rem',
-                                                                                    backgroundColor: 'white',
-                                                                                    outline: 'none',
-                                                                                    transition: 'border-color 0.2s',
-                                                                                    fontFamily: 'inherit',
-                                                                                    boxSizing: 'border-box',
-                                                                                    cursor: 'pointer'
+                                                                                    width: "100%",
+                                                                                    padding: "0.625rem 0.875rem",
+                                                                                    fontSize: "0.875rem",
+                                                                                    border: `1px solid ${errors.roleId ? "#dc2626" : "#d1d5db"}`,
+                                                                                    borderRadius: "0.5rem",
+                                                                                    backgroundColor: "white",
+                                                                                    outline: "none",
+                                                                                    transition: "border-color 0.2s",
+                                                                                    fontFamily: "inherit",
+                                                                                    boxSizing: "border-box",
+                                                                                    cursor: "pointer",
                                                                                 }}
                                                                                 onFocus={(e) => {
                                                                                     if (!errors.roleId) {
-                                                                                        e.currentTarget.style.borderColor = '#3b82f6';
+                                                                                        e.currentTarget.style.borderColor = "#3b82f6";
                                                                                     }
                                                                                 }}
                                                                                 onBlur={(e) => {
                                                                                     if (!errors.roleId) {
-                                                                                        e.currentTarget.style.borderColor = '#d1d5db';
+                                                                                        e.currentTarget.style.borderColor = "#d1d5db";
                                                                                     }
                                                                                 }}
                                                                             >
-                                                                                <option value="">Select role</option>
+                                                                                <option value="">Select requested role</option>
                                                                                 {roles.map((r) => (
                                                                                     <option key={r.id} value={r.id}>
                                                                                         {r.name}
                                                                                     </option>
                                                                                 ))}
                                                                             </select>
+
                                                                             {errors.roleId && (
-                                                                                <div style={{
-                                                                                    display: 'flex',
-                                                                                    alignItems: 'center',
-                                                                                    gap: '0.25rem',
-                                                                                    marginTop: '0.25rem',
-                                                                                    color: '#dc2626',
-                                                                                    fontSize: '0.75rem'
-                                                                                }}>
+                                                                                <div
+                                                                                    style={{
+                                                                                        display: "flex",
+                                                                                        alignItems: "center",
+                                                                                        gap: "0.25rem",
+                                                                                        marginTop: "0.25rem",
+                                                                                        color: "#dc2626",
+                                                                                        fontSize: "0.75rem",
+                                                                                    }}
+                                                                                >
                                                                                     <AlertCircle size={12} />
                                                                                     {errors.roleId}
+                                                                                </div>
+                                                                            )}
+
+                                                                            <div
+                                                                                style={{
+                                                                                    marginTop: "0.35rem",
+                                                                                    fontSize: "0.75rem",
+                                                                                    color: "#64748b",
+                                                                                    lineHeight: 1.4,
+                                                                                }}
+                                                                            >
+                                                                                This role will be submitted in the next step for approval.
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Justification */}
+                                                                        <div style={{ gridColumn: "1 / -1" }}>
+                                                                            <label
+                                                                                style={{
+                                                                                    display: "block",
+                                                                                    fontSize: "0.875rem",
+                                                                                    fontWeight: 500,
+                                                                                    color: "#374151",
+                                                                                    marginBottom: "0.5rem",
+                                                                                }}
+                                                                            >
+                                                                                Justification <span style={{ color: "#dc2626" }}>*</span>
+                                                                            </label>
+                                                                            <textarea
+                                                                                value={form.justification}
+                                                                                onChange={(e) => handleInputChange("justification", e.target.value)}
+                                                                                placeholder="Explain why this user needs realm access..."
+                                                                                rows={3}
+                                                                                style={{
+                                                                                    width: "100%",
+                                                                                    padding: "0.625rem 0.875rem",
+                                                                                    fontSize: "0.875rem",
+                                                                                    border: `1px solid ${errors.justification ? "#dc2626" : "#d1d5db"}`,
+                                                                                    borderRadius: "0.5rem",
+                                                                                    backgroundColor: "white",
+                                                                                    outline: "none",
+                                                                                    transition: "border-color 0.2s",
+                                                                                    fontFamily: "inherit",
+                                                                                    boxSizing: "border-box",
+                                                                                    resize: "vertical",
+                                                                                }}
+                                                                                onFocus={(e) => {
+                                                                                    if (!errors.justification) {
+                                                                                        e.currentTarget.style.borderColor = "#3b82f6";
+                                                                                    }
+                                                                                }}
+                                                                                onBlur={(e) => {
+                                                                                    if (!errors.justification) {
+                                                                                        e.currentTarget.style.borderColor = "#d1d5db";
+                                                                                    }
+                                                                                }}
+                                                                            />
+
+                                                                            {errors.justification && (
+                                                                                <div
+                                                                                    style={{
+                                                                                        display: "flex",
+                                                                                        alignItems: "center",
+                                                                                        gap: "0.25rem",
+                                                                                        marginTop: "0.25rem",
+                                                                                        color: "#dc2626",
+                                                                                        fontSize: "0.75rem",
+                                                                                    }}
+                                                                                >
+                                                                                    <AlertCircle size={12} />
+                                                                                    {errors.justification}
                                                                                 </div>
                                                                             )}
                                                                         </div>
                                                                     </div>
                                                                 </div>
                                                             </div>
-
+                                                            <div
+                                                                style={{
+                                                                    marginTop: 14,
+                                                                    padding: "12px 14px",
+                                                                    borderRadius: 12,
+                                                                    border: "1px solid rgba(59,130,246,0.16)",
+                                                                    background: "rgba(59,130,246,0.06)",
+                                                                }}
+                                                            >
+                                                                <div style={{ fontWeight: 800, fontSize: "0.82rem", marginBottom: 4, color: "#0f172a" }}>
+                                                                    Next step
+                                                                </div>
+                                                                <div style={{ fontSize: "0.82rem", color: "#64748b", lineHeight: 1.45 }}>
+                                                                    This creates the local user in <b>{realm.name}</b>. Realm access will be requested in the next step and routed through approval.
+                                                                </div>
+                                                            </div>
                                                             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
                                                                 <button
                                                                     type="button"
@@ -2382,6 +2485,7 @@ const RealmDetailContent: React.FC<{
                                                                             organization: "",
                                                                             phone: "",
                                                                             status: "Active",
+                                                                            justification: "",
                                                                         });
                                                                     }}
                                                                 >
@@ -2412,6 +2516,7 @@ const RealmDetailContent: React.FC<{
                                                                                 staffType: form.staffType,
                                                                                 group: form.group,
                                                                                 roleId: form.roleId,
+                                                                                justification: form.justification,
                                                                             },
                                                                             form.roleId as RealmRoleId
                                                                         );
@@ -2428,11 +2533,12 @@ const RealmDetailContent: React.FC<{
                                                                             department: "",
                                                                             organization: "",
                                                                             phone: "",
+                                                                            justification: "",
                                                                             status: "Active",
                                                                         });
                                                                     }}
                                                                 >
-                                                                    <Plus size={16} /> Create local user
+                                                                    <Plus size={16} /> Create user & request access
                                                                 </button>
                                                             </div>
                                                         </>
@@ -2663,7 +2769,7 @@ const RealmsContent: React.FC<{
     openConfirmDialog: (next: Omit<ConfirmState, "open">) => void;
     pendingByRealm: Record<string, number>;
 }> = ({ realms, loading, error, onRowClick, realmStatusFilter, setRealmStatusFilter, onRefresh, onToggleStatus, openConfirmDialog, pendingByRealm }) => {
-
+    const { totalUsers } = useData();
     const columns = useMemo(
         () => createRealmColumns(onRowClick, onToggleStatus, openConfirmDialog, pendingByRealm),
         [onRowClick, onToggleStatus, openConfirmDialog, pendingByRealm]
@@ -2751,7 +2857,6 @@ const RealmsContent: React.FC<{
 // ============================================================================
 
 const RealmsPage: React.FC = () => {
-
     const [accessTick, setAccessTick] = useState(0);
     useAccessRequestsLive(() => setAccessTick((x) => x + 1));
 
@@ -2793,7 +2898,7 @@ const RealmsPage: React.FC = () => {
         return safe.filter((r) => realmStatusFilter.includes(r.status as RealmStatus));
     }, [realms, realmStatusFilter]);
 
-    const [realmUsers, setRealmUsers] = useState<RealmUserMap>(REALM_USERS_INITIAL);
+    const [realmUsers, setRealmUsers] = useState<RealmUserMap>(REALM_APP_USERS_INITIAL);
     const [realmApps] = useState<RealmAppMap>(REALM_APPS_INITIAL);
 
     const [loading, setLoading] = useState(false);

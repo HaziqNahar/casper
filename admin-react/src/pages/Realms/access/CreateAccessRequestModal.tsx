@@ -2,6 +2,30 @@ import React, { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { AccessRequest } from "./accessRequestsStore";
 
+type UserOption = {
+    uuid: string;
+    username: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    isDeleted?: boolean;
+};
+
+type RealmOption = {
+    id: string;
+    name: string;
+    status: string;
+}
+
+type RealmMembership = {
+    userUuid: string;
+    roleId?: string;
+    assignedAt?: string;
+    assignedBy?: string;
+};
+
+type RealmUsersMap = Record<string, RealmMembership[]>;
+
 type Props = {
     open: boolean;
     initial?: {
@@ -9,6 +33,7 @@ type Props = {
         realmName: string;
         targetUser: string;
         roleRequested: string;
+        justification?: string;
     };
     onClose: () => void;
     onCreated: (req: AccessRequest) => void;
@@ -24,10 +49,18 @@ type Props = {
         requester: string;
     }) => AccessRequest;
     requester: string;
+
+    allUsers: UserOption[];
+    allRealms: RealmOption[];
+    realmUsersMap: RealmUsersMap;
 };
 
 const ROLES = ["realm_user", "realm_manager", "realm_admin"] as const;
 type Role = (typeof ROLES)[number];
+
+function norm(v?: string) {
+    return String(v || "").trim().toLowerCase();
+}
 
 export default function CreateAccessRequestModal({
     open,
@@ -36,6 +69,9 @@ export default function CreateAccessRequestModal({
     onCreate,
     requester,
     initial,
+    allUsers,
+    allRealms,
+    realmUsersMap,
 }: Props) {
     const [realmName, setRealmName] = useState("");
     const [realmId, setRealmId] = useState("");
@@ -59,14 +95,13 @@ export default function CreateAccessRequestModal({
         setError(null);
     };
 
-    // ✅ Hooks must run before any early return
     useEffect(() => {
         if (!open) return;
 
-        // Prefill from query params if provided
         setRealmId(initial?.realmId ?? "");
         setRealmName(initial?.realmName ?? "");
         setTargetUser(initial?.targetUser ?? "");
+        setJustification(initial?.justification ?? "");
 
         const initialRole = initial?.roleRequested;
         const nextRole = (ROLES as readonly string[]).includes(initialRole ?? "")
@@ -74,8 +109,6 @@ export default function CreateAccessRequestModal({
             : ROLES[0];
 
         setRoleRequested(nextRole);
-
-        // Don’t auto-wipe justification/timeBound — user might open/close accidentally
         setError(null);
     }, [
         open,
@@ -83,7 +116,38 @@ export default function CreateAccessRequestModal({
         initial?.realmName,
         initial?.targetUser,
         initial?.roleRequested,
+        initial?.justification,
     ]);
+
+    const assignedUserUuids = useMemo(() => {
+        if (!realmId.trim()) return new Set<string>();
+        const memberships = realmUsersMap?.[realmId] ?? [];
+        return new Set(memberships.map((m) => norm(m.userUuid)));
+    }, [realmId, realmUsersMap]);
+
+    const eligibleUsers = useMemo(() => {
+        return allUsers
+            .filter((u) => !u.isDeleted)
+            .filter((u) => !!norm(u.uuid))
+            .filter((u) => !!norm(u.username))
+            .filter((u) => !assignedUserUuids.has(norm(u.uuid)))
+            .sort((a, b) => a.username.localeCompare(b.username));
+    }, [allUsers, assignedUserUuids]);
+
+    const realmOptions = useMemo(() => {
+        return allRealms
+            .filter((r) => r.status !== "Draft") // optional
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [allRealms]);
+
+    useEffect(() => {
+        if (!targetUser) return;
+
+        const stillValid = eligibleUsers.some((u) => norm(u.username) === norm(targetUser));
+        if (!stillValid) {
+            setTargetUser("");
+        }
+    }, [eligibleUsers, targetUser]);
 
     const canSave = useMemo(() => {
         if (!realmName.trim()) return false;
@@ -129,10 +193,8 @@ export default function CreateAccessRequestModal({
                 }
             }}
         >
-            <div
-                className="kc-modal">
+            <div className="kc-modal">
                 <div className="kc-modal-header">
-                    {/* header */}
                     <div
                         style={{
                             display: "flex",
@@ -145,7 +207,7 @@ export default function CreateAccessRequestModal({
                     >
                         <div>
                             <div style={{ fontWeight: 900, fontSize: "1rem" }}>
-                                New Access Request
+                                New Realm Access Request
                             </div>
                             <div style={{ opacity: 0.72, fontSize: "0.82rem", marginTop: 2 }}>
                                 Create a draft request (you can submit it after).
@@ -159,12 +221,13 @@ export default function CreateAccessRequestModal({
                                 onClose();
                             }}
                             aria-label="Close"
+                            type="button"
                         >
                             <X size={16} />
                         </button>
                     </div>
                 </div>
-                {/* body */}
+
                 <div className="kc-modal-body">
                     {error && (
                         <div
@@ -183,35 +246,58 @@ export default function CreateAccessRequestModal({
                             </div>
                         </div>
                     )}
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        <Field label="Realm Name">
-                            <input
-                                className="kc-input"
-                                value={realmName}
-                                onChange={(e) => setRealmName(e.target.value)}
-                                placeholder="e.g. Operations Realm"
-                                disabled={lockRealm}
-                            />
-                        </Field>
 
-                        <Field label="Realm ID">
-                            <input
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <Field label="Realm">
+                            <select
                                 className="kc-input"
                                 value={realmId}
-                                onChange={(e) => setRealmId(e.target.value)}
-                                placeholder="e.g. realm-ops"
                                 disabled={lockRealm}
-                            />
+                                onChange={(e) => {
+                                    const selected = realmOptions.find(r => r.id === e.target.value);
+                                    if (!selected) return;
+
+                                    setRealmId(selected.id);
+                                    setRealmName(selected.name);
+                                }}
+                            >
+                                <option value="">
+                                    Select a realm
+                                </option>
+
+                                {realmOptions.map((realm) => (
+                                    <option key={realm.id} value={realm.id}>
+                                        {realm.name}
+                                    </option>
+                                ))}
+                            </select>
                         </Field>
 
-                        <Field label="Target User">
-                            <input
+                        <Field label="User">
+                            <select
                                 className="kc-input"
                                 value={targetUser}
                                 onChange={(e) => setTargetUser(e.target.value)}
-                                placeholder="e.g. sarah.lee"
-                                disabled={lockTargetUser}
-                            />
+                                disabled={lockTargetUser || !realmId.trim()}
+                            >
+                                <option value="">
+                                    {!realmId.trim()
+                                        ? "Enter/select realm first"
+                                        : eligibleUsers.length
+                                            ? "Select a user"
+                                            : "No eligible users"}
+                                </option>
+
+                                {eligibleUsers.map((u) => {
+                                    const fullName = [u.firstName, u.lastName].filter(Boolean).join(" ").trim();
+                                    const secondary = fullName || u.email || "";
+                                    return (
+                                        <option key={u.uuid} value={u.username}>
+                                            {secondary ? `${u.username} — ${secondary}` : u.username}
+                                        </option>
+                                    );
+                                })}
+                            </select>
                         </Field>
 
                         <Field label="Role Requested">
@@ -279,8 +365,6 @@ export default function CreateAccessRequestModal({
                     )}
                 </div>
 
-
-                {/* footer */}
                 <div className="kc-modal-footer">
                     <button
                         className="kc-btn kc-btn-ghost"
@@ -288,6 +372,7 @@ export default function CreateAccessRequestModal({
                             reset();
                             onClose();
                         }}
+                        type="button"
                     >
                         Cancel
                     </button>
@@ -295,6 +380,7 @@ export default function CreateAccessRequestModal({
                     <button
                         className="kc-btn kc-btn-primary"
                         disabled={!canSave}
+                        type="button"
                         onClick={() => {
                             setError(null);
 

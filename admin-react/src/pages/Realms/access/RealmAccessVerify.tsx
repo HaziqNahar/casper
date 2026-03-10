@@ -1,3 +1,4 @@
+// src/pages/Realms/access/RealmAccessVerify.tsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -5,9 +6,11 @@ import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
 import DataTable, { TableColumn } from "../../../components/common/DataTable";
 import { Badge } from "../../../components/common/Badge";
 import { MultiSelectCheckbox } from "../../../components/common/MultiSelectCheckbox";
+import { useToast } from "../../../context/ToastContext";
 
 import AccessRequestDrawer from "./AccessRequestDrawer";
 import { useAccessRequestsLive } from "./useAccessRequestsLive";
+import { canActOnVerify, canViewVerifyQueue } from "./accessActorRules";
 
 import {
     loadAccessRequests,
@@ -45,19 +48,44 @@ const statusVariant = (s: string) => {
     return "neutral";
 };
 
+function normActor(v?: string) {
+    return String(v || "").trim().toLowerCase();
+}
+
+function isAdminActor(actor: string) {
+    return normActor(actor).includes("admin");
+}
+
+function isApproverActor(actor: string) {
+    return normActor(actor).includes("approver");
+}
+
+function isVerifierActor(actor: string) {
+    return normActor(actor).includes("verifier");
+}
+
+function canViewVerify(actor: string) {
+    return isAdminActor(actor) || isApproverActor(actor) || isVerifierActor(actor);
+}
+
+function canVerify(actor: string) {
+    return isVerifierActor(actor);
+}
+
 type VerifyRow = AccessRequest & {
     applicationName?: string;
 };
 
 const RealmAccessVerify: React.FC = () => {
     const actor = getAccessActor();
+    const { pushToast } = useToast();
+
     const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
     const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
 
     const [selected, setSelected] = useState<AccessRequest | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
 
-    // ===== filters =====
     const [realmFilter, setRealmFilter] = useState<string[]>([]);
     const [appFilter, setAppFilter] = useState<string[]>([]);
     const [targetUserFilter, setTargetUserFilter] = useState<string[]>([]);
@@ -106,7 +134,6 @@ const RealmAccessVerify: React.FC = () => {
     const setTo = (v: string) =>
         setDateRange((p) => normalizeDateRange({ ...p, to: v }, { maxIso: todayISO, fixOrder: "snap" }));
 
-    // enrich with applicationName (supports both applicationName/appName)
     const rows: VerifyRow[] = useMemo(() => {
         return requests.map((r) => ({
             ...r,
@@ -114,7 +141,6 @@ const RealmAccessVerify: React.FC = () => {
         }));
     }, [requests]);
 
-    // options
     const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
 
     const appOptions = useMemo(
@@ -133,15 +159,12 @@ const RealmAccessVerify: React.FC = () => {
     const requesterOptions = useMemo(() => buildOptions(rows, (r) => r.requester), [rows]);
     const statusOptions = useMemo(() => buildOptions(rows, (r) => r.status), [rows]);
 
-    // keep appFilter valid when realmFilter changes
     useEffect(() => {
         if (!appFilter.length) return;
         const next = pruneSelectedByOptions(appFilter, appOptions);
         if (next.length !== appFilter.length) setAppFilter(next);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [realmFilter, appOptions]);
+    }, [realmFilter, appOptions, appFilter]);
 
-    // Apply filters (default verify queue = Approved if no status chosen)
     const filteredRows = useMemo(() => {
         const effectiveStatus = statusFilter.length ? statusFilter : ["Approved"];
 
@@ -174,6 +197,11 @@ const RealmAccessVerify: React.FC = () => {
         dateRange.to;
 
     const openRequest = (req: AccessRequest) => {
+        if (!canViewVerifyQueue(actor)) {
+            pushToast("Current actor cannot view verification items.", "warning");
+            return;
+        }
+
         setSelected(req);
         setDrawerOpen(true);
     };
@@ -182,74 +210,167 @@ const RealmAccessVerify: React.FC = () => {
         const req = requests.find((r) => r.id === id);
         if (!req) return;
 
-        const gov = evaluateGovernance({ request: req, actor, action: "verify" });
-        if (!canProceed(gov)) {
-            window.alert(governanceSummary(gov));
+        if (!canActOnVerify(actor)) {
+            pushToast("Only verifiers can verify requests.", "warning");
             return;
         }
 
-        updateRequest(id, { status: "Verified", verifier: String(actor) }, actor, "VERIFIED", "Verified by verifier");
+        const g = evaluateGovernance({ request: req, actor, action: "verify" });
+        if (!canProceed(g)) {
+            pushToast(governanceSummary(g), "warning");
+            return;
+        }
+
+        updateRequest(
+            id,
+            {
+                status: "Verified",
+                verifier: String(actor),
+            },
+            actor,
+            "VERIFIED",
+            "Verified by verifier"
+        );
+
         setDrawerOpen(false);
         refresh();
+        pushToast("Access request verified", "success");
     };
 
     const columns: TableColumn<VerifyRow>[] = useMemo(
         () => [
             {
-                key: "id",
-                label: "Request ID",
-                width: "150px",
-                render: (v, row) => (
-                    <button
-                        type="button"
-                        className="kc-linkcell kc-mono"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openRequest(row as AccessRequest);
-                        }}
-                        title="Open request details"
-                    >
-                        {String(v)}
-                    </button>
+                key: "request",
+                label: "Request",
+                width: "440px",
+                render: (_v, row) => (
+                    <div className="kc-requestPrimaryCell">
+                        <button
+                            type="button"
+                            className="kc-linkcell kc-mono kc-requestPrimaryId"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openRequest(row as AccessRequest);
+                            }}
+                            title="Open request details"
+                        >
+                            {row.id}
+                        </button>
+
+                        <div className="kc-requestPrimaryRealm">
+                            {row.realmName}
+                        </div>
+
+                        <div className="kc-requestPrimaryTuple">
+                            {row.targetUser} → {row.roleRequested}
+                        </div>
+
+                        <div className="kc-requestPrimaryMeta">
+                            Requested by {row.requester}
+                        </div>
+                    </div>
                 ),
             },
-            { key: "realmName", label: "Realm", width: "220px" },
-            { key: "applicationName", label: "Application", width: "200px" },
-            { key: "targetUser", label: "Target User", width: "170px" },
-            { key: "roleRequested", label: "Role", width: "150px" },
-            { key: "requester", label: "Requester", width: "160px" },
             {
                 key: "status",
                 label: "Status",
                 width: "130px",
                 align: "center",
-                render: (v) => <Badge variant={statusVariant(String(v)) as any}>{String(v)}</Badge>,
+                render: (v) => (
+                    <Badge variant={statusVariant(String(v)) as any}>
+                        {String(v)}
+                    </Badge>
+                ),
+            },
+            {
+                key: "governance",
+                label: "Governance",
+                width: "190px",
+                sortable: false,
+                render: (_v, row) => {
+                    if (!canActOnVerify(actor)) {
+                        return (
+                            <div className="kc-governanceCell" title="Current actor can view but cannot verify">
+                                <Badge variant={"info" as any}>View Only</Badge>
+                                <div className="kc-governanceSub">Verifier action required</div>
+                            </div>
+                        );
+                    }
+
+                    const g = evaluateGovernance({ request: row, actor, action: "verify" });
+                    const summary = governanceSummary(g) || "All checks passed";
+
+                    const isBlocked = g.blocks.length > 0 || g.requires.length > 0;
+                    const isWarn = !isBlocked && g.warns.length > 0;
+
+                    return (
+                        <div className="kc-governanceCell" title={summary}>
+                            <Badge
+                                variant={
+                                    isBlocked
+                                        ? ("danger" as any)
+                                        : isWarn
+                                            ? ("warning" as any)
+                                            : ("success" as any)
+                                }
+                            >
+                                {isBlocked ? "Blocked" : isWarn ? "Warning" : "Ready"}
+                            </Badge>
+
+                            <div className="kc-governanceSub">
+                                {isBlocked
+                                    ? summary
+                                    : isWarn
+                                        ? summary
+                                        : "All checks passed"}
+                            </div>
+                        </div>
+                    );
+                },
             },
             {
                 key: "updatedAt",
                 label: "Updated",
-                width: "210px",
-                render: (v) => new Date(String(v)).toLocaleString(),
+                width: "180px",
+                render: (v) => {
+                    const dt = new Date(String(v));
+
+                    return (
+                        <div className="kc-requestUpdatedCell" title={dt.toLocaleString()}>
+                            <div>{dt.toLocaleDateString()}</div>
+                            <div className="kc-requestUpdatedSub">
+                                {dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            </div>
+                        </div>
+                    );
+                },
             },
             {
                 key: "actions",
                 label: "Actions",
-                width: "140px",
+                width: "150px",
                 sortable: false,
-                render: (_v, row) => (
-                    <button
-                        className="kc-btn kc-btn-primary"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            openRequest(row as AccessRequest);
-                        }}
-                    >
-                        Verify
-                    </button>
-                ),
-            },
+                render: (_v, row) => {
+                    const viewOnly = !canActOnVerify(actor);
+                    const g = evaluateGovernance({ request: row, actor, action: "verify" });
+                    const blocked = g.blocks.length > 0 || g.requires.length > 0;
+
+                    return (
+                        <button
+                            type="button"
+                            className="kc-btn kc-btn-primary"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                openRequest(row as AccessRequest);
+                            }}
+                        >
+                            {viewOnly ? "View" : blocked ? "Review" : "Verify"}
+                        </button>
+                    );
+                },
+            }
         ],
-        [requests]
+        []
     );
 
     return (
@@ -268,7 +389,11 @@ const RealmAccessVerify: React.FC = () => {
                         striped
                         hoverable
                         stickyHeader
-                        emptyMessage="No requests waiting for verification"
+                        emptyMessage={
+                            canViewVerifyQueue(actor)
+                                ? "No requests waiting for verification"
+                                : "Current actor cannot view verification items."
+                        }
                         minHeight="100%"
                         onRowClick={(row) => openRequest(row as AccessRequest)}
                         onRefresh={refresh}
@@ -282,16 +407,6 @@ const RealmAccessVerify: React.FC = () => {
                                         value={realmFilter}
                                         onChange={setRealmFilter}
                                         placeholder="All"
-                                        portal
-                                    />
-
-                                    <MultiSelectCheckbox<string>
-                                        inline
-                                        label="Application"
-                                        options={appOptions}
-                                        value={appFilter}
-                                        onChange={setAppFilter}
-                                        placeholder={realmFilter.length ? "Apps in realm" : "All"}
                                         portal
                                     />
 
@@ -335,7 +450,6 @@ const RealmAccessVerify: React.FC = () => {
                                         portal
                                     />
 
-                                    {/* Date dropdown */}
                                     <div className="kc_filterGroup" ref={dateRef}>
                                         <div className="kc_dateFilterWrap">
                                             <button
@@ -387,7 +501,11 @@ const RealmAccessVerify: React.FC = () => {
                                                             Clear
                                                         </button>
 
-                                                        <button type="button" className="kc-btn kc-btn-primary" onClick={() => setDateMenuOpen(false)}>
+                                                        <button
+                                                            type="button"
+                                                            className="kc-btn kc-btn-primary"
+                                                            onClick={() => setDateMenuOpen(false)}
+                                                        >
                                                             Apply
                                                         </button>
                                                     </div>
@@ -396,7 +514,6 @@ const RealmAccessVerify: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    {/* badges */}
                                     <div className="kc_filterBadges">
                                         {realmFilter.length > 0 && <span className="kc_filterBadge">Realm: {realmFilter.length}</span>}
                                         {appFilter.length > 0 && <span className="kc_filterBadge">App: {appFilter.length}</span>}
@@ -411,7 +528,6 @@ const RealmAccessVerify: React.FC = () => {
                                         )}
                                     </div>
 
-                                    {/* clear */}
                                     {hasAnyFilters ? (
                                         <button
                                             type="button"
@@ -438,6 +554,7 @@ const RealmAccessVerify: React.FC = () => {
                     <AccessRequestDrawer
                         open={drawerOpen}
                         mode="verify"
+                        actor={actor}
                         request={selected}
                         events={events}
                         onClose={() => setDrawerOpen(false)}

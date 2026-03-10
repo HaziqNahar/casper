@@ -39,12 +39,17 @@ interface WeatherData {
     validPeriod: string | null;
     forecasts: WeatherForecast[];
 }
+interface RealmMembership {
+    realmId: string;
+    username: string;
+}
 
 interface DataContextType {
     weatherData: WeatherData | null;
     totalUsers: UserRow[];
     totalRealms: RealmRow[];
     totalApps: AppRow[];
+    realmMemberships: RealmMembership[];
 
     loading: boolean;
     error: string | null;
@@ -52,6 +57,7 @@ interface DataContextType {
     setTotalUsers: React.Dispatch<React.SetStateAction<UserRow[]>>;
     setTotalRealms: React.Dispatch<React.SetStateAction<RealmRow[]>>;
     setTotalApps: React.Dispatch<React.SetStateAction<AppRow[]>>;
+    setRealmMemberships: React.Dispatch<React.SetStateAction<RealmMembership[]>>;
 
     refreshData: () => Promise<void>;
     securityPosture: SecurityPosture;
@@ -65,13 +71,13 @@ interface DataProviderProps {
 
 export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
     const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
-
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const [totalUsers, setTotalUsers] = useState<UserRow[]>([]);
     const [totalRealms, setTotalRealms] = useState<RealmRow[]>([]);
     const [totalApps, setTotalApps] = useState<AppRow[]>([]);
+    const [realmMemberships, setRealmMemberships] = useState<RealmMembership[]>([]);
 
     const fetchAllData = useCallback(async () => {
         setLoading(true);
@@ -138,9 +144,11 @@ export const DataProvider: React.FC<DataProviderProps> = ({ children }) => {
         totalApps,
         loading,
         error,
+        realmMemberships,
         setTotalUsers,
         setTotalRealms,
         setTotalApps,
+        setRealmMemberships,
         refreshData: fetchAllData,
         securityPosture,
     };

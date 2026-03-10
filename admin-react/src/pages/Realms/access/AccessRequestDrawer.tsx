@@ -17,7 +17,15 @@ type Props = {
 
     onSubmit?: (id: string) => void;
     onCancel?: (id: string) => void;
-    onApprove?: (id: string, note?: string) => void;
+    onApprove?: (
+        id: string,
+        payload: {
+            note?: string;
+            roleRequested: string;
+            timeBound: boolean;
+            endDate?: string;
+        }
+    ) => void;
     onReject?: (id: string, note?: string) => void;
     onVerify?: (id: string) => void;
 };
@@ -60,14 +68,38 @@ function pillStyle(kind: "neutral" | "info" | "success" | "danger" | "warn") {
         color: "var(--kc-text, #0f172a)",
     };
 
-    if (kind === "success")
-        return { ...base, border: "1px solid rgba(72,187,120,0.40)", background: "rgba(72,187,120,0.12)" };
-    if (kind === "danger")
-        return { ...base, border: "1px solid rgba(255,99,99,0.40)", background: "rgba(255,99,99,0.12)" };
-    if (kind === "warn")
-        return { ...base, border: "1px solid rgba(255,193,7,0.42)", background: "rgba(255,193,7,0.12)" };
-    if (kind === "info")
-        return { ...base, border: "1px solid rgba(56,189,248,0.40)", background: "rgba(56,189,248,0.12)" };
+    if (kind === "success") {
+        return {
+            ...base,
+            border: "1px solid rgba(72,187,120,0.40)",
+            background: "rgba(72,187,120,0.12)",
+        };
+    }
+
+    if (kind === "danger") {
+        return {
+            ...base,
+            border: "1px solid rgba(255,99,99,0.40)",
+            background: "rgba(255,99,99,0.12)",
+        };
+    }
+
+    if (kind === "warn") {
+        return {
+            ...base,
+            border: "1px solid rgba(255,193,7,0.42)",
+            background: "rgba(255,193,7,0.12)",
+        };
+    }
+
+    if (kind === "info") {
+        return {
+            ...base,
+            border: "1px solid rgba(56,189,248,0.40)",
+            background: "rgba(56,189,248,0.12)",
+        };
+    }
+
     return base;
 }
 
@@ -110,20 +142,24 @@ function findFirstEventAsc(asc: AccessRequestEvent[], types: string[]): AccessRe
 }
 
 function stepColors(state: StepState) {
-    if (state === "done")
+    if (state === "done") {
         return {
             dotBg: "rgba(34,197,94,0.18)",
             dotBorder: "rgba(34,197,94,0.45)",
             dotText: "#166534",
             line: "rgba(34,197,94,0.35)",
         };
-    if (state === "active")
+    }
+
+    if (state === "active") {
         return {
             dotBg: "rgba(59,130,246,0.16)",
             dotBorder: "rgba(59,130,246,0.55)",
             dotText: "var(--kc-primary, #0b1f3a)",
             line: "rgba(59,130,246,0.35)",
         };
+    }
+
     return {
         dotBg: "rgba(15,23,42,0.06)",
         dotBorder: "rgba(15,23,42,0.14)",
@@ -132,7 +168,6 @@ function stepColors(state: StepState) {
     };
 }
 
-// governance helpers for your actual policy shape
 function govCanProceed(gov?: { blocks: string[]; requires: string[]; warns: string[] } | null) {
     if (!gov) return true;
     return gov.blocks.length === 0 && gov.requires.length === 0;
@@ -141,6 +176,22 @@ function govCanProceed(gov?: { blocks: string[]; requires: string[]; warns: stri
 function govHasWarnOnly(gov?: { blocks: string[]; requires: string[]; warns: string[] } | null) {
     if (!gov) return false;
     return gov.blocks.length === 0 && gov.requires.length === 0 && gov.warns.length > 0;
+}
+
+function statusKind(status?: string): "neutral" | "info" | "success" | "danger" | "warn" {
+    const s = String(status || "").toLowerCase();
+    if (s === "submitted") return "info";
+    if (s === "approved" || s === "verified") return "success";
+    if (s === "rejected" || s === "cancelled") return "danger";
+    if (s === "draft") return "neutral";
+    return "neutral";
+}
+
+function modeTitle(mode: Mode) {
+    if (mode === "request") return "Realm Access Request";
+    if (mode === "approve") return "Realm Access Approval";
+    if (mode === "verify") return "Realm Access Verification";
+    return "Realm Access Audit";
 }
 
 export default function AccessRequestDrawer({
@@ -173,8 +224,14 @@ export default function AccessRequestDrawer({
         const role = (request.roleRequested || "").toLowerCase();
         const highPrivilege = role.includes("admin") || role.includes("manager");
 
-        if (highPrivilege) return { label: "HIGH RISK", kind: "danger" as const, reason: "High-privilege role" };
-        if (!request.timeBound) return { label: "MEDIUM RISK", kind: "warn" as const, reason: "Not time-bound" };
+        if (highPrivilege) {
+            return { label: "HIGH RISK", kind: "danger" as const, reason: "High-privilege role" };
+        }
+
+        if (!request.timeBound) {
+            return { label: "MEDIUM RISK", kind: "warn" as const, reason: "Not time-bound" };
+        }
+
         return { label: "LOW RISK", kind: "success" as const, reason: "Time-bound + standard role" };
     }, [request.roleRequested, request.timeBound]);
 
@@ -212,7 +269,9 @@ export default function AccessRequestDrawer({
     }, [request.timeBound, request.endDate]);
 
     const canSubmit = mode === "request" && request.status === "Draft";
-    const canCancel = mode === "request" && request.status !== "Verified" && request.status !== "Cancelled";
+    const canCancel =
+        mode === "request" &&
+        (request.status === "Draft" || request.status === "Submitted");
     const canApprove = mode === "approve" && request.status === "Submitted";
     const canVerify = mode === "verify" && request.status === "Approved";
 
@@ -243,7 +302,10 @@ export default function AccessRequestDrawer({
         return null;
     }, [mode, govSubmit, govApprove, govVerify]);
 
-    const govTextForMode = useMemo(() => (govForMode ? governanceSummary(govForMode) : ""), [govForMode]);
+    const govTextForMode = useMemo(
+        () => (govForMode ? governanceSummary(govForMode) : ""),
+        [govForMode]
+    );
     const govAllowedForMode = useMemo(() => govCanProceed(govForMode), [govForMode]);
     const govWarnOnlyForMode = useMemo(() => govHasWarnOnly(govForMode), [govForMode]);
 
@@ -287,14 +349,17 @@ export default function AccessRequestDrawer({
         const parts: string[] = [];
         parts.push(`Comment: ${approvalComment.trim()}`);
 
-        if (selectedRole !== request.roleRequested) parts.push(`Role adjusted: ${request.roleRequested} → ${selectedRole}`);
-        else parts.push(`Role kept: ${selectedRole}`);
+        if (selectedRole !== request.roleRequested) {
+            parts.push(`Role adjusted: ${request.roleRequested} → ${selectedRole}`);
+        } else {
+            parts.push(`Role kept: ${selectedRole}`);
+        }
 
         if (makeTimeBound) {
             const requested = request.endDate ? `requested end ${request.endDate}` : "requested end —";
             parts.push(`Time-bound: Yes (approved end ${approvedEndDate}) (${requested})`);
         } else {
-            parts.push(`Time-bound: No`);
+            parts.push("Time-bound: No");
         }
 
         return parts.join(" | ");
@@ -321,10 +386,30 @@ export default function AccessRequestDrawer({
         const verifyMeta = evVerified;
 
         return [
-            { key: "request", label: "Request", state: stReq, meta: requestMeta ? `${requestMeta.actor} • ${fmt(requestMeta.at)}` : "—" },
-            { key: "approve", label: "Approve", state: stApp, meta: approveMeta ? `${approveMeta.actor} • ${fmt(approveMeta.at)}` : "—" },
-            { key: "verify", label: "Verify", state: stVer, meta: verifyMeta ? `${verifyMeta.actor} • ${fmt(verifyMeta.at)}` : "—" },
-            { key: "audit", label: "Audit", state: stAud, meta: "Logged" },
+            {
+                key: "request",
+                label: "Request",
+                state: stReq,
+                meta: requestMeta ? `${requestMeta.actor} • ${fmt(requestMeta.at)}` : "—",
+            },
+            {
+                key: "approve",
+                label: "Approve",
+                state: stApp,
+                meta: approveMeta ? `${approveMeta.actor} • ${fmt(approveMeta.at)}` : "—",
+            },
+            {
+                key: "verify",
+                label: "Verify",
+                state: stVer,
+                meta: verifyMeta ? `${verifyMeta.actor} • ${fmt(verifyMeta.at)}` : "—",
+            },
+            {
+                key: "audit",
+                label: "Audit",
+                state: stAud,
+                meta: "Logged",
+            },
         ] as const;
     }, [reqEventsAsc, request.status, mode]);
 
@@ -349,19 +434,91 @@ export default function AccessRequestDrawer({
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="kcDrawerHeader">
-                    <div>
-                        <div className="kcDrawerTitle">Access Request</div>
-                        <div className="kcDrawerSubtitle">
-                            <b>{request.id}</b> • {request.realmName} • {request.status}
+                    <div style={{ minWidth: 0 }}>
+                        <div className="kcDrawerTitle">{modeTitle(mode)}</div>
+
+                        <div
+                            style={{
+                                marginTop: 8,
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 8,
+                                flexWrap: "wrap",
+                            }}
+                        >
+                            <span
+                                style={{
+                                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                                    fontWeight: 800,
+                                    fontSize: "0.82rem",
+                                    color: "var(--kc-primary, #0b1f3a)",
+                                }}
+                            >
+                                {request.id}
+                            </span>
+
+                            <span style={pillStyle(statusKind(request.status))}>
+                                {request.status}
+                            </span>
+                        </div>
+
+                        <div
+                            style={{
+                                marginTop: 10,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                            }}
+                        >
+                            <div
+                                style={{
+                                    fontSize: "0.98rem",
+                                    fontWeight: 800,
+                                    color: "var(--kc-text, #0f172a)",
+                                    lineHeight: 1.2,
+                                }}
+                            >
+                                {request.realmName}
+                            </div>
+
+                            <div
+                                style={{
+                                    fontSize: "0.9rem",
+                                    color: "var(--kc-text-muted, #64748b)",
+                                    lineHeight: 1.25,
+                                }}
+                            >
+                                {request.targetUser} → {request.roleRequested}
+                            </div>
+
+                            <div
+                                style={{
+                                    fontSize: "0.8rem",
+                                    color: "var(--kc-text-muted, #64748b)",
+                                }}
+                            >
+                                Requested by <b>{request.requester}</b>
+                            </div>
                         </div>
                     </div>
 
-                    <button className="kc-btn kc-btn-ghost" onClick={onClose} aria-label="Close">
+                    <button
+                        type="button"
+                        className="kc-btn kc-btn-ghost"
+                        onClick={onClose}
+                        aria-label="Close"
+                    >
                         <X size={16} />
                     </button>
                 </div>
 
-                <div style={{ padding: "12px 14px", borderBottom: "1px solid rgba(15,23,42,0.10)" }}>
+                <div
+                    style={{
+                        padding: "12px 14px",
+                        borderBottom: "1px solid rgba(15,23,42,0.10)",
+                        background: "rgba(248,250,252,0.65)",
+                    }}
+                >
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                         <span style={pillStyle(risk.kind)}>
                             {risk.label}
@@ -399,8 +556,22 @@ export default function AccessRequestDrawer({
                     </div>
                 )}
 
-                <div className="kcWorkflow" style={{ padding: "14px", borderBottom: "1px solid rgba(15,23,42,0.08)" }}>
-                    <div className="kcWorkflowTitle" style={{ fontWeight: 900, fontSize: "0.85rem", marginBottom: 10, color: "var(--kc-text,#0f172a)" }}>
+                <div
+                    className="kcWorkflow"
+                    style={{
+                        padding: "14px",
+                        borderBottom: "1px solid rgba(15,23,42,0.08)",
+                    }}
+                >
+                    <div
+                        className="kcWorkflowTitle"
+                        style={{
+                            fontWeight: 900,
+                            fontSize: "0.85rem",
+                            marginBottom: 10,
+                            color: "var(--kc-text,#0f172a)",
+                        }}
+                    >
                         Workflow
                     </div>
 
@@ -414,7 +585,11 @@ export default function AccessRequestDrawer({
                                     <div className="kcWorkflowHead">
                                         <div
                                             className={`kcWorkflowDot kcWorkflowDot--${s.state}`}
-                                            style={{ borderColor: c.dotBorder, background: c.dotBg, color: c.dotText }}
+                                            style={{
+                                                borderColor: c.dotBorder,
+                                                background: c.dotBg,
+                                                color: c.dotText,
+                                            }}
                                             title={s.state}
                                         >
                                             {idx + 1}
@@ -465,7 +640,9 @@ export default function AccessRequestDrawer({
                                     }}
                                 >
                                     <div style={{ fontWeight: 900, fontSize: "0.85rem" }}>Fix this</div>
-                                    <div style={{ opacity: 0.85, marginTop: 6, fontSize: "0.82rem" }}>{approvalError}</div>
+                                    <div style={{ opacity: 0.85, marginTop: 6, fontSize: "0.82rem" }}>
+                                        {approvalError}
+                                    </div>
                                 </div>
                             )}
 
@@ -534,7 +711,7 @@ export default function AccessRequestDrawer({
                                             }}
                                         />
                                         <div className="kc-text-muted" style={{ fontSize: "0.78rem" }}>
-                                            If the requester asked for an end date, you can only shorten it (or keep the same).
+                                            If the requester asked for an end date, you can only shorten it or keep the same.
                                         </div>
                                     </div>
                                 )}
@@ -542,54 +719,67 @@ export default function AccessRequestDrawer({
                         </>
                     )}
 
-                    <div className="kcDrawerSectionTitle">Overview</div>
-                    <div className="kcSectionCard">
-                        <div className="kcDrawerSectionGrid">
-                            <div>
-                                <div className="kcFieldLabel">Realm</div>
-                                <div className="kcFieldValue">{request.realmName}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Target User</div>
-                                <div className="kcFieldValue">{request.targetUser}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Role Requested</div>
-                                <div className="kcFieldValue">{request.roleRequested}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Status</div>
-                                <div className="kcFieldValue">{request.status}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Requester</div>
-                                <div className="kcFieldValue">{request.requester}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Approver</div>
-                                <div className="kcFieldValue">{request.approver ?? "—"}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Verifier</div>
-                                <div className="kcFieldValue">{request.verifier ?? "—"}</div>
-                            </div>
-
-                            <div>
-                                <div className="kcFieldLabel">Last Updated</div>
-                                <div className="kcFieldValue">{fmt(request.updatedAt)}</div>
-                            </div>
+                    <div className="kcDrawerSectionTitle">Access Summary</div>
+                    <div
+                        className="kcSectionCard"
+                        style={{
+                            padding: 0,
+                            overflow: "hidden",
+                        }}
+                    >
+                        <div
+                            style={{
+                                display: "grid",
+                                gridTemplateColumns: "1fr 1fr",
+                                gap: 0,
+                            }}
+                        >
+                            {[
+                                { label: "Realm", value: request.realmName },
+                                { label: "Target User", value: request.targetUser },
+                                { label: "Requested Role", value: request.roleRequested },
+                                { label: "Status", value: request.status },
+                                { label: "Requester", value: request.requester },
+                                { label: "Approver", value: request.approver ?? "—" },
+                                { label: "Verifier", value: request.verifier ?? "—" },
+                                { label: "Last Updated", value: fmt(request.updatedAt) },
+                            ].map((item, index) => (
+                                <div
+                                    key={item.label}
+                                    style={{
+                                        padding: "14px 16px",
+                                        borderRight: index % 2 === 0 ? "1px solid rgba(15,23,42,0.08)" : "none",
+                                        borderBottom:
+                                            index < 6 ? "1px solid rgba(15,23,42,0.08)" : "none",
+                                        background: index % 2 === 0 ? "rgba(248,250,252,0.45)" : "#fff",
+                                    }}
+                                >
+                                    <div
+                                        className="kcFieldLabel"
+                                        style={{ marginBottom: 6 }}
+                                    >
+                                        {item.label}
+                                    </div>
+                                    <div
+                                        className="kcFieldValue"
+                                        style={{
+                                            fontWeight: 700,
+                                            lineHeight: 1.3,
+                                            wordBreak: "break-word",
+                                        }}
+                                    >
+                                        {item.value}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
                     <div className="kcDrawerSectionTitle">Justification</div>
                     <div className="kcSectionCard">
-                        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.4 }}>{request.justification || "—"}</div>
+                        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontSize: "0.92rem" }}>
+                            {request.justification || "—"}
+                        </div>
                     </div>
 
                     <div className="kcDrawerSectionTitle">Duration</div>
@@ -624,24 +814,40 @@ export default function AccessRequestDrawer({
                                             display: "flex",
                                             justifyContent: "space-between",
                                             gap: 12,
-                                            padding: "10px 12px",
+                                            padding: "12px 14px",
                                             borderRadius: 12,
                                             border: "1px solid rgba(15,23,42,0.10)",
-                                            background: "rgba(255,255,255,0.06)",
+                                            background: "#fff",
                                         }}
                                     >
                                         <div style={{ minWidth: 0 }}>
-                                            <div className="kcTimelineType" style={{ fontWeight: 900 }}>
+                                            <div
+                                                className="kcTimelineType"
+                                                style={{
+                                                    fontWeight: 900,
+                                                    fontSize: "0.84rem",
+                                                    marginBottom: 4,
+                                                }}
+                                            >
                                                 {e.type}
                                             </div>
-                                            <div className="kc-text-muted" style={{ fontSize: "0.78rem", marginTop: 3 }}>
+                                            <div
+                                                className="kc-text-muted"
+                                                style={{
+                                                    fontSize: "0.82rem",
+                                                    lineHeight: 1.35,
+                                                }}
+                                            >
                                                 {e.message ?? "—"}
                                             </div>
                                         </div>
 
                                         <div style={{ textAlign: "right", flex: "0 0 auto" }}>
-                                            <div style={{ fontWeight: 800, fontSize: "0.78rem" }}>{e.actor}</div>
-                                            <div className="kc-text-muted" style={{ fontSize: "0.75rem", marginTop: 3 }}>
+                                            <div style={{ fontWeight: 800, fontSize: "0.8rem" }}>{e.actor}</div>
+                                            <div
+                                                className="kc-text-muted"
+                                                style={{ fontSize: "0.76rem", marginTop: 3 }}
+                                            >
                                                 {fmt(e.at)}
                                             </div>
                                         </div>
@@ -656,6 +862,7 @@ export default function AccessRequestDrawer({
                     <div className="kcDrawerFooterRight">
                         {canSubmit && (
                             <button
+                                type="button"
                                 className="kc-btn kc-btn-primary"
                                 disabled={!govCanProceed(govSubmit)}
                                 title={!govCanProceed(govSubmit) ? governanceSummary(govSubmit) : "Submit"}
@@ -666,7 +873,11 @@ export default function AccessRequestDrawer({
                         )}
 
                         {canCancel && (
-                            <button className="kc-btn kc-btn-ghost" onClick={() => onCancel?.(request.id)}>
+                            <button
+                                type="button"
+                                className="kc-btn kc-btn-ghost"
+                                onClick={() => onCancel?.(request.id)}
+                            >
                                 Cancel
                             </button>
                         )}
@@ -674,6 +885,7 @@ export default function AccessRequestDrawer({
                         {canApprove && (
                             <>
                                 <button
+                                    type="button"
                                     className="kc-btn kc-btn-primary"
                                     disabled={!govCanProceed(govApprove)}
                                     title={!govCanProceed(govApprove) ? governanceSummary(govApprove) : "Approve"}
@@ -685,13 +897,20 @@ export default function AccessRequestDrawer({
                                         if (err) return;
 
                                         const note = buildApprovalNote();
-                                        onApprove?.(request.id, note);
+
+                                        onApprove?.(request.id, {
+                                            note,
+                                            roleRequested: selectedRole,
+                                            timeBound: makeTimeBound,
+                                            endDate: makeTimeBound ? approvedEndDate : "",
+                                        });
                                     }}
                                 >
                                     Approve
                                 </button>
 
                                 <button
+                                    type="button"
                                     className="kc-btn kc-btn-ghost"
                                     disabled={!govCanProceed(govApprove)}
                                     title={!govCanProceed(govApprove) ? governanceSummary(govApprove) : "Reject"}
@@ -702,6 +921,7 @@ export default function AccessRequestDrawer({
                                             setApprovalError("Rejection comment is required.");
                                             return;
                                         }
+
                                         onReject?.(request.id, `Rejection: ${approvalComment.trim()}`);
                                     }}
                                 >
@@ -712,6 +932,7 @@ export default function AccessRequestDrawer({
 
                         {canVerify && (
                             <button
+                                type="button"
                                 className="kc-btn kc-btn-primary"
                                 disabled={!govCanProceed(govVerify)}
                                 title={!govCanProceed(govVerify) ? governanceSummary(govVerify) : "Verify"}
