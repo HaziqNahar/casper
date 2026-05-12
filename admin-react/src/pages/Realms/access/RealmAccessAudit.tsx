@@ -1,5 +1,5 @@
 // src/pages/Realms/access/RealmAccessAudit.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
@@ -8,8 +8,9 @@ import { Badge } from "../../../components/common/Badge";
 import { MultiSelectCheckbox } from "../../../components/common/MultiSelectCheckbox";
 
 import {
-    loadAccessEvents,
-    loadAccessRequests,
+    loadAccessSnapshot,
+    getPendingAccessSla,
+    AccessRequestSla,
     AccessRequestEvent,
     AccessRequest,
 } from "./accessRequestsStore";
@@ -22,7 +23,6 @@ import {
     normalizeDateRange,
     dateChipText as dateChipTextUtil,
     buildOptions,
-    cascadedOptions,
     pruneSelectedByOptions,
     applyFiltersWithDate,
     applyMultiFilters,
@@ -35,20 +35,81 @@ import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 
 // --- badge mapping ---
-const typeVariant = (t: string) => {
+type AccessRequestWithAppName = AccessRequest & {
+    applicationName?: string;
+    appName?: string;
+};
+
+type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
+
+const typeVariant = (t: string): BadgeVariant => {
     if (t === "APPROVED" || t === "VERIFIED") return "success";
-    if (t === "REJECTED" || t === "CANCELLED") return "danger";
+    if (t === "REJECTED" || t === "CANCELLED") return "error";
     if (t === "SUBMITTED") return "info";
-    return "neutral";
+    return "default";
 };
 
 // --- Row enriched with realm/app for filtering ---
 type AuditRow = AccessRequestEvent & {
     realmName?: string;
+    applicationName?: string;
     targetUser?: string;
     roleRequested?: string;
     status?: string;
+    slaLabel?: string;
+    slaVariant?: BadgeVariant;
 };
+
+function diffHuman(ms: number) {
+    const abs = Math.max(0, ms);
+    const totalMin = Math.floor(abs / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h <= 0) return `${m}m`;
+    return `${h}h ${m}m`;
+}
+
+function describeSla(sla?: AccessRequestSla | null): Pick<AuditRow, "slaLabel" | "slaVariant"> {
+    if (!sla) {
+        return { slaLabel: "-", slaVariant: "default" };
+    }
+
+    if (sla.outcome === "pending") {
+        const dueAt = new Date(sla.dueAt).getTime();
+        const remainingMs = dueAt - Date.now();
+
+        if (sla.breached) {
+            return {
+                slaLabel: `Overdue by ${diffHuman(Math.abs(remainingMs))}`,
+                slaVariant: "error",
+            };
+        }
+
+        if (remainingMs <= 60 * 60 * 1000) {
+            return {
+                slaLabel: `Due in ${diffHuman(remainingMs)}`,
+                slaVariant: "warning",
+            };
+        }
+
+        return {
+            slaLabel: "Within SLA",
+            slaVariant: "success",
+        };
+    }
+
+    if (sla.outcome === "after_sla_breach") {
+        return {
+            slaLabel: "Handled after SLA breach",
+            slaVariant: "error",
+        };
+    }
+
+    return {
+        slaLabel: "Handled within SLA",
+        slaVariant: "success",
+    };
+}
 
 const RealmAccessAudit: React.FC = () => {
     const todayISO = useMemo(() => getTodayISO(), []);
@@ -68,8 +129,8 @@ const RealmAccessAudit: React.FC = () => {
     }, [dateMenuOpen]);
 
     // data
-    const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
-    const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
+    const [events, setEvents] = useState<AccessRequestEvent[]>([]);
+    const [requests, setRequests] = useState<AccessRequest[]>([]);
 
     const [selected, setSelected] = useState<AccessRequest | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -83,10 +144,31 @@ const RealmAccessAudit: React.FC = () => {
     const [targetUserFilter, setTargetUserFilter] = useState<string[]>([]);
     const [dateRange, setDateRange] = useState<DateRange>({}); // ✅ shared util type
 
-    const refresh = () => {
-        setEvents(loadAccessEvents());
-        setRequests(loadAccessRequests());
-    };
+    const refresh = useCallback(async () => {
+        const snapshot = await loadAccessSnapshot();
+        setEvents(snapshot.events);
+        setRequests(snapshot.requests);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        loadAccessSnapshot()
+            .then((snapshot) => {
+                if (cancelled) return;
+                setEvents(snapshot.events);
+                setRequests(snapshot.requests);
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setEvents([]);
+                    setRequests([]);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useAccessRequestsLive(refresh);
 
@@ -112,12 +194,18 @@ const RealmAccessAudit: React.FC = () => {
     const rows: AuditRow[] = useMemo(() => {
         return events.map((e) => {
             const r = reqById.get(e.requestId);
+            const currentPendingSla = r ? getPendingAccessSla(r, events.filter((evt) => evt.requestId === e.requestId)) : null;
+            const resolvedSla = e.sla ?? currentPendingSla ?? undefined;
+            const sla = describeSla(resolvedSla);
             return {
                 ...e,
                 realmName: r?.realmName ?? "",
+                applicationName: ((r as AccessRequestWithAppName)?.applicationName ?? (r as AccessRequestWithAppName)?.appName ?? "") as string,
                 targetUser: r?.targetUser ?? "",
                 roleRequested: r?.roleRequested ?? "",
                 status: r?.status ?? "",
+                slaLabel: sla.slaLabel,
+                slaVariant: sla.slaVariant,
             };
         });
     }, [events, reqById]);
@@ -153,10 +241,10 @@ const RealmAccessAudit: React.FC = () => {
     }, [rows, realmFilter]);
 
     // prune cascaded selections when parent filters change
-    useEffect(() => {
-        setTargetUserFilter((prev) => pruneSelectedByOptions(prev, targetUserOptions));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [targetUserOptions]);
+    const effectiveTargetUserFilter = useMemo(
+        () => pruneSelectedByOptions(targetUserFilter, targetUserOptions),
+        [targetUserFilter, targetUserOptions]
+    );
 
     // ---- date handlers using accessFilterUtils ----
     const setFrom = (v: string) => {
@@ -181,20 +269,20 @@ const RealmAccessAudit: React.FC = () => {
                 type: { selected: typeFilter, getValue: (r) => r.type },
                 actor: { selected: actorFilter, getValue: (r) => r.actor },
                 status: { selected: statusFilter, getValue: (r) => r.status },
-                targetUser: { selected: targetUserFilter, getValue: (r) => r.targetUser },
+                targetUser: { selected: effectiveTargetUserFilter, getValue: (r) => r.targetUser },
             },
             date: {
                 range: dateRange,
                 getValue: (r) => r.at, // event timestamp
             },
         });
-    }, [rows, realmFilter, appFilter, typeFilter, actorFilter, statusFilter, targetUserFilter, dateRange]);
+    }, [rows, realmFilter, appFilter, typeFilter, actorFilter, statusFilter, effectiveTargetUserFilter, dateRange]);
 
-    const openRequest = (requestId: string) => {
+    const openRequest = useCallback((requestId: string) => {
         const req = reqById.get(requestId) || null;
         setSelected(req);
         setDrawerOpen(true);
-    };
+    }, [reqById]);
 
     const columns: TableColumn<AuditRow>[] = useMemo(
         () => [
@@ -235,7 +323,7 @@ const RealmAccessAudit: React.FC = () => {
                 width: "140px",
                 align: "center",
                 render: (v) => (
-                    <Badge variant={typeVariant(String(v)) as any}>
+                    <Badge variant={typeVariant(String(v))}>
                         {String(v)}
                     </Badge>
                 ),
@@ -266,12 +354,25 @@ const RealmAccessAudit: React.FC = () => {
             },
 
             {
+                key: "sla",
+                label: "SLA",
+                width: "170px",
+                align: "center",
+                sortable: false,
+                render: (_v, row) => (
+                    <Badge variant={row.slaVariant ?? "default"}>
+                        {row.slaLabel}
+                    </Badge>
+                ),
+            },
+
+            {
                 key: "message",
                 label: "Message",
                 render: (v) => <span className="kc-ellipsis">{String(v || "")}</span>,
             },
         ],
-        [reqById]
+        [openRequest]
     );
 
     const dateChipText = useMemo(() => dateChipTextUtil(dateRange), [dateRange]);
@@ -323,7 +424,7 @@ const RealmAccessAudit: React.FC = () => {
                                         inline
                                         label="Target User"
                                         options={targetUserOptions}
-                                        value={targetUserFilter}
+                                        value={effectiveTargetUserFilter}
                                         onChange={setTargetUserFilter}
                                         placeholder="All"
                                         portal

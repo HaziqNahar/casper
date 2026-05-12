@@ -1,5 +1,5 @@
 // src/pages/Realms/access/RealmAccessRequest.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
@@ -13,15 +13,13 @@ import { useAccessRequestsLive } from "./useAccessRequestsLive";
 import { getAccessActor } from "../../../context/accessCurrentUser";
 import { useToast } from "../../../context/ToastContext";
 import { useData } from "../../../context/DataContext";
-import { REALM_APP_USERS_INITIAL } from "../data/realmUserMap";
-import { REALMS_DATA, USERS_DATA } from "../data/realmsData";
 
 import {
-    loadAccessRequests,
-    loadAccessEvents,
+    loadAccessSnapshot,
     updateRequest,
     createAccessRequest,
     AccessRequest,
+    AccessRequestEvent,
 } from "./accessRequestsStore";
 
 import {
@@ -42,26 +40,41 @@ import {
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 
-const statusVariant = (s: string) => {
-    if (s === "Draft") return "neutral";
+type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
+
+const statusVariant = (s: string): BadgeVariant => {
+    if (s === "Draft") return "default";
     if (s === "Submitted") return "info";
     if (s === "Approved") return "success";
-    if (s === "Rejected") return "danger";
+    if (s === "Rejected") return "error";
     if (s === "Verified") return "success";
-    if (s === "Cancelled") return "danger";
-    return "neutral";
+    if (s === "Cancelled") return "error";
+    return "default";
 };
 
 const RealmAccessRequest: React.FC = () => {
     const actor = getAccessActor();
     const { pushToast } = useToast();
-    const [rows, setRows] = useState<AccessRequest[]>(() => loadAccessRequests());
-    const [events, setEvents] = useState(() => loadAccessEvents());
+    const { totalUsers, totalRealms } = useData();
+    const location = useLocation();
+    const prefill = useMemo(() => {
+        const p = new URLSearchParams(location.search);
+        return {
+            realmId: p.get("realmId") ?? "",
+            realmName: (p.get("realmName") ?? "") || ((totalRealms ?? []).find((r) => String(r.id) === (p.get("realmId") ?? ""))?.name ?? ""),
+            targetUser: p.get("targetUser") ?? "",
+            roleRequested: p.get("roleRequested") ?? "",
+            currentRoleId: p.get("currentRoleId") ?? "",
+            justification: p.get("justification") ?? "",
+        };
+        }, [location.search, totalRealms]);
+    const [rows, setRows] = useState<AccessRequest[]>([]);
+    const [events, setEvents] = useState<AccessRequestEvent[]>([]);
 
-    const [createOpen, setCreateOpen] = useState(false);
+    const [createOpen, setCreateOpen] = useState(() => Boolean(prefill.realmId || prefill.targetUser || prefill.roleRequested));
     const [selected, setSelected] = useState<AccessRequest | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
-    const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
+    const [requests, setRequests] = useState<AccessRequest[]>([]);
 
     const [realmFilter, setRealmFilter] = useState<string[]>([]);
     const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -104,11 +117,33 @@ const RealmAccessRequest: React.FC = () => {
         );
     };
 
-    const refresh = () => {
-        setRows(loadAccessRequests());
-        setEvents(loadAccessEvents());
-        setRequests(loadAccessRequests());
-    };
+    const refresh = useCallback(async () => {
+        const snapshot = await loadAccessSnapshot();
+        setRows(snapshot.requests);
+        setEvents(snapshot.events);
+        setRequests(snapshot.requests);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        loadAccessSnapshot()
+            .then((snapshot) => {
+                if (cancelled) return;
+                setRows(snapshot.requests);
+                setEvents(snapshot.events);
+                setRequests(snapshot.requests);
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setRows([]);
+                    setEvents([]);
+                    setRequests([]);
+                }
+            });
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     useAccessRequestsLive(refresh);
 
@@ -127,11 +162,11 @@ const RealmAccessRequest: React.FC = () => {
         return m;
     }, [requests]);
 
-    const openRequest = (requestId: string) => {
+    const openRequest = useCallback((requestId: string) => {
         const req = reqById.get(requestId) || null;
         setSelected(req);
         setDrawerOpen(true);
-    };
+    }, [reqById]);
 
     const columns: TableColumn<AccessRequest>[] = useMemo(
         () => [
@@ -170,7 +205,7 @@ const RealmAccessRequest: React.FC = () => {
                 width: "130px",
                 align: "center",
                 render: (v) => (
-                    <Badge variant={statusVariant(String(v)) as any}>
+                    <Badge variant={statusVariant(String(v))}>
                         {String(v)}
                     </Badge>
                 ),
@@ -222,16 +257,18 @@ const RealmAccessRequest: React.FC = () => {
                                         return;
                                     }
 
-                                    updateRequest(
+                                    void updateRequest(
                                         row.id,
                                         { status: "Submitted" },
                                         actor,
                                         "SUBMITTED",
                                         "Submitted for approval"
-                                    );
-
-                                    refresh();
-                                    pushToast("Access request submitted successfully", "success");
+                                    ).then(() => {
+                                        void refresh();
+                                        pushToast("Access request submitted successfully", "success");
+                                    }).catch((err) => {
+                                        pushToast(err instanceof Error ? err.message : "Failed to submit access request", "error");
+                                    });
                                 }}
                             >
                                 Submit
@@ -245,16 +282,18 @@ const RealmAccessRequest: React.FC = () => {
                                     e.preventDefault();
                                     e.stopPropagation();
 
-                                    updateRequest(
+                                    void updateRequest(
                                         row.id,
                                         { status: "Cancelled" },
                                         actor,
                                         "CANCELLED",
                                         "Cancelled by requester"
-                                    );
-
-                                    refresh();
-                                    pushToast("Access request cancelled", "warning");
+                                    ).then(() => {
+                                        void refresh();
+                                        pushToast("Access request cancelled", "warning");
+                                    }).catch((err) => {
+                                        pushToast(err instanceof Error ? err.message : "Failed to cancel access request", "error");
+                                    });
                                 }}
                             >
                                 Cancel
@@ -264,26 +303,8 @@ const RealmAccessRequest: React.FC = () => {
                 },
             },
         ],
-        [actor, pushToast]
+        [actor, openRequest, pushToast, refresh]
     );
-
-    const location = useLocation();
-    const prefill = useMemo(() => {
-        const p = new URLSearchParams(location.search);
-        return {
-            realmId: p.get("realmId") ?? "",
-            realmName: p.get("realmName") ?? "",
-            targetUser: p.get("targetUser") ?? "",
-            roleRequested: p.get("roleRequested") ?? "",
-            justification: p.get("justification") ?? "",
-        };
-    }, [location.search]);
-
-    useEffect(() => {
-        if (prefill.realmId || prefill.targetUser || prefill.roleRequested) {
-            setCreateOpen(true);
-        }
-    }, [prefill.realmId, prefill.targetUser, prefill.roleRequested]);
 
     const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
     const targetUserOptions = useMemo(() => buildOptions(rows, (r) => r.targetUser), [rows]);
@@ -320,7 +341,9 @@ const RealmAccessRequest: React.FC = () => {
                     <DataTable<AccessRequest>
                         data={filteredRows}
                         columns={columns}
+                        className="kcAccessRequestTable"
                         keyField="id"
+                        stickyToolbar={false}
                         searchable
                         searchPlaceholder="Search access requests..."
                         paginated
@@ -335,10 +358,10 @@ const RealmAccessRequest: React.FC = () => {
                             setSelected(row);
                             setDrawerOpen(true);
                         }}
-                        onRefresh={refresh}
+                        onRefresh={() => { void refresh(); }}
                         toolbarFilters={{
                             left: (
-                                <div className="kc_toolbarFilters">
+                                <div className="kc_toolbarFilters kcAccessToolbarFilters">
                                     <MultiSelectCheckbox<string>
                                         inline
                                         label="Realm"
@@ -447,7 +470,7 @@ const RealmAccessRequest: React.FC = () => {
                                         </div>
                                     </div>
 
-                                    <div className="kc_filterBadges">
+                                    <div className="kc_filterBadges kcAccessToolbarBadges">
                                         {realmFilter.length > 0 && (
                                             <span className="kc_filterBadge">Realm: {realmFilter.length}</span>
                                         )}
@@ -481,7 +504,7 @@ const RealmAccessRequest: React.FC = () => {
                                 </div>
                             ),
                             right: (
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div className="kcAccessToolbarRight">
                                     <span className="kc_textMuted" style={{ fontWeight: 800, fontSize: 12 }}>
                                         Showing <b>{filteredRows.length}</b>
                                     </span>
@@ -520,30 +543,34 @@ const RealmAccessRequest: React.FC = () => {
                                 return;
                             }
 
-                            updateRequest(
+                            void updateRequest(
                                 id,
                                 { status: "Submitted" },
                                 actor,
                                 "SUBMITTED",
                                 "Submitted for approval."
-                            );
-
-                            refresh();
-                            setDrawerOpen(false);
-                            pushToast("Access request submitted successfully", "success");
+                            ).then(() => {
+                                void refresh();
+                                setDrawerOpen(false);
+                                pushToast("Access request submitted successfully", "success");
+                            }).catch((err) => {
+                                pushToast(err instanceof Error ? err.message : "Failed to submit access request", "error");
+                            });
                         }}
                         onCancel={(id) => {
-                            updateRequest(
+                            void updateRequest(
                                 id,
                                 { status: "Cancelled" },
                                 actor,
                                 "CANCELLED",
                                 "Cancelled by requester."
-                            );
-
-                            refresh();
-                            setDrawerOpen(false);
-                            pushToast("Access request cancelled", "warning");
+                            ).then(() => {
+                                void refresh();
+                                setDrawerOpen(false);
+                                pushToast("Access request cancelled", "warning");
+                            }).catch((err) => {
+                                pushToast(err instanceof Error ? err.message : "Failed to cancel access request", "error");
+                            });
                         }}
                     />
 
@@ -552,16 +579,16 @@ const RealmAccessRequest: React.FC = () => {
                         onClose={() => setCreateOpen(false)}
                         requester={actor}
                         initial={prefill}
-                        onCreate={(input) => createAccessRequest(input)}
+                        onCreate={createAccessRequest}
                         onCreated={(req) => {
-                            refresh();
+                            void refresh();
                             setSelected(req);
                             setDrawerOpen(true);
                             pushToast("Access request created", "success");
                         }}
-                        allUsers={USERS_DATA}
-                        allRealms={REALMS_DATA}
-                        realmUsersMap={REALM_APP_USERS_INITIAL}
+                        allUsers={(totalUsers ?? []).map((u) => ({ uuid: String(u.uuid ?? ""), username: String(u.username ?? ""), firstName: u.firstName, lastName: u.lastName, email: u.email, isDeleted: Boolean(u.isDeleted) }))}
+                        allRealms={(totalRealms ?? []).map((r) => ({ id: String(r.id ?? ""), name: String(r.name ?? ""), status: String(r.status ?? "") }))}
+                        realmUsersMap={(totalUsers ?? []).reduce<Record<string, Array<{ userUuid: string; roleId?: string; assignedAt?: string; assignedBy?: string }>>>((acc, user) => { const realmId = String(user.localRealmId ?? "").trim(); const userUuid = String(user.uuid ?? "").trim(); if (!realmId || !userUuid) return acc; if (!acc[realmId]) acc[realmId] = []; acc[realmId].push({ userUuid, assignedAt: new Date().toISOString(), assignedBy: actor }); return acc; }, {})}
                     />
                 </div>
             </div>

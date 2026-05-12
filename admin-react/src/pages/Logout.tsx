@@ -1,14 +1,16 @@
 import { useEffect } from "react";
+import { clearAccessToken } from "../services/apiClient";
+import { authApi } from "../services/authApi";
 
 export default function Logout() {
     useEffect(() => {
         (async () => {
-            await fetch("/auth/api/logout", {
-                method: "POST",
-                credentials: "include",
-            });
+            try {
+                await authApi.logout();
+            } finally {
+                clearAccessToken();
+            }
 
-            // after cookie cleared, send back to login
             window.location.href = "/auth/login?returnUrl=%2Fadmin%2F";
         })();
     }, []);

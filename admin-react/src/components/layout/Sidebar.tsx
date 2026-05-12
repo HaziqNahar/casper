@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
     AppWindow,
+    HardDrive,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
@@ -17,12 +17,8 @@ import {
     X,
 } from "lucide-react";
 import { ROUTES } from "../../config/routes";
+import { useAuth } from "../../context/AuthContext";
 import CertisDiamondIcon from "../../assets/logos/Certis Diamond Iconsmall.png";
-
-const FONT_FAMILY =
-    "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
-const LOGO_FONT_FAMILY =
-    "'Lato', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
 
 interface SidebarProps {
     isOpen: boolean;
@@ -50,7 +46,23 @@ type MenuItem = {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
     const navigate = useNavigate();
+    const { logout, user } = useAuth();
     const { pathname: currentPath } = useLocation();
+
+    const profileName = useMemo(() => {
+        const username = user?.username?.trim();
+        if (!username) return "Admin User";
+        return username;
+    }, [user?.username]);
+
+    const profileSecondary = user?.email || "admin@casper.local";
+    const profileInitials = useMemo(() => {
+        const source = profileName.trim();
+        if (!source) return "AD";
+        const parts = source.split(/\s+/).filter(Boolean);
+        if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+        return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
+    }, [profileName]);
 
     const menuItems: MenuItem[] = useMemo(
         () => [
@@ -116,6 +128,21 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 ],
             },
             {
+                id: "inventory",
+                label: "Equipment",
+                icon: HardDrive,
+                description: "Track devices and assets",
+                hasSubMenu: true,
+                subItems: [
+                    {
+                        id: "inventory-all",
+                        label: "Asset Inventory",
+                        description: "View equipment and assets",
+                        path: ROUTES.EQUIPMENT_ASSETS,
+                    },
+                ],
+            },
+            {
                 id: "users",
                 label: "Users",
                 icon: Users,
@@ -150,6 +177,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                         description: "Manage MFA settings",
                         path: ROUTES.MFA_SETTINGS,
                     },
+                    {
+                        id: "audit-logs",
+                        label: "Audit Logs",
+                        description: "Review sensitive admin actions",
+                        path: ROUTES.AUDIT_LOGS,
+                    },
+                    {
+                        id: "approval-requests",
+                        label: "Approval Requests",
+                        description: "Review high-impact action requests",
+                        path: ROUTES.APPROVAL_REQUESTS,
+                    },
                 ],
             },
         ],
@@ -161,6 +200,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
     const [showProfileMenu, setShowProfileMenu] = useState(false);
     const [searchValue, setSearchValue] = useState("");
     const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+    const navScrollRef = useRef<HTMLDivElement | null>(null);
 
     const getResponsiveState = (width: number) => ({
         isMobile: width < 480,
@@ -227,6 +267,10 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
         }
     }, [currentPath, menuItems, settingsMenuItems]);
 
+    useEffect(() => {
+        navScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    }, [currentPath, sidebarTab]);
+
     const isSubItemActive = (subPath: string) => currentPath === subPath;
 
     const isParentActive = (parentPath?: string, subItems?: MenuSubItem[]) => {
@@ -263,7 +307,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
             setExpandedMenus((prev) => {
                 const next = new Set(prev);
-                next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                if (next.has(item.id)) next.delete(item.id);
+                else next.add(item.id);
                 return next;
             });
             return;
@@ -274,7 +319,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
     };
 
     const handleSubMenuClick = (parentId: string, subPath: string) => {
-        navigate(subPath);
+        const state =
+            subPath === ROUTES.REALMS
+                ? { resetRealmsToList: Date.now() }
+                : subPath === ROUTES.USERS
+                    ? { resetUsersToList: Date.now() }
+                    : subPath === ROUTES.APPS
+                        ? { resetAppsToList: Date.now() }
+                : undefined;
+
+        navigate(subPath, state ? { state } : undefined);
         setExpandedMenus((prev) => new Set(prev).add(parentId));
         if (isMobile) setIsOpen(false);
     };
@@ -292,26 +346,9 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
     // Profile menu
     const kebabBtnRef = useRef<HTMLButtonElement | null>(null);
-    const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null);
-
-    const openMenu = () => {
-        const el = kebabBtnRef.current;
-        if (!el) return;
-
-        const rect = el.getBoundingClientRect();
-        const menuWidth = 200;
-
-        setMenuPos({
-            top: rect.top - 8,
-            left: Math.max(12, rect.right - menuWidth),
-        });
-
-        setShowProfileMenu(true);
-    };
 
     const closeMenu = () => {
         setShowProfileMenu(false);
-        setMenuPos(null);
     };
 
     // Close profile menu on ESC
@@ -325,9 +362,22 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
     const handleProfileMenuAction = (action: "profile" | "settings" | "logout") => {
         closeMenu();
-        if (action === "profile") console.log("Opening profile...");
+        if (action === "profile") {
+            if (user?.sub) {
+                navigate(ROUTES.PROFILE);
+            }
+            return;
+        }
         if (action === "settings") console.log("Opening settings...");
-        if (action === "logout") console.log("Logging out...");
+        if (action === "logout") {
+            void (async () => {
+                try {
+                    await logout();
+                } finally {
+                    navigate(ROUTES.LOGIN, { replace: true });
+                }
+            })();
+        }
     };
 
     const sidebarWidth = isCollapsed ? "70px" : "256px";
@@ -339,21 +389,18 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
     .sidebar-nav-scrollable::-webkit-scrollbar-thumb:hover { background-color: rgba(255,255,255,0.40); }
   `;
 
+    const navPanelClassName = (tab: SidebarTab) =>
+        `sidebar-nav-panel ${sidebarTab === tab ? "is-active" : ""}`;
+
+    const navButtonClassName = (isActive: boolean, collapsed: boolean) =>
+        `sidebar-nav-item ${isActive ? "active" : ""} ${collapsed ? "is-collapsed" : "is-expanded"}`;
+
     return (
         <>
             <style>{scrollbarStyles}</style>
 
             {isMobile && isOpen && (
-                <div
-                    className="sidebar-overlay"
-                    onClick={() => setIsOpen(false)}
-                    style={{
-                        position: "fixed",
-                        inset: 0,
-                        backgroundColor: "rgba(0, 0, 0, 0.5)",
-                        zIndex: 40,
-                    }}
-                />
+                <div className="sidebar-overlay" onClick={() => setIsOpen(false)} />
             )}
 
             <aside
@@ -371,68 +418,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                     top: 0,
                     display: "flex",
                     flexDirection: "column",
-                    fontFamily: FONT_FAMILY,
                 }}
             >
                 {/* Header */}
-                <div
-                    className="sidebar-header"
-                    style={{
-                        padding: isCollapsed ? "0.85rem 0" : "1rem",
-                        overflow: "hidden",
-                        flexShrink: 0,
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: "0.5rem",
-                    }}
-                >
-                    <div
-                        style={{
-                            display: "flex",
-                            flexDirection: "column",
-                            flex: 1,
-                            overflow: "hidden",
-                            alignItems: isCollapsed ? "center" : "flex-start",
-                            transition: "align-items 0.3s ease-in-out",
-                            minWidth: 0,
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: "0.5rem",
-                                justifyContent: isCollapsed ? "center" : "flex-start",
-                            }}
-                        >
+                <div className="sidebar-header">
+                    <div className={`sidebar-brandWrap ${isCollapsed ? "is-collapsed" : ""}`}>
+                        <div className={`sidebar-brandRow ${isCollapsed ? "is-collapsed" : ""}`}>
                             <img
                                 src={CertisDiamondIcon}
                                 alt="Certis"
-                                style={{
-                                    height: "2.1rem",
-                                    width: "auto",
-                                    objectFit: "contain",
-                                    flexShrink: 0,
-                                }}
+                                className="sidebar-brandIcon"
                             />
 
-                            <span
-                                style={{
-                                    fontSize: "1.8rem",
-                                    fontFamily:
-                                        "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-                                    fontWeight: 400,
-                                    color: "#ffffff",
-                                    letterSpacing: "0.03em",
-                                    whiteSpace: "nowrap",
-                                    opacity: isCollapsed ? 0 : 1,
-                                    maxWidth: isCollapsed ? 0 : "200px",
-                                    overflow: "hidden",
-                                    transition: "opacity 0.2s ease-in-out, max-width 0.3s ease-in-out",
-                                    pointerEvents: isCollapsed ? "none" : "auto",
-                                    lineHeight: 1,
-                                }}
-                            >
+                            <span className={`sidebar-brandText ${isCollapsed ? "is-collapsed" : ""}`}>
                                 CASPER
                             </span>
                         </div>
@@ -440,69 +438,39 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                     <button
                         onClick={() => setIsOpen(false)}
-                        style={{
-                            display: isMobile ? "flex" : "none",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            padding: "0.375rem",
-                            borderRadius: "0.5rem",
-                            background: "rgba(255, 255, 255, 0.14)",
-                            border: "none",
-                            color: "white",
-                            cursor: "pointer",
-                            flexShrink: 0,
-                            fontFamily: "inherit",
-                        }}
+                        className={`sidebar-closeBtn ${isMobile ? "is-mobile-visible" : ""}`}
                         aria-label="Close sidebar"
                     >
-                        <X style={{ height: "1.25rem", width: "1.25rem" }} />
+                        <X className="sidebar-closeIcon" />
                     </button>
                 </div>
 
                 {/* Search */}
-                <div className="sidebar-search" style={{ flexShrink: 0 }}>
+                <div className="sidebar-search">
                     {!isCollapsed ? (
-                        <div style={{ padding: "0.75rem" }}>
-                            <div style={{ position: "relative" }}>
+                        <div className="sidebar-searchInner">
+                            <div className="sidebar-searchFieldWrap">
                                 <input
-                                    className="glass-input"
+                                    className="glass-input sidebar-searchInput"
                                     type="text"
                                     placeholder="Search"
                                     value={searchValue}
                                     onChange={(e) => setSearchValue(e.target.value)}
-                                    style={{
-                                        padding: "0.5rem 2rem 0.5rem 0.75rem",
-                                        fontFamily: "inherit",
-                                    }}
                                 />
                                 {searchValue && (
                                     <button
                                         type="button"
                                         onClick={() => setSearchValue("")}
                                         aria-label="Clear search"
-                                        style={{
-                                            position: "absolute",
-                                            right: "0.5rem",
-                                            top: "50%",
-                                            transform: "translateY(-50%)",
-                                            padding: "0.2rem",
-                                            borderRadius: "999px",
-                                            background: "transparent",
-                                            border: "none",
-                                            cursor: "pointer",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            color: "rgba(255,255,255,0.86)",
-                                        }}
+                                        className="sidebar-searchClear"
                                     >
-                                        <X style={{ height: "0.9rem", width: "0.9rem" }} />
+                                        <X className="sidebar-searchClearIcon" />
                                     </button>
                                 )}
                             </div>
                         </div>
                     ) : (
-                        <div style={{ padding: "0.75rem", display: "flex", justifyContent: "center" }}>
+                        <div className="sidebar-searchCollapsed">
                             <button
                                 type="button"
                                 className="glossy-icon-btn"
@@ -521,30 +489,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                 {/* Nav */}
                 <div
                     className="sidebar-nav sidebar-nav-scrollable"
-                    style={{
-                        flex: 1,
-                        overflowY: "auto",
-                        overflowX: "hidden",
-                        position: "relative",
-                        paddingBottom: "0.5rem",
-                    }}
+                    ref={navScrollRef}
                 >
                     {/* MAIN */}
-                    <div
-                        style={{
-                            transform: sidebarTab === "main" ? "translateX(0)" : "translateX(-100%)",
-                            opacity: sidebarTab === "main" ? 1 : 0,
-                            transition: "transform 0.3s ease-in-out, opacity 0.3s ease-in-out",
-                            position: sidebarTab === "main" ? "relative" : "absolute",
-                            width: "100%",
-                            top: 0,
-                            left: 0,
-                        }}
-                    >
+                    <div className={navPanelClassName("main")}>
                         {filteredMenuItems.length === 0 ? (
-                            <div style={{ padding: "2rem 1rem", textAlign: "center", color: "rgba(255,255,255,0.8)" }}>
-                                <p style={{ fontSize: "0.875rem", margin: 0 }}>No results found</p>
-                                <p style={{ fontSize: "0.75rem", marginTop: "0.25rem", marginBottom: 0, opacity: 0.8 }}>
+                            <div className="sidebar-emptyState">
+                                <p className="sidebar-emptyTitle">No results found</p>
+                                <p className="sidebar-emptyDescription">
                                     Try a different search term
                                 </p>
                             </div>
@@ -556,7 +508,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                 const isHovered = hoveredItem === item.id;
 
                                 return (
-                                    <div key={item.id} style={{ position: "relative" }}>
+                                    <div key={item.id} className="sidebar-navItemWrap">
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -566,33 +518,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                                 setHoveredItem(item.id);
                                             }}
                                             onMouseLeave={() => setHoveredItem(null)}
-                                            className={`sidebar-nav-item ${isActive ? "active" : ""}`}
-                                            style={{
-                                                width: isCollapsed ? "auto" : "100%",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: isCollapsed ? "center" : "flex-start",
-                                                padding: isCollapsed ? 0 : "0.75rem 1rem",
-                                                gap: isCollapsed ? 0 : "0.75rem",
-                                                fontFamily: "inherit",
-                                            }}
+                                            className={navButtonClassName(isActive, isCollapsed)}
                                             title={isCollapsed ? item.label : undefined}
                                         >
-                                            <Icon style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }} />
+                                            <Icon className="sidebar-navItemIcon" />
 
                                             {!isCollapsed && (
                                                 <>
-                                                    <div className="sidebar-nav-text" style={{ flex: 1, textAlign: "left" }}>
+                                                    <div className="sidebar-nav-text">
                                                         <div className="sidebar-nav-label">{item.label}</div>
                                                         <div className="sidebar-nav-desc">{item.description}</div>
                                                     </div>
 
                                                     {item.hasSubMenu && (
-                                                        <div style={{ display: "flex", alignItems: "center" }}>
+                                                        <div className="sidebar-navChevron">
                                                             {isExpanded ? (
-                                                                <ChevronDown style={{ height: "1rem", width: "1rem" }} />
+                                                                <ChevronDown className="sidebar-navChevronIcon" />
                                                             ) : (
-                                                                <ChevronRight style={{ height: "1rem", width: "1rem" }} />
+                                                                <ChevronRight className="sidebar-navChevronIcon" />
                                                             )}
                                                         </div>
                                                     )}
@@ -602,33 +545,11 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                                         {/* Tooltip for collapsed */}
                                         {isCollapsed && isHovered && (
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    left: "calc(100% + 10px)",
-                                                    top: "50%",
-                                                    transform: "translateY(-50%)",
-                                                    zIndex: 9999,
-
-                                                    width: 220,
-                                                    padding: "0.65rem 0.8rem",
-                                                    borderRadius: 12,
-
-                                                    background:
-                                                        "linear-gradient(180deg, rgba(255,255,255,0.50), rgba(255,255,255,0.24))",
-                                                    border: "1px solid rgba(255,255,255,0.26)",
-                                                    backdropFilter: "blur(18px) saturate(160%)",
-                                                    WebkitBackdropFilter: "blur(18px) saturate(160%)",
-                                                    boxShadow:
-                                                        "0 16px 34px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
-
-                                                    pointerEvents: "none",
-                                                }}
-                                            >
-                                                <div style={{ fontSize: "0.86rem", fontWeight: 750, color: "rgba(15,23,42,0.92)" }}>
+                                            <div className="sidebar-navTooltip">
+                                                <div className="sidebar-navTooltipTitle">
                                                     {item.label}
                                                 </div>
-                                                <div style={{ fontSize: "0.75rem", marginTop: 2, color: "rgba(15,23,42,0.62)" }}>
+                                                <div className="sidebar-navTooltipDescription">
                                                     {item.description}
                                                 </div>
                                             </div>
@@ -636,37 +557,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                                         {/* Submenu (expanded mode only) */}
                                         {!isCollapsed && item.hasSubMenu && item.subItems && isExpanded && (
-                                            <div
-                                                className="submenu-rail"
-                                                style={{
-                                                    marginLeft: "1rem",
-                                                    marginTop: "0.25rem",
-                                                    marginBottom: "0.5rem",
-                                                    paddingLeft: "1rem",
-                                                }}
-                                            >
+                                            <div className="submenu-rail">
                                                 {item.subItems.map((subItem, index) => (
                                                     <React.Fragment key={subItem.id}>
                                                         {index > 0 && (
-                                                            <div
-                                                                className="submenu-sep"
-                                                                style={{ height: "1px", margin: "0.25rem 0.75rem", opacity: 0.25 }}
-                                                            />
+                                                            <div className="submenu-sep" />
                                                         )}
                                                         <button
                                                             type="button"
                                                             onClick={() => handleSubMenuClick(item.id, subItem.path)}
                                                             className={`sidebar-nav-item ${isSubItemActive(subItem.path) ? "active" : ""}`}
-                                                            style={{
-                                                                width: "100%",
-                                                                marginTop: index === 0 ? "0.25rem" : 0,
-                                                                padding: "0.45rem 0.75rem",
-                                                                fontFamily: "inherit",
-                                                                display: "flex",
-                                                                alignItems: "center",
-                                                            }}
+                                                            style={index === 0 ? { marginTop: "0.25rem" } : undefined}
                                                         >
-                                                            <div className="sidebar-nav-text" style={{ flex: 1, textAlign: "left" }}>
+                                                            <div className="sidebar-nav-text">
                                                                 <div className="sidebar-nav-label">{subItem.label}</div>
                                                                 <div className="sidebar-nav-desc">{subItem.description}</div>
                                                             </div>
@@ -682,24 +585,14 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                     </div>
 
                     {/* SETTINGS */}
-                    <div
-                        style={{
-                            transform: sidebarTab === "settings" ? "translateX(0)" : "translateX(100%)",
-                            opacity: sidebarTab === "settings" ? 1 : 0,
-                            transition: "transform 0.3s ease-in-out, opacity 0.3s ease-in-out",
-                            position: sidebarTab === "settings" ? "relative" : "absolute",
-                            width: "100%",
-                            top: 0,
-                            left: 0,
-                        }}
-                    >
+                    <div className={navPanelClassName("settings")}>
                         {settingsMenuItems.map((item) => {
                             const Icon = item.icon;
                             const isActive = isParentActive(undefined, item.subItems);
                             const isExpanded = expandedMenus.has(item.id);
 
                             return (
-                                <div key={item.id} style={{ position: "relative" }}>
+                                <div key={item.id} className="sidebar-navItemWrap">
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -709,36 +602,24 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                             setHoveredItem(item.id);
                                         }}
                                         onMouseLeave={() => setHoveredItem(null)}
-                                        className={`sidebar-nav-item ${isActive ? "active" : ""}`}
-                                        style={{
-                                            width: isCollapsed ? "auto" : "100%",
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: isCollapsed ? "center" : "flex-start",
-                                            padding: isCollapsed ? 0 : "0.75rem 1rem",
-                                            gap: isCollapsed ? 0 : "0.75rem",
-                                            fontFamily: "inherit",
-                                        }}
+                                        className={navButtonClassName(isActive, isCollapsed)}
                                         title={isCollapsed ? item.label : undefined}
                                     >
-                                        <Icon
-                                            className="sidebar-nav-item-icon"
-                                            style={{ height: "1.25rem", width: "1.25rem", flexShrink: 0 }}
-                                        />
+                                        <Icon className="sidebar-navItemIcon" />
 
                                         {!isCollapsed && (
                                             <>
-                                                <div className="sidebar-nav-text" style={{ flex: 1, textAlign: "left" }}>
+                                                <div className="sidebar-nav-text">
                                                     <div className="sidebar-nav-label">{item.label}</div>
                                                     <div className="sidebar-nav-desc">{item.description}</div>
                                                 </div>
 
                                                 {item.hasSubMenu && (
-                                                    <div style={{ display: "flex", alignItems: "center" }}>
+                                                    <div className="sidebar-navChevron">
                                                         {isExpanded ? (
-                                                            <ChevronDown style={{ height: "1rem", width: "1rem" }} />
+                                                            <ChevronDown className="sidebar-navChevronIcon" />
                                                         ) : (
-                                                            <ChevronRight style={{ height: "1rem", width: "1rem" }} />
+                                                            <ChevronRight className="sidebar-navChevronIcon" />
                                                         )}
                                                     </div>
                                                 )}
@@ -747,37 +628,19 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                     </button>
 
                                     {!isCollapsed && item.hasSubMenu && item.subItems && isExpanded && (
-                                        <div
-                                            className="submenu-rail"
-                                            style={{
-                                                marginLeft: "1rem",
-                                                marginTop: "0.25rem",
-                                                marginBottom: "0.5rem",
-                                                paddingLeft: "1rem",
-                                            }}
-                                        >
+                                        <div className="submenu-rail">
                                             {item.subItems.map((subItem, index) => (
                                                 <React.Fragment key={subItem.id}>
                                                     {index > 0 && (
-                                                        <div
-                                                            className="submenu-sep"
-                                                            style={{ height: "1px", margin: "0.25rem 0.75rem", opacity: 0.25 }}
-                                                        />
+                                                        <div className="submenu-sep" />
                                                     )}
                                                     <button
                                                         type="button"
                                                         onClick={() => handleSubMenuClick(item.id, subItem.path)}
                                                         className={`sidebar-nav-item ${isSubItemActive(subItem.path) ? "active" : ""}`}
-                                                        style={{
-                                                            width: "100%",
-                                                            marginTop: index === 0 ? "0.25rem" : 0,
-                                                            padding: "0.45rem 0.75rem",
-                                                            fontFamily: "inherit",
-                                                            display: "flex",
-                                                            alignItems: "center",
-                                                        }}
+                                                        style={index === 0 ? { marginTop: "0.25rem" } : undefined}
                                                     >
-                                                        <div className="sidebar-nav-text" style={{ flex: 1, textAlign: "left" }}>
+                                                        <div className="sidebar-nav-text">
                                                             <div className="sidebar-nav-label">{subItem.label}</div>
                                                             <div className="sidebar-nav-desc">{subItem.description}</div>
                                                         </div>
@@ -822,25 +685,25 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                             </button>
                         )}
 
-                        <div className="sidebar-user" style={{ position: "relative" }}>
+                        <div className="sidebar-user">
                             <div
                                 className={`sidebar-avatar ${isCollapsed ? "is-clickable" : ""}`}
                                 onClick={() => isCollapsed && setShowProfileMenu(!showProfileMenu)}
-                                title={isCollapsed ? "Admin User" : undefined}
+                                title={isCollapsed ? profileName : undefined}
                             >
-                                AD
+                                {profileInitials}
                             </div>
 
                             {!isCollapsed && (
                                 <div className="sidebar-user-meta">
-                                    <p className="sidebar-user-name">Admin User</p>
-                                    <p className="sidebar-user-email">admin@bos.sg</p>
+                                    <p className="sidebar-user-name">{profileName}</p>
+                                    <p className="sidebar-user-email">{profileSecondary}</p>
                                 </div>
                             )}
                         </div>
 
                         {!isCollapsed && !isAutoCollapsed && (
-                            <div className="sidebar-profile-actions" style={{ position: "relative" }}>
+                            <div className="sidebar-profile-actions sidebar-profile-actionsWrap">
                                 <button
                                     className="glossy-icon-btn icon-btn-square"
                                     onClick={toggleCollapse}
@@ -861,42 +724,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
                                     <>
                                         <div
                                             onClick={() => setShowProfileMenu(false)}
-                                            style={{ position: "fixed", inset: 0, zIndex: 9998 }}
+                                            className="menu-overlay"
                                         />
 
-                                        <div
-                                            style={{
-                                                position: "absolute",
-                                                bottom: "calc(100% + 8px)",
-                                                right: 0,
-                                                width: "140px",
-                                                backgroundColor: "white",
-                                                borderRadius: "0.5rem",
-                                                boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-                                                border: "1px solid #e5e7eb",
-                                                zIndex: 9999,
-                                                overflow: "hidden",
-                                            }}
-                                        >
+                                        <div className="sidebar-profileMenu">
                                             <button
                                                 onClick={() => handleProfileMenuAction("profile")}
-                                                style={{
-                                                    width: "100%",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.75rem",
-                                                    padding: "0.625rem 0.75rem",
-                                                    fontSize: "0.85rem",
-                                                    color: "#000000",
-                                                    backgroundColor: "transparent",
-                                                    border: "none",
-                                                    cursor: "pointer",
-                                                    textAlign: "left",
-                                                    transition: "background-color 0.2s",
-                                                    fontFamily: "inherit",
-                                                }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                                className="sidebar-profileMenuItem"
                                             >
                                                 <User style={{ height: "1rem", width: "1rem" }} />
                                                 Profile
@@ -904,49 +738,17 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, setIsOpen }) => {
 
                                             <button
                                                 onClick={() => handleProfileMenuAction("settings")}
-                                                style={{
-                                                    width: "100%",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.75rem",
-                                                    padding: "0.625rem 0.75rem",
-                                                    fontSize: "0.85rem",
-                                                    color: "#000000",
-                                                    backgroundColor: "transparent",
-                                                    border: "none",
-                                                    cursor: "pointer",
-                                                    textAlign: "left",
-                                                    transition: "background-color 0.2s",
-                                                    fontFamily: "inherit",
-                                                }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                                className="sidebar-profileMenuItem"
                                             >
                                                 <Settings style={{ height: "1rem", width: "1rem" }} />
                                                 Settings
                                             </button>
 
-                                            <div style={{ height: "1px", backgroundColor: "#e5e7eb" }} />
+                                            <div className="sidebar-profileMenuDivider" />
 
                                             <button
                                                 onClick={() => handleProfileMenuAction("logout")}
-                                                style={{
-                                                    width: "100%",
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: "0.75rem",
-                                                    padding: "0.625rem 0.75rem",
-                                                    fontSize: "0.85rem",
-                                                    color: "#dc2626",
-                                                    backgroundColor: "transparent",
-                                                    border: "none",
-                                                    cursor: "pointer",
-                                                    textAlign: "left",
-                                                    transition: "background-color 0.2s",
-                                                    fontFamily: "inherit",
-                                                }}
-                                                onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#fef2f2")}
-                                                onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                                className="sidebar-profileMenuItem is-danger"
                                             >
                                                 <LogOut style={{ height: "1rem", width: "1rem" }} />
                                                 Logout

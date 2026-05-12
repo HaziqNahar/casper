@@ -8,7 +8,6 @@ export interface TabPanelProps {
     onSelect: (index: number) => void;
     onAdd: () => void;
     onClose: (index: number) => void;
-    onReorder: (sourceIndex: number, destIndex: number) => void;
 
     onRefresh?: () => void;
     onFilterToggle?: () => void;
@@ -34,7 +33,6 @@ export const TabPanel: React.FC<TabPanelProps> = ({
     onSelect,
     onAdd,
     onClose,
-    onReorder,
     onRefresh,
     onFilterToggle,
     isFilterOpen = false,
@@ -44,7 +42,7 @@ export const TabPanel: React.FC<TabPanelProps> = ({
     renderContent,
     className = "",
     contentClassName = "",
-    minHeight = "400px",
+    minHeight: _minHeight = "400px",
     customActions,
 }) => {
     const activeTabData = tabs[activeTab];
@@ -81,7 +79,6 @@ export const TabPanel: React.FC<TabPanelProps> = ({
                 onSelect={onSelect}
                 onAdd={onAdd}
                 onClose={onClose}
-                onReorder={onReorder}
                 onRefresh={onRefresh}
                 onFilterToggle={onFilterToggle}
                 isFilterOpen={isFilterOpen}

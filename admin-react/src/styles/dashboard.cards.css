@@ -1,75 +1,158 @@
 /* =========================================================
    Dashboard Cards (Quick Actions + Activity)
    ========================================================= */
-
 .dash-sectionTitle {
+    margin: 0 0 1rem 0;
     font-size: 0.875rem;
     font-weight: 700;
-    color: var(--kc-text);
-    margin: 0 0 1rem 0;
+    color: rgba(15, 23, 42, 0.92);
+}
+
+.dash-sectionHead {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
 }
 
 /* Quick Action button */
 .dash-qaBtn {
     display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
+    align-items: flex-start;
+    gap: 0.75rem;
+    width: 100%;
 
     padding: 1rem;
-    min-width: 100px;
+    min-width: 0;
 
-    background: rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(229, 231, 235, 0.45);
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(229, 231, 235, 0.55);
     border-radius: 14px;
 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 
+    box-shadow:
+        0 6px 16px rgba(15, 23, 42, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.18);
+
     cursor: pointer;
     font-family: inherit;
 
-    transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease, background 160ms ease;
+    transition:
+        transform 160ms ease,
+        box-shadow 160ms ease,
+        border-color 160ms ease,
+        background 160ms ease;
 }
 
 .dash-qaBtn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.12);
-    background: rgba(255, 255, 255, 0.95);
+    box-shadow:
+        0 10px 24px rgba(15, 23, 42, 0.14),
+        inset 0 1px 0 rgba(255, 255, 255, 0.22);
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(148, 163, 184, 0.45);
 }
 
 .dash-qaIcon {
-    width: 40px;
-    height: 40px;
+    width: 42px;
+    height: 42px;
     border-radius: 12px;
     display: grid;
     place-items: center;
+    box-shadow:
+        0 4px 10px rgba(15, 23, 42, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.dash-qaBtn--amber .dash-qaIcon {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.dash-qaBtn--blue .dash-qaIcon {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.dash-qaBtn--violet .dash-qaIcon {
+    background: #ede9fe;
+    color: #7c3aed;
+}
+
+.dash-qaBtn--green .dash-qaIcon {
+    background: #dcfce7;
+    color: #059669;
+}
+
+.dash-qaText {
+    display: grid;
+    gap: 0.22rem;
+    text-align: left;
 }
 
 .dash-qaLabel {
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.8rem;
+    font-weight: 800;
+    line-height: 1.2;
     color: var(--kc-text);
+}
+
+.dash-qaDetail {
+    font-size: 0.72rem;
+    line-height: 1.35;
+    color: var(--kc-text-muted);
+}
+
+/* Optional priority state */
+.dash-qaBtn.is-high {
+    border-color: rgba(245, 158, 11, 0.38);
+    background: rgba(255, 251, 235, 0.92);
+}
+
+.dash-qaBtn.is-high:hover {
+    border-color: rgba(245, 158, 11, 0.55);
+    background: rgba(255, 251, 235, 0.98);
+}
+
+/* Activity list */
+.dash-activityList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
 }
 
 /* Activity list item */
 .dash-activityItem {
     display: flex;
     gap: 0.85rem;
-    padding: 0.85rem;
+    padding: 0.9rem;
     border-radius: 14px;
 
-    background: rgba(255, 255, 255, 0.82);
-    border: 1px solid rgba(229, 231, 235, 0.45);
+    background: rgba(255, 255, 255, 0.88);
+    border: 1px solid rgba(229, 231, 235, 0.5);
 
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
 
-    transition: transform 160ms ease, background 160ms ease;
+    box-shadow:
+        0 6px 16px rgba(15, 23, 42, 0.06),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16);
+
+    transition:
+        transform 160ms ease,
+        background 160ms ease,
+        border-color 160ms ease,
+        box-shadow 160ms ease;
 }
 
 .dash-activityItem:hover {
-    background: rgba(243, 244, 246, 0.9);
+    background: rgba(255, 255, 255, 0.96);
+    border-color: rgba(203, 213, 225, 0.7);
+    box-shadow:
+        0 10px 22px rgba(15, 23, 42, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.2);
     transform: translateY(-1px);
 }
 
@@ -80,7 +163,9 @@
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    box-shadow:
+        0 4px 10px rgba(15, 23, 42, 0.08),
+        inset 0 1px 0 rgba(255, 255, 255, 0.5);
 }
 
 .dash-activityIcon svg {
@@ -89,20 +174,39 @@
 }
 
 .dash-activityTitle {
-    font-size: 0.82rem;
+    font-size: 0.83rem;
     font-weight: 800;
     color: var(--kc-text);
+    line-height: 1.25;
 }
 
 .dash-activityDesc {
     font-size: 0.75rem;
     color: var(--kc-text-muted);
+    line-height: 1.35;
 }
 
 .dash-activityTime {
     font-size: 0.7rem;
     color: var(--kc-text-faint);
-    margin-top: 2px;
+    margin-top: 4px;
+}
+
+/* Optional left accent by type */
+.dash-activityItem.is-alert {
+    border-left: 3px solid var(--kc-amber-fg);
+}
+
+.dash-activityItem.is-system {
+    border-left: 3px solid var(--kc-gray-fg);
+}
+
+.dash-activityItem.is-case {
+    border-left: 3px solid var(--kc-blue-fg);
+}
+
+.dash-activityItem.is-warden {
+    border-left: 3px solid var(--kc-green-fg);
 }
 
 /* Badge variants for activity icon */
@@ -126,20 +230,6 @@
     color: var(--kc-gray-fg);
 }
 
-.dash-sectionTitle {
-    margin: 0 0 1rem 0;
-    font-size: 0.875rem;
-    font-weight: 700;
-    color: rgba(15, 23, 42, 0.92);
-}
-
-.dash-sectionHead {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
 .dash-linkBtn {
     font: inherit;
     font-size: 0.75rem;
@@ -149,22 +239,427 @@
     border: 0;
     padding: 0;
     cursor: pointer;
+    transition: color 160ms ease, opacity 160ms ease;
 }
 
 .dash-linkBtn:hover {
+    color: #1d4ed8;
     text-decoration: underline;
+}
+
+.dash-linkBtn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    text-decoration: none;
 }
 
 /* Quick actions row */
 .dash-quickRow {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.75rem;
 }
 
-/* Activity list */
-.dash-activityList {
+/* =========================
+   DASHBOARD LAYOUT
+========================= */
+
+.dashboard-layout {
+    display: grid;
+    grid-template-columns: 1.3fr 1fr;
+    gap: 1.25rem;
+}
+
+/* =========================
+   PANEL (replace inline)
+========================= */
+
+.panel {
+    padding: 1.25rem;
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+}
+
+
+/* =========================
+   SECTION SUBTEXT
+========================= */
+
+.section-subtext {
+    font-size: 0.8rem;
+    color: rgba(15, 23, 42, 0.62);
+    line-height: 1.45;
+}
+
+/* =========================
+   TAG BADGE
+========================= */
+
+.badge-soft {
+    padding: 0.5rem 0.8rem;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.3px;
+}
+
+/* Variants */
+.badge-soft--good {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+}
+
+.badge-soft--warn {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
+}
+
+.badge-soft--bad {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+}
+
+.badge-soft--info {
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+}
+
+/* =========================
+   DIVIDER
+========================= */
+
+.divider {
+    border-top: 1px solid rgba(148, 163, 184, 0.18);
+    margin-top: 12px;
+    padding-top: 12px;
+}
+
+/* =========================
+   INTERACTION (replace inline hover)
+========================= */
+
+.interactive {
+    transition: transform 140ms ease, box-shadow 160ms ease;
+}
+
+.interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.14);
+}
+
+.dash-home {
+    width: 100%;
+    max-width: 100%;
+}
+
+.dash-hero {
+    padding: 1.15rem 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.dash-heroHead {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.dash-heroCopy {
+    max-width: 760px;
+}
+
+.dash-heroTitle {
+    font-size: 1.125rem;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.dash-heroSubtitle {
+    margin-top: 6px;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: rgba(15, 23, 42, 0.7);
+}
+
+.dash-heroActions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.dash-errorBanner {
+    margin-top: 12px;
+    padding: 0.8rem 0.95rem;
+    border-radius: 12px;
+    border: 1px solid rgba(239, 68, 68, 0.24);
+    background: rgba(254, 242, 242, 0.9);
+    color: #991b1b;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.dash-postureGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+    margin-top: 1rem;
+}
+
+.dash-postureCard {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0.78rem 0.92rem;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.62);
+    text-align: left;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.dash-postureCard:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 12px 26px rgba(0, 0, 0, 0.12);
+}
+
+.dash-postureCard:disabled {
+    cursor: default;
+}
+
+.dash-postureCard.is-good {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.12);
+}
+
+.dash-postureCard.is-warn {
+    border-color: rgba(245, 158, 11, 0.38);
+    background: rgba(245, 158, 11, 0.14);
+}
+
+.dash-postureCard.is-bad {
+    border-color: rgba(239, 68, 68, 0.38);
+    background: rgba(239, 68, 68, 0.12);
+}
+
+.dash-postureCard.is-info {
+    border-color: rgba(59, 130, 246, 0.35);
+    background: rgba(59, 130, 246, 0.12);
+}
+
+.dash-postureIcon {
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(255, 255, 255, 0.22);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    color: #0f172a;
+    flex: 0 0 auto;
+}
+
+.dash-postureText {
+    min-width: 0;
+}
+
+.dash-postureLabel {
+    font-size: 0.74rem;
+    font-weight: 800;
+    color: rgba(0, 0, 0, 0.72);
+}
+
+.dash-postureValue {
+    font-size: 1.12rem;
+    font-weight: 900;
+    color: #0f172a;
+    line-height: 1.1;
+    margin-top: 2px;
+}
+
+.dash-postureDetail {
+    margin-top: 4px;
+    font-size: 0.74rem;
+    line-height: 1.35;
+    color: rgba(15, 23, 42, 0.68);
+}
+
+.dash-homeGrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.95fr);
+    gap: 1.5rem;
+    width: 100%;
+}
+
+.dash-homeMain,
+.dash-homeSide {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    min-width: 0;
+}
+
+.dash-sectionSubtext {
+    margin-top: 0.2rem;
+    max-width: 540px;
+}
+
+.dash-pillSummary {
+    padding: 0.42rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.06);
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: #334155;
+}
+
+.dash-sectionEyebrow {
+    margin-bottom: 8px;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(15, 23, 42, 0.54);
+}
+
+.dash-shortcutRow {
+    margin-top: 8px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.dash-homeMain .panel:first-child {
+    gap: 0.55rem;
+    padding-bottom: 0.9rem;
+}
+
+.dash-homeMain .panel:first-child .divider {
+    margin-top: 8px;
+    padding-top: 8px;
+}
+
+.dash-activityBody {
+    flex: 1;
+    min-width: 0;
+}
+
+.dash-sideActions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.dash-governanceStats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.dash-statCard {
+    padding: 0.9rem 1rem;
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.75);
+}
+
+.dash-statCard.is-warn {
+    border-color: rgba(245, 158, 11, 0.3);
+}
+
+.dash-statCard.is-bad {
+    border-color: rgba(239, 68, 68, 0.28);
+}
+
+.dash-statLabel {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.dash-statCard.is-warn .dash-statLabel {
+    color: #b45309;
+}
+
+.dash-statCard.is-bad .dash-statLabel {
+    color: #b91c1c;
+}
+
+.dash-statValue {
+    margin-top: 8px;
+    font-size: 1.62rem;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.dash-oldestCard {
+    border-radius: 14px;
+    padding: 0.95rem 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(255, 255, 255, 0.7);
+}
+
+.dash-oldestHead {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.8rem;
+}
+
+.dash-oldestIcon {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    background: rgba(254, 242, 242, 0.92);
+    color: #b91c1c;
+    flex: 0 0 auto;
+}
+
+.dash-oldestLabel {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: rgba(15, 23, 42, 0.56);
+}
+
+.dash-oldestTitle {
+    margin-top: 4px;
+    font-size: 0.88rem;
+    font-weight: 900;
+    color: #0f172a;
+}
+
+.dash-oldestText {
+    margin-top: 0.7rem;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    color: rgba(15, 23, 42, 0.7);
+}
+
+.dash-emptyState {
+    padding: 1rem;
+    border-radius: 14px;
+    border: 1px dashed rgba(148, 163, 184, 0.32);
+    background: rgba(255, 255, 255, 0.5);
+    font-size: 0.82rem;
+    color: #64748b;
+}
+
+@media (max-width: 1100px) {
+    .dash-homeGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .dash-quickRow {
+        grid-template-columns: 1fr;
+    }
 }

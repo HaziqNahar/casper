@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\Api\Data\RealmAccessRequest.cs" Link="Data\RealmAccessRequest.cs" />
+    <Compile Include="..\Api\Data\RealmAccessRequestEvent.cs" Link="Data\RealmAccessRequestEvent.cs" />
+    <Compile Include="..\Api\Logic\AccessRequestSla.cs" Link="Logic\AccessRequestSla.cs" />
+    <Compile Include="..\Api\Logic\GovernanceRules.cs" Link="Logic\GovernanceRules.cs" />
+    <Compile Include="..\Api\Logic\GovernanceAudit.cs" Link="Logic\GovernanceAudit.cs" />
+  </ItemGroup>
+
+</Project>

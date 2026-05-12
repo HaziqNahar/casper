@@ -17,7 +17,7 @@ export interface MultiSelectCheckboxProps<T extends string> {
 }
 
 function useOnClickOutside(
-    refs: Array<React.RefObject<HTMLElement>>,
+    refs: Array<React.RefObject<HTMLElement | null>>,
     handler: () => void,
     enabled: boolean
 ) {

@@ -1,3 +1,5 @@
+import SearchableCombobox from "./SearchableCombobox";
+
 export interface FormField {
     key: string;                 // Field name (e.g., 'uuid', 'noticeNumber')
     label: string;               // Display label (e.g., 'Notice Number')
@@ -18,11 +20,11 @@ interface EditModalProps<T> {
     fields: FormField[];       // Field configuration (what inputs to show)
     onClose: () => void;       // Function to call when user cancels
     onSave: () => void;        // Function to call when user clicks Save
-    onChange: (field: keyof T, value: any) => void;  // Called when any field changes
+    onChange: (field: keyof T, value: unknown) => void;  // Called when any field changes
 }
 
 
-function EditModal<T extends Record<string, any>>({
+function EditModal<T extends Record<string, unknown>>({
     isOpen,
     title,
     formData,
@@ -35,14 +37,7 @@ function EditModal<T extends Record<string, any>>({
 
     const renderField = (field: FormField) => {
         const value = formData[field.key as keyof T] || '';
-
-        const inputStyle = {
-            width: '100%',
-            padding: '0.5rem 0.75rem',
-            border: '1px solid #d1d5db',
-            borderRadius: '0.375rem',
-            backgroundColor: field.readOnly ? '#f3f4f6' : 'white',
-        };
+        const inputClassName = `recordModal-input${field.readOnly ? " is-readOnly" : ""}`;
 
         switch (field.type) {
             case 'textarea':
@@ -53,28 +48,20 @@ function EditModal<T extends Record<string, any>>({
                         rows={field.rows || 4}
                         disabled={field.readOnly}
                         placeholder={field.placeholder}
-                        style={{
-                            ...inputStyle,
-                            fontFamily: 'monospace',
-                            fontSize: '0.875rem',
-                        }}
+                        className={`${inputClassName} recordModal-textarea`}
                     />
                 );
 
             case 'select':
                 return (
-                    <select
+                    <SearchableCombobox
                         value={String(value)}
-                        onChange={(e) => onChange(field.key as keyof T, e.target.value)}
+                        onChange={(next) => onChange(field.key as keyof T, next)}
                         disabled={field.readOnly}
-                        style={inputStyle}
-                    >
-                        {field.options?.map((option) => (
-                            <option key={option.value} value={option.value}>
-                                {option.label}
-                            </option>
-                        ))}
-                    </select>
+                        options={field.options ?? []}
+                        placeholder={field.placeholder ?? `Select ${field.label}`}
+                        inputClassName={inputClassName}
+                    />
                 );
 
             case 'number':
@@ -85,7 +72,7 @@ function EditModal<T extends Record<string, any>>({
                         onChange={(e) => onChange(field.key as keyof T, parseInt(e.target.value) || 0)}
                         disabled={field.readOnly}
                         placeholder={field.placeholder}
-                        style={inputStyle}
+                        className={inputClassName}
                     />
                 );
 
@@ -96,7 +83,7 @@ function EditModal<T extends Record<string, any>>({
                         value={String(value)}
                         onChange={(e) => onChange(field.key as keyof T, e.target.value)}
                         disabled={field.readOnly}
-                        style={inputStyle}
+                        className={inputClassName}
                     />
                 );
 
@@ -108,7 +95,7 @@ function EditModal<T extends Record<string, any>>({
                         onChange={(e) => onChange(field.key as keyof T, e.target.value)}
                         disabled={field.readOnly}
                         placeholder={field.placeholder}
-                        style={inputStyle}
+                        className={inputClassName}
                     />
                 );
         }
@@ -116,98 +103,44 @@ function EditModal<T extends Record<string, any>>({
 
     return (
         <div
-            style={{
-                position: 'fixed',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-            }}
+            className="recordModal-overlay"
             onClick={onClose}
         >
             <div
-                style={{
-                    backgroundColor: 'white',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    maxWidth: '42rem',
-                    width: '100%',
-                    margin: '0 1rem',
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                }}
+                className="recordModal"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
             >
-                <div style={{ padding: '1.5rem' }}>
-                    <h2
-                        style={{
-                            fontSize: '1.25rem',
-                            fontWeight: 'bold',
-                            marginBottom: '1rem',
-                        }}
-                    >
-                        {title}
-                    </h2>
+                <div className="recordModal-header">
+                    <div>
+                        <h2 className="recordModal-title">{title}</h2>
+                        <p className="recordModal-subtitle">Update the selected record fields below.</p>
+                    </div>
+                </div>
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="recordModal-body">
+                    <div className="recordModal-formStack">
                         {fields.map((field) => (
-                            <div key={field.key}>
-                                <label
-                                    style={{
-                                        display: 'block',
-                                        fontSize: '0.875rem',
-                                        fontWeight: 500,
-                                        color: '#374151',
-                                        marginBottom: '0.25rem',
-                                    }}
-                                >
+                            <div key={field.key} className="recordModal-field">
+                                <label className="recordModal-label">
                                     {field.label}
-                                    {field.readOnly && ' (Read-only)'}
+                                    {field.readOnly && <span className="recordModal-labelHint">Read-only</span>}
                                 </label>
                                 {renderField(field)}
                             </div>
                         ))}
                     </div>
+                </div>
 
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            gap: '0.75rem',
-                            marginTop: '1.5rem',
-                        }}
-                    >
-                        <button
-                            onClick={onClose}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '0.375rem',
-                                backgroundColor: 'white',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            onClick={onSave}
-                            style={{
-                                padding: '0.5rem 1rem',
-                                backgroundColor: '#2563eb',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '0.375rem',
-                                cursor: 'pointer',
-                            }}
-                        >
-                            Save
-                        </button>
-                    </div>
+                <div className="recordModal-footer">
+                    <button onClick={onClose} className="kc-btn kc-btn-ghost">
+                        Cancel
+                    </button>
+                    <button onClick={onSave} className="kc-btn kc-btn-primary">
+                        Save
+                    </button>
                 </div>
             </div>
         </div>

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { UserPlus, Save, X, AlertCircle } from 'lucide-react';
 import { ROUTES } from '../../config/routes';
-
-// ==========================================
-// CREATE USER PAGE COMPONENT
-// ==========================================
+import { useUnsavedChangesGuard } from '../../hooks/useUnsavedChangesGuard';
+import SearchableCombobox from '../../components/common/SearchableCombobox';
+import '../../styles/users.create-local.css';
 
 interface UserFormData {
     username: string;
@@ -20,84 +19,82 @@ interface UserFormData {
     group: string;
 }
 
+const EMPTY_FORM: UserFormData = {
+    username: '',
+    employeeID: '',
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    organization: '',
+    department: '',
+    staffType: '',
+    group: ''
+};
+
+const LEAVE_MESSAGE = 'Are you sure you want to leave? Your local user changes will not be saved.';
+
 const CreateLocalUserPage: React.FC = () => {
     const navigate = useNavigate();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof UserFormData, string>>>({});
 
-    const [formData, setFormData] = useState<UserFormData>({
-        username: '',
-        employeeID: '',
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        organization: '',
-        department: '',
-        staffType: '',
-        group: ''
+    const [formData, setFormData] = useState<UserFormData>(EMPTY_FORM);
+    const isDirty = useMemo(() => JSON.stringify(formData) !== JSON.stringify(EMPTY_FORM), [formData]);
+    const { allowNextNavigation } = useUnsavedChangesGuard({
+        when: isDirty,
+        message: LEAVE_MESSAGE,
     });
 
-    // Validation function
     const validateForm = (): boolean => {
         const newErrors: Partial<Record<keyof UserFormData, string>> = {};
 
-        // Username validation (SG format)
         if (!formData.username.trim()) {
             newErrors.username = 'Username is required';
         } else if (!/^SG\d{6}$/.test(formData.username)) {
             newErrors.username = 'Username must be in format SG999999';
         }
 
-        // Employee ID validation
         if (!formData.employeeID.trim()) {
             newErrors.employeeID = 'Employee ID is required';
         } else if (!/^\d{6}$/.test(formData.employeeID)) {
             newErrors.employeeID = 'Employee ID must be 6 digits';
         }
 
-        // First name validation
         if (!formData.firstName.trim()) {
             newErrors.firstName = 'First name is required';
         }
 
-        // Last name validation
         if (!formData.lastName.trim()) {
             newErrors.lastName = 'Last name is required';
         }
 
-        // Email validation
         if (!formData.email.trim()) {
             newErrors.email = 'Email is required';
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             newErrors.email = 'Please enter a valid email address';
         }
 
-        // Phone validation (Singapore format)
         if (!formData.phone.trim()) {
             newErrors.phone = 'Phone number is required';
         } else if (!/^\+65[689]\d{7}$/.test(formData.phone)) {
             newErrors.phone = 'Phone must be in format +6598989898';
         }
 
-        // Organization validation
         if (!formData.organization.trim()) {
             newErrors.organization = 'Organization is required';
         } else if (!/^\d{8}$/.test(formData.organization)) {
             newErrors.organization = 'Organization must be 8 digits';
         }
 
-        // Department validation
         if (!formData.department.trim()) {
             newErrors.department = 'Department is required';
         }
 
-        // Staff type validation
         if (!formData.staffType.trim()) {
             newErrors.staffType = 'Staff type is required';
         }
 
-        // Group validation
         if (!formData.group.trim()) {
             newErrors.group = 'Group is required';
         }
@@ -108,7 +105,6 @@ const CreateLocalUserPage: React.FC = () => {
 
     const handleInputChange = (field: keyof UserFormData, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
-        // Clear error for this field when user starts typing
         if (errors[field]) {
             setErrors(prev => ({ ...prev, [field]: undefined }));
         }
@@ -124,14 +120,10 @@ const CreateLocalUserPage: React.FC = () => {
         setIsSubmitting(true);
 
         try {
-            // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 1500));
-
-            // TODO: Replace with actual API call
             console.log('Creating user:', formData);
-
-            // Navigate back to users page on success
-            navigate(ROUTES.USERS_ALL);
+            allowNextNavigation();
+            navigate(ROUTES.USERS);
         } catch (error) {
             console.error('Error creating user:', error);
             alert('Failed to create user. Please try again.');
@@ -144,704 +136,209 @@ const CreateLocalUserPage: React.FC = () => {
         navigate(ROUTES.HOME);
     };
 
+    const inputClassName = (hasError?: string) =>
+        `create-user-input${hasError ? ' is-error' : ''}`;
+
+    const renderError = (message?: string) =>
+        message ? (
+            <div className="create-user-error">
+                <AlertCircle size={12} />
+                {message}
+            </div>
+        ) : null;
+
     return (
-        <div style={{ width: '100%', maxWidth: '100%' }}>
-            {/* Page Header */}
-            <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: '1.5rem'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{
-                        width: '2.5rem',
-                        height: '2.5rem',
-                        borderRadius: '0.5rem',
-                        backgroundColor: '#dbeafe',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#2563eb'
-                    }}>
+        <div className="create-user-page">
+            <div className="create-user-header">
+                <div className="create-user-headerIntro">
+                    <div className="create-user-headerIcon">
                         <UserPlus size={20} />
                     </div>
                     <div>
-                        <h2 style={{
-                            fontSize: '1.5rem',
-                            fontWeight: 700,
-                            color: '#111827',
-                            margin: 0
-                        }}>
-                            Create New User
-                        </h2>
-                        <p style={{
-                            fontSize: '0.875rem',
-                            color: '#6b7280',
-                            margin: 0
-                        }}>
-                            Add a new user to the system
-                        </p>
+                        <h2 className="create-user-title">Create New User</h2>
+                        <p className="create-user-subtitle">Add a new user to the system</p>
                     </div>
                 </div>
             </div>
 
-            {/* Form Container */}
-            <div style={{
-                background: 'white',
-                borderRadius: '0.75rem',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                border: '1px solid #e5e7eb',
-                padding: '2rem',
-                maxWidth: '800px'
-            }}>
+            <div className="create-user-card">
                 <form onSubmit={handleSubmit}>
-                    {/* Basic Information Section */}
-                    <div style={{ marginBottom: '2rem' }}>
-                        <h3 style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 600,
-                            color: '#111827',
-                            marginBottom: '1rem',
-                            paddingBottom: '0.5rem',
-                            borderBottom: '2px solid #e5e7eb'
-                        }}>
-                            Basic Information
-                        </h3>
+                    <div className="create-user-section">
+                        <h3 className="create-user-sectionTitle">Basic Information</h3>
 
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '1.25rem'
-                        }}>
-                            {/* Username */}
+                        <div className="create-user-grid">
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Username <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Username <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.username}
                                     onChange={(e) => handleInputChange('username', e.target.value)}
                                     placeholder="SG999999"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.username ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.username) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.username) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.username)}
                                 />
-                                {errors.username && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.username}
-                                    </div>
-                                )}
+                                {renderError(errors.username)}
                             </div>
 
-                            {/* Employee ID */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Employee ID <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Employee ID <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.employeeID}
                                     onChange={(e) => handleInputChange('employeeID', e.target.value)}
                                     placeholder="999999"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.employeeID ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.employeeID) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.employeeID) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.employeeID)}
                                 />
-                                {errors.employeeID && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.employeeID}
-                                    </div>
-                                )}
+                                {renderError(errors.employeeID)}
                             </div>
 
-                            {/* First Name */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    First Name <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    First Name <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.firstName}
                                     onChange={(e) => handleInputChange('firstName', e.target.value)}
                                     placeholder="Ming Lan"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.firstName ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.firstName) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.firstName) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.firstName)}
                                 />
-                                {errors.firstName && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.firstName}
-                                    </div>
-                                )}
+                                {renderError(errors.firstName)}
                             </div>
 
-                            {/* Last Name */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Last Name <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Last Name <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.lastName}
                                     onChange={(e) => handleInputChange('lastName', e.target.value)}
                                     placeholder="Tan"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.lastName ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.lastName) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.lastName) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.lastName)}
                                 />
-                                {errors.lastName && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.lastName}
-                                    </div>
-                                )}
+                                {renderError(errors.lastName)}
                             </div>
                         </div>
                     </div>
 
-                    {/* Contact Information Section */}
-                    <div style={{ marginBottom: '2rem' }}>
-                        <h3 style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 600,
-                            color: '#111827',
-                            marginBottom: '1rem',
-                            paddingBottom: '0.5rem',
-                            borderBottom: '2px solid #e5e7eb'
-                        }}>
-                            Contact Information
-                        </h3>
+                    <div className="create-user-section">
+                        <h3 className="create-user-sectionTitle">Contact Information</h3>
 
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '1.25rem'
-                        }}>
-                            {/* Email */}
-                            <div style={{ gridColumn: 'span 2' }}>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Email Address <span style={{ color: '#dc2626' }}>*</span>
+                        <div className="create-user-grid">
+                            <div className="create-user-gridColSpan2">
+                                <label className="create-user-fieldLabel">
+                                    Email Address <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="email"
                                     value={formData.email}
                                     onChange={(e) => handleInputChange('email', e.target.value)}
                                     placeholder="tan_ming_lan@mycompany.com"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.email ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.email) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.email) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.email)}
                                 />
-                                {errors.email && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.email}
-                                    </div>
-                                )}
+                                {renderError(errors.email)}
                             </div>
 
-                            {/* Phone */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Phone Number <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Phone Number <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="tel"
                                     value={formData.phone}
                                     onChange={(e) => handleInputChange('phone', e.target.value)}
                                     placeholder="+6598989898"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.phone ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.phone) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.phone) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.phone)}
                                 />
-                                {errors.phone && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.phone}
-                                    </div>
-                                )}
+                                {renderError(errors.phone)}
                             </div>
                         </div>
                     </div>
 
-                    {/* Organization Information Section */}
-                    <div style={{ marginBottom: '2rem' }}>
-                        <h3 style={{
-                            fontSize: '1.125rem',
-                            fontWeight: 600,
-                            color: '#111827',
-                            marginBottom: '1rem',
-                            paddingBottom: '0.5rem',
-                            borderBottom: '2px solid #e5e7eb'
-                        }}>
-                            Organization Details
-                        </h3>
+                    <div className="create-user-section">
+                        <h3 className="create-user-sectionTitle">Organization Details</h3>
 
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(2, 1fr)',
-                            gap: '1.25rem'
-                        }}>
-                            {/* Organization */}
+                        <div className="create-user-grid">
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Organization <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Organization <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.organization}
                                     onChange={(e) => handleInputChange('organization', e.target.value)}
                                     placeholder="50395803"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.organization ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.organization) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.organization) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.organization)}
                                 />
-                                {errors.organization && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.organization}
-                                    </div>
-                                )}
+                                {renderError(errors.organization)}
                             </div>
 
-                            {/* Department */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Department <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Department <span className="create-user-required">*</span>
                                 </label>
                                 <input
                                     type="text"
                                     value={formData.department}
                                     onChange={(e) => handleInputChange('department', e.target.value)}
                                     placeholder="Tech Planning & Development"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.department ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.department) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.department) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
+                                    className={inputClassName(errors.department)}
                                 />
-                                {errors.department && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.department}
-                                    </div>
-                                )}
+                                {renderError(errors.department)}
                             </div>
 
-                            {/* Staff Type */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Staff Type <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Staff Type <span className="create-user-required">*</span>
                                 </label>
-                                <select
+                                <SearchableCombobox
                                     value={formData.staffType}
-                                    onChange={(e) => handleInputChange('staffType', e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.staffType ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box',
-                                        cursor: 'pointer'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.staffType) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.staffType) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
-                                >
-                                    <option value="">Select staff type</option>
-                                    <option value="O0001">O0001 - Office</option>
-                                    <option value="M0001">M0001 - frontline</option>
-                                    <option value="D0001">D0001 - frontline</option>
-                                    <option value="T0001">_Test - frontlineTest/training accounts</option>
-                                </select>
-                                {errors.staffType && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.staffType}
-                                    </div>
-                                )}
+                                    onChange={(next) => handleInputChange('staffType', next)}
+                                    options={[
+                                        { value: '', label: 'Select staff type' },
+                                        { value: 'O0001', label: 'O0001 - Office' },
+                                        { value: 'M0001', label: 'M0001 - frontline' },
+                                        { value: 'D0001', label: 'D0001 - frontline' },
+                                        { value: 'T0001', label: '_Test - frontlineTest/training accounts' },
+                                    ]}
+                                    placeholder="Select staff type"
+                                    inputClassName={`kc-input create-user-comboboxInput${errors.staffType ? ' is-error' : ''}`}
+                                />
+                                {renderError(errors.staffType)}
                             </div>
 
-                            {/* Group */}
                             <div>
-                                <label style={{
-                                    display: 'block',
-                                    fontSize: '0.875rem',
-                                    fontWeight: 500,
-                                    color: '#374151',
-                                    marginBottom: '0.5rem'
-                                }}>
-                                    Group <span style={{ color: '#dc2626' }}>*</span>
+                                <label className="create-user-fieldLabel">
+                                    Group <span className="create-user-required">*</span>
                                 </label>
-                                <select
+                                <SearchableCombobox
                                     value={formData.group}
-                                    onChange={(e) => handleInputChange('group', e.target.value)}
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.625rem 0.875rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.group ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box',
-                                        cursor: 'pointer'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.group) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.group) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                        }
-                                    }}
-                                >
-                                    <option value="">Select group</option>
-                                    <option value="SG">Singapore</option>
-                                    <option value="MY">Malaysia</option>
-                                    <option value="ID">Indonesia</option>
-                                    <option value="TH">Thailand</option>
-                                </select>
-                                {errors.group && (
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '0.25rem',
-                                        marginTop: '0.25rem',
-                                        color: '#dc2626',
-                                        fontSize: '0.75rem'
-                                    }}>
-                                        <AlertCircle size={12} />
-                                        {errors.group}
-                                    </div>
-                                )}
+                                    onChange={(next) => handleInputChange('group', next)}
+                                    options={[
+                                        { value: '', label: 'Select group' },
+                                        { value: 'SG', label: 'Singapore' },
+                                        { value: 'MY', label: 'Malaysia' },
+                                        { value: 'ID', label: 'Indonesia' },
+                                        { value: 'TH', label: 'Thailand' },
+                                    ]}
+                                    placeholder="Select group"
+                                    inputClassName={`kc-input create-user-comboboxInput${errors.group ? ' is-error' : ''}`}
+                                />
+                                {renderError(errors.group)}
                             </div>
                         </div>
                     </div>
 
-                    {/* Form Actions */}
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'flex-end',
-                        gap: '0.75rem',
-                        paddingTop: '1.5rem',
-                        borderTop: '1px solid #e5e7eb'
-                    }}>
+                    <div className="create-user-actions">
                         <button
                             type="button"
                             onClick={handleCancel}
                             disabled={isSubmitting}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.625rem 1.25rem',
-                                fontSize: '0.875rem',
-                                fontWeight: 500,
-                                color: '#374151',
-                                backgroundColor: '#f9fafb',
-                                border: '1px solid #d1d5db',
-                                borderRadius: '0.5rem',
-                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s',
-                                fontFamily: 'inherit',
-                                opacity: isSubmitting ? 0.5 : 1
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isSubmitting) {
-                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f9fafb';
-                            }}
+                            className="create-user-button create-user-button--secondary"
                         >
                             <X size={16} />
                             Cancel
@@ -849,36 +346,7 @@ const CreateLocalUserPage: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isSubmitting}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                padding: '0.625rem 1.25rem',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: 'white',
-                                background: isSubmitting
-                                    ? '#9ca3af'
-                                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                border: 'none',
-                                borderRadius: '0.5rem',
-                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s',
-                                fontFamily: 'inherit',
-                                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isSubmitting) {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
-                                    e.currentTarget.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isSubmitting) {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-                                    e.currentTarget.style.boxShadow = '0 1px 2px rgba(0, 0, 0, 0.05)';
-                                }
-                            }}
+                            className="create-user-button create-user-button--primary"
                         >
                             <Save size={16} />
                             {isSubmitting ? 'Creating User...' : 'Create User'}

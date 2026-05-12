@@ -1,265 +1,133 @@
-// src/pages/Realms/access/accessRequestsStore.ts
+import { realmAccessApi } from "../../../services/realmAccessApi";
+
 const EVT_KEY = "kc_access_requests_updated";
 
 function broadcast() {
-    // same-tab updates won't trigger 'storage', so we dispatch our own event too
     window.dispatchEvent(new Event(EVT_KEY));
-    // also update localStorage to trigger other tabs (optional)
     localStorage.setItem(EVT_KEY, String(Date.now()));
 }
-export type AccessRequestStatus =
-    | "Draft"
-    | "Submitted"
-    | "Approved"
-    | "Rejected"
-    | "Verified"
-    | "Cancelled";
 
-export type AccessRequestEventType =
-    | "CREATED"
-    | "SUBMITTED"
-    | "APPROVED"
-    | "REJECTED"
-    | "VERIFIED"
-    | "CANCELLED"
-    | "NOTE";
+export type { AccessRequestStatus, AccessRequestEventType, AccessRequestEvent, AccessRequest } from "../../../services/realmAccessApi";
+import type { AccessRequestStatus, AccessRequestEventType, AccessRequestEvent, AccessRequest, AccessRequestSnapshot, CreateAccessRequestInput, RealmAccessTransitionPayload } from "../../../services/realmAccessApi";
 
-export interface AccessRequestEvent {
-    id: string;
-    requestId: string;
-    type: AccessRequestEventType;
-    at: string; // ISO
-    actor: string;
-    message?: string;
+export type AccessRequestSlaStage = "approval" | "verification";
+export type AccessRequestSlaOutcome = "within_sla" | "after_sla_breach" | "pending";
+
+export interface AccessRequestSla {
+    stage: AccessRequestSlaStage;
+    policy: string;
+    slaHours: number;
+    dueAt: string;
+    elapsedMinutes: number;
+    outcome: AccessRequestSlaOutcome;
+    breached: boolean;
 }
 
-export interface AccessRequest {
-    id: string;
-    realmId: string;
-    realmName: string;
-    targetUser: string;
-    roleRequested: string;
-    justification: string;
-    timeBound?: boolean;
-    startDate?: string; // YYYY-MM-DD
-    endDate?: string;   // YYYY-MM-DD
-    status: AccessRequestStatus;
+const ACCESS_APPROVAL_SLA_HOURS = 4;
+const ACCESS_VERIFY_SLA_HOURS = 2;
 
-    requester: string;
-    approver?: string;
-    verifier?: string;
-
-    createdAt: string; // ISO
-    updatedAt: string; // ISO
+export function getAccessSlaHours(stage: AccessRequestSlaStage) {
+    return stage === "verification" ? ACCESS_VERIFY_SLA_HOURS : ACCESS_APPROVAL_SLA_HOURS;
 }
 
-const LS_KEY_REQ = "kc_access_requests_v1";
-const LS_KEY_EVT = "kc_access_request_events_v1";
+export function getAccessSlaPolicy(stage: AccessRequestSlaStage) {
+    return stage === "verification" ? "realm_access_verify" : "realm_access_approve";
+}
 
-const nowIso = () => new Date().toISOString();
-const uid = () => Math.random().toString(36).slice(2, 10);
+function asTime(iso?: string) {
+    const time = iso ? new Date(iso).getTime() : Number.NaN;
+    return Number.isNaN(time) ? null : time;
+}
 
-function seed(): { requests: AccessRequest[]; events: AccessRequestEvent[] } {
-    const t = nowIso();
+function buildSla(stage: AccessRequestSlaStage, startedAtIso: string, endedAtIso?: string): AccessRequestSla | undefined {
+    const startedAt = asTime(startedAtIso);
+    if (startedAt == null) return undefined;
 
-    const r1: AccessRequest = {
-        id: "AR-" + uid(),
-        realmId: "realm-ops",
-        realmName: "Operations Realm",
-        targetUser: "sarah.lee",
-        roleRequested: "realm_user",
-        justification: "Need access for daily operations support.",
-        timeBound: true,
-        startDate: "2026-03-01",
-        endDate: "2026-06-01",
-        status: "Submitted",
-        requester: "admin",
-        createdAt: t,
-        updatedAt: t,
+    const comparedAt = asTime(endedAtIso || new Date().toISOString());
+    if (comparedAt == null) return undefined;
+
+    const slaHours = getAccessSlaHours(stage);
+    const dueAt = startedAt + slaHours * 60 * 60 * 1000;
+    const elapsedMinutes = Math.max(0, Math.floor((comparedAt - startedAt) / 60000));
+    const breached = comparedAt > dueAt;
+
+    return {
+        stage,
+        policy: getAccessSlaPolicy(stage),
+        slaHours,
+        dueAt: new Date(dueAt).toISOString(),
+        elapsedMinutes,
+        outcome: endedAtIso ? (breached ? "after_sla_breach" : "within_sla") : "pending",
+        breached,
     };
-
-    const r2: AccessRequest = {
-        id: "AR-" + uid(),
-        realmId: "realm-fin",
-        realmName: "Finance Realm",
-        targetUser: "john.doe",
-        roleRequested: "realm_manager",
-        justification: "Temporary approval coverage while manager is on leave.",
-        timeBound: true,
-        startDate: "2026-03-05",
-        endDate: "2026-04-05",
-        status: "Approved",
-        requester: "admin",
-        approver: "approver.1",
-        createdAt: t,
-        updatedAt: t,
-    };
-
-    const r3: AccessRequest = {
-        id: "AR-" + uid(),
-        realmId: "realm-dev",
-        realmName: "Sandbox Realm",
-        targetUser: "jane.smith",
-        roleRequested: "realm_admin",
-        justification: "Sandbox admin for testing SSO integrations.",
-        status: "Draft",
-        requester: "admin",
-        createdAt: t,
-        updatedAt: t,
-    };
-
-    const events: AccessRequestEvent[] = [
-        {
-            id: "EV-" + uid(),
-            requestId: r1.id,
-            type: "CREATED",
-            at: t,
-            actor: r1.requester,
-            message: "Request Created",
-        },
-        {
-            id: "EV-" + uid(),
-            requestId: r1.id,
-            type: "SUBMITTED",
-            at: t,
-            actor: r1.requester,
-            message: "Submitted for Approval",
-        },
-        {
-            id: "EV-" + uid(),
-            requestId: r2.id,
-            type: "CREATED",
-            at: t,
-            actor: r2.requester,
-            message: "Request Created",
-        },
-        {
-            id: "EV-" + uid(),
-            requestId: r2.id,
-            type: "SUBMITTED",
-            at: t,
-            actor: r2.requester,
-            message: "Submitted for Approval",
-        },
-        {
-            id: "EV-" + uid(),
-            requestId: r2.id,
-            type: "APPROVED",
-            at: t,
-            actor: r2.approver ?? "Approver.1",
-            message: "Approved",
-        },
-        {
-            id: "EV-" + uid(),
-            requestId: r3.id,
-            type: "CREATED",
-            at: t,
-            actor: r3.requester,
-            message: "Draft Created",
-        },
-    ];
-
-    return { requests: [r1, r2, r3], events };
 }
 
-export function loadAccessRequests(): AccessRequest[] {
-    const raw = localStorage.getItem(LS_KEY_REQ);
-    if (raw) return JSON.parse(raw);
-    const seeded = seed();
-    localStorage.setItem(LS_KEY_REQ, JSON.stringify(seeded.requests));
-    localStorage.setItem(LS_KEY_EVT, JSON.stringify(seeded.events));
-    return seeded.requests;
+function getStageStart(events: AccessRequestEvent[], stage: AccessRequestSlaStage) {
+    const targetType = stage === "verification" ? "APPROVED" : "SUBMITTED";
+    const matches = events
+        .filter((event) => event.type === targetType)
+        .slice()
+        .sort((a, b) => (a.at > b.at ? 1 : -1));
+    return matches[0]?.at;
 }
 
-export function loadAccessEvents(): AccessRequestEvent[] {
-    const raw = localStorage.getItem(LS_KEY_EVT);
-    if (raw) return JSON.parse(raw);
-    // ensure seeding occurs if events missing
-    loadAccessRequests();
-    return JSON.parse(localStorage.getItem(LS_KEY_EVT) || "[]");
+export function getPendingAccessSla(
+    request: Pick<AccessRequest, "status">,
+    events: AccessRequestEvent[]
+): AccessRequestSla | null {
+    if (request.status === "Submitted") {
+        const startedAt = getStageStart(events, "approval");
+        return startedAt ? buildSla("approval", startedAt) ?? null : null;
+    }
+
+    if (request.status === "Approved") {
+        const startedAt = getStageStart(events, "verification");
+        return startedAt ? buildSla("verification", startedAt) ?? null : null;
+    }
+
+    return null;
 }
 
-export function saveAccessRequests(requests: AccessRequest[]) {
-    localStorage.setItem(LS_KEY_REQ, JSON.stringify(requests));
+export async function loadAccessSnapshot(): Promise<AccessRequestSnapshot> {
+    return realmAccessApi.snapshot();
+}
+
+export async function loadAccessRequests(): Promise<AccessRequest[]> {
+    return realmAccessApi.requests();
+}
+
+export async function loadAccessEvents(): Promise<AccessRequestEvent[]> {
+    return realmAccessApi.events();
+}
+
+export async function createAccessRequest(input: CreateAccessRequestInput): Promise<AccessRequest> {
+    const response = await realmAccessApi.create(input);
     broadcast();
+    return response.request;
 }
 
-export function saveAccessEvents(events: AccessRequestEvent[]) {
-    localStorage.setItem(LS_KEY_EVT, JSON.stringify(events));
-    broadcast();
-}
-
-export function appendEvent(evt: Omit<AccessRequestEvent, "id">) {
-    const events = loadAccessEvents();
-    events.unshift({ ...evt, id: "EV-" + uid() });
-    saveAccessEvents(events);
-}
-
-export function updateRequest(
+export async function updateRequest(
     id: string,
     patch: Partial<AccessRequest>,
     actor: string,
     eventType?: AccessRequestEventType,
     message?: string
 ) {
-    const reqs = loadAccessRequests();
-    const idx = reqs.findIndex((r) => r.id === id);
-    if (idx === -1) return;
-
-    reqs[idx] = { ...reqs[idx], ...patch, updatedAt: nowIso() };
-    saveAccessRequests(reqs);
-
-    if (eventType) {
-        appendEvent({
-            requestId: id,
-            type: eventType,
-            at: nowIso(),
-            actor,
-            message,
-        });
+    if (!eventType) {
+        throw new Error("updateRequest requires an event type for API-backed realm access actions.");
     }
-}
 
-export function createAccessRequest(input: {
-    realmId: string;
-    realmName: string;
-    targetUser: string;
-    roleRequested: string;
-    justification: string;
-    timeBound?: boolean;
-    startDate?: string;
-    endDate?: string;
-    requester: string;
-}): AccessRequest {
-    const reqs = loadAccessRequests();
+    const body: RealmAccessTransitionPayload = eventType === "APPROVED"
+        ? {
+            actor,
+            note: message,
+            roleRequested: patch.roleRequested,
+            timeBound: Boolean(patch.timeBound),
+            endDate: patch.timeBound ? patch.endDate ?? null : null,
+        }
+        : { actor, message };
 
-    const newReq: AccessRequest = {
-        id: "AR-" + uid(),
-        realmId: input.realmId.trim(),
-        realmName: input.realmName.trim(),
-        targetUser: input.targetUser.trim(),
-        roleRequested: input.roleRequested.trim(),
-        justification: input.justification.trim(),
-        timeBound: !!input.timeBound,
-        startDate: input.timeBound ? input.startDate : undefined,
-        endDate: input.timeBound ? input.endDate : undefined,
+    await realmAccessApi.transition(id, eventType, body);
 
-        status: "Draft",
-        requester: input.requester,
-        createdAt: nowIso(),
-        updatedAt: nowIso(),
-    };
-
-    reqs.unshift(newReq);
-    saveAccessRequests(reqs);
-
-    appendEvent({
-        requestId: newReq.id,
-        type: "CREATED",
-        at: nowIso(),
-        actor: input.requester,
-        message: "Request Created (Draft)",
-    });
-
-    return newReq;
+    broadcast();
 }

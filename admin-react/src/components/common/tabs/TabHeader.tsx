@@ -1,10 +1,4 @@
 import React from "react";
-import {
-    DragDropContext,
-    Droppable,
-    Draggable,
-    DropResult,
-} from "@hello-pangea/dnd";
 import { X, Plus, RefreshCw, Filter } from 'lucide-react';
 import type { Tab } from '../../../hooks/useTabs';
 
@@ -14,7 +8,6 @@ export interface TabHeaderProps {
     onSelect: (index: number) => void;
     onAdd: () => void;
     onClose: (index: number) => void;
-    onReorder: (sourceIndex: number, destIndex: number) => void;
     onRefresh?: () => void;
     onFilterToggle?: () => void;
     isFilterOpen?: boolean;
@@ -30,7 +23,6 @@ export const TabHeader: React.FC<TabHeaderProps> = ({
     onSelect,
     onAdd,
     onClose,
-    onReorder,
     onRefresh,
     onFilterToggle,
     isFilterOpen = false,
@@ -38,11 +30,6 @@ export const TabHeader: React.FC<TabHeaderProps> = ({
     addButtonLabel,
     customActions,
 }) => {
-    const handleDragEnd = (result: DropResult) => {
-        if (!result.destination) return;
-        onReorder(result.source.index, result.destination.index);
-    };
-
     const handleFilterClick = () => {
         if (onFilterToggle) {
             onFilterToggle();
@@ -52,65 +39,45 @@ export const TabHeader: React.FC<TabHeaderProps> = ({
     return (
         <div className="browser-tabs-container">
             <div className="browser-tabs-scroll-wrapper">
-                <DragDropContext onDragEnd={handleDragEnd}>
-                    <Droppable droppableId="tabs" direction="horizontal">
-                        {(provided) => (
-                            <div
-                                className="browser-tabs-header"
-                                role="tablist"
-                                ref={provided.innerRef}
-                                {...provided.droppableProps}
-                            >
-                                {tabs.map((tab, index) => (
-                                    <Draggable
-                                        key={tab.id}
-                                        draggableId={String(tab.id)}
-                                        index={index}
-                                    >
-                                        {(provided, snapshot) => (
-                                            <div
-                                                ref={provided.innerRef}
-                                                {...provided.draggableProps}
-                                                {...provided.dragHandleProps}
-                                                role="tab"
-                                                aria-selected={activeTab === index}
-                                                tabIndex={0}
-                                                className={`browser-tab ${activeTab === index ? 'active' : ''} ${snapshot.isDragging ? 'dragging' : ''}`}
-                                                onClick={() => onSelect(index)}
-                                                onKeyDown={(e) => e.key === "Enter" && onSelect(index)}
-                                            >
-                                                <span className="browser-tab-title">{tab.title}</span>
-                                                {tab.closable !== false && (
-                                                    <button
-                                                        className="browser-tab-close"
-                                                        aria-label={`Close ${tab.title}`}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            onClose(index);
-                                                        }}
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </Draggable>
-                                ))}
-                                {provided.placeholder}
-
-                                {/* Add Tab Button */}
+                <div
+                    className="browser-tabs-header"
+                    role="tablist"
+                >
+                    {tabs.map((tab, index) => (
+                        <div
+                            key={tab.id}
+                            role="tab"
+                            aria-selected={activeTab === index}
+                            tabIndex={0}
+                            className={`browser-tab ${activeTab === index ? 'active' : ''}`}
+                            onClick={() => onSelect(index)}
+                            onKeyDown={(e) => e.key === "Enter" && onSelect(index)}
+                        >
+                            <span className="browser-tab-title">{tab.title}</span>
+                            {tab.closable !== false && (
                                 <button
-                                    className="browser-tab-add"
-                                    aria-label="Add new tab"
-                                    onClick={onAdd}
-                                    title={addButtonLabel || "Add new tab"}
+                                    className="browser-tab-close"
+                                    aria-label={`Close ${tab.title}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClose(index);
+                                    }}
                                 >
-                                    <Plus size={16} />
+                                    <X size={14} />
                                 </button>
-                            </div>
-                        )}
-                    </Droppable>
-                </DragDropContext>
+                            )}
+                        </div>
+                    ))}
+
+                    <button
+                        className="browser-tab-add"
+                        aria-label="Add new tab"
+                        onClick={onAdd}
+                        title={addButtonLabel || "Add new tab"}
+                    >
+                        <Plus size={16} />
+                    </button>
+                </div>
             </div>
 
             {/* Action Bar */}

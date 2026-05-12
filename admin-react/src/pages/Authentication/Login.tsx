@@ -1,45 +1,82 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, LogIn, AlertCircle, Lock, Mail } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { Eye, EyeOff, LogIn, AlertCircle, Lock, User } from 'lucide-react';
 import { ROUTES } from '../../config/routes';
+import { useAuth } from '../../context/AuthContext';
+import { authApi, type OAuthSessionResponse } from '../../services/authApi';
+import '../../styles/auth.login.css';
 
 // Import the Certis Diamond Icon
 import CertisDiamondIcon from '../../assets/logos/Certis Diamond Iconsmall.png';
+import CertisBackground from '../../assets/backgrounds/certis-paya-lebar-green.jpg';
 
-// Logo font - Lato Regular for CES CASPER
-const LOGO_FONT_FAMILY = "'Lato', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
+const CERTIS_BLUE = '#002855';
+const CERTIS_BLUE_DARK = '#001d3d';
 
 // ==========================================
 // LOGIN PAGE COMPONENT
 // ==========================================
 
 interface LoginFormData {
-    email: string;
+    username: string;
     password: string;
 }
 
+const bypassAuth = import.meta.env.VITE_BYPASS_AUTH === 'true';
+
 const LoginPage: React.FC = () => {
     const navigate = useNavigate();
+    const { login } = useAuth();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [rememberMe, setRememberMe] = useState(false);
     const [errors, setErrors] = useState<Partial<Record<keyof LoginFormData, string>>>({});
     const [loginError, setLoginError] = useState<string>('');
+    const [oauthSession, setOauthSession] = useState<OAuthSessionResponse | null>(null);
+    const [isCheckingOAuth, setIsCheckingOAuth] = useState(true);
+    const returnUrl = useMemo(() => new URLSearchParams(window.location.search).get('returnUrl') ?? undefined, []);
 
     const [formData, setFormData] = useState<LoginFormData>({
-        email: '',
+        username: '',
         password: ''
     });
+
+    if (bypassAuth) {
+        return <Navigate to={ROUTES.HOME} replace />;
+    }
+
+    useEffect(() => {
+        let cancelled = false;
+
+        void (async () => {
+            try {
+                const session = await authApi.oauthSession();
+                if (!cancelled) {
+                    setOauthSession(session);
+                }
+            } catch {
+                if (!cancelled) {
+                    setOauthSession(null);
+                }
+            } finally {
+                if (!cancelled) {
+                    setIsCheckingOAuth(false);
+                }
+            }
+        })();
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     // Validation function
     const validateForm = (): boolean => {
         const newErrors: Partial<Record<keyof LoginFormData, string>> = {};
 
-        // Email validation
-        if (!formData.email.trim()) {
-            newErrors.email = 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Please enter a valid email address';
+        // Email / employee ID validation
+        if (!formData.username.trim()) {
+            newErrors.username = 'Email or employee ID is required';
         }
 
         // Password validation
@@ -75,220 +112,118 @@ const LoginPage: React.FC = () => {
         setLoginError('');
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            if (oauthSession) {
+                const response = await authApi.oauthLogin({
+                    username: formData.username.trim(),
+                    password: formData.password,
+                });
 
-            // TODO: Replace with actual authentication API call
-            // Example: const response = await authService.login(formData.email, formData.password);
-
-            // For demo purposes, accept any valid email/password
-            console.log('Logging in:', formData);
-
-            // Store auth token (in real app, get this from API response)
-            if (rememberMe) {
-                localStorage.setItem('authToken', 'demo-token-12345');
-            } else {
-                sessionStorage.setItem('authToken', 'demo-token-12345');
+                window.location.assign(response.redirectUrl);
+                return;
             }
 
-            // Navigate to dashboard
-            navigate(ROUTES.HOME);
+            const response = await login(formData.username.trim(), formData.password, returnUrl);
+            if (rememberMe) {
+                localStorage.setItem('rememberedUsername', formData.username.trim());
+            } else {
+                localStorage.removeItem('rememberedUsername');
+            }
+            navigate(response.redirectUrl || ROUTES.HOME, { replace: true });
         } catch (error) {
             console.error('Login error:', error);
-            setLoginError('Invalid email or password. Please try again.');
+            setLoginError("We couldn't sign you in. Check your username and password.");
         } finally {
             setIsSubmitting(false);
         }
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            padding: '1rem',
-            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif"
-        }}>
+        <div
+            className="login-page"
+            style={{
+                backgroundImage: `linear-gradient(180deg, rgba(16, 24, 48, 0.36), rgba(16, 24, 48, 0.64)), url(${CertisBackground})`,
+            }}
+        >
             {/* Login Card */}
-            <div style={{
-                width: '100%',
-                maxWidth: '440px',
-                background: 'white',
-                borderRadius: '1rem',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
-                overflow: 'hidden'
-            }}>
-                {/* Header Section with Gradient */}
-                <div style={{
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                    padding: '2.5rem 2rem',
-                    textAlign: 'center'
-                }}>
+            <div className="login-card">
+                {/* Header Section */}
+                <div
+                    className="login-header"
+                    style={{
+                        background: `linear-gradient(180deg, ${CERTIS_BLUE}f2, ${CERTIS_BLUE_DARK}f0)`,
+                    }}
+                >
                     {/* Logo */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.5rem',
-                        marginBottom: '1rem'
-                    }}>
+                    <div className="login-brand">
                         <img
                             src={CertisDiamondIcon}
                             alt="Certis"
-                            style={{
-                                height: '2.5rem',
-                                width: 'auto',
-                                objectFit: 'contain'
-                            }}
+                            className="login-brandIcon"
                         />
-                        <span style={{
-                            fontSize: '2rem',
-                            fontFamily: LOGO_FONT_FAMILY,
-                            fontWeight: 400,
-                            background: 'linear-gradient(135deg, #ffffff 0%, #e0e7ff 50%, #ffffff 100%)',
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
-                            letterSpacing: '0.08em',
-                            lineHeight: 1
-                        }}>
+                        <span className="login-brandText">
                             CASPER
                         </span>
                     </div>
 
-                    <h1 style={{
-                        fontSize: '1.5rem',
-                        fontWeight: 700,
-                        color: 'white',
-                        margin: '0 0 0.5rem 0'
-                    }}>
-                        Welcome Back
+                    <h1 className="login-title">
+                        {oauthSession ? `Sign in to ${oauthSession.appName}` : 'Secure Console Access'}
                     </h1>
-                    <p style={{
-                        fontSize: '0.875rem',
-                        color: 'rgba(255, 255, 255, 0.9)',
-                        margin: 0
-                    }}>
-                        Sign in to access your dashboard
+                    <p className="login-subtitle">
+                        {oauthSession
+                            ? 'Authenticate with CASPER to continue to the requesting application.'
+                            : 'Authenticate to continue to CASPER administration.'}
                     </p>
                 </div>
 
                 {/* Form Section */}
-                <div style={{ padding: '2rem' }}>
+                <div className="login-body">
                     {/* Login Error Alert */}
                     {loginError && (
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.75rem',
-                            padding: '0.875rem 1rem',
-                            backgroundColor: '#fef2f2',
-                            border: '1px solid #fecaca',
-                            borderRadius: '0.5rem',
-                            marginBottom: '1.5rem'
-                        }}>
+                        <div className="login-alert">
                             <AlertCircle size={20} color="#dc2626" />
-                            <span style={{
-                                fontSize: '0.875rem',
-                                color: '#dc2626',
-                                fontWeight: 500
-                            }}>
+                            <span className="login-alertText">
                                 {loginError}
                             </span>
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit}>
-                        {/* Email Field */}
-                        <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '0.875rem',
-                                fontWeight: 500,
-                                color: '#374151',
-                                marginBottom: '0.5rem'
-                            }}>
-                                Email Address
+                        {/* Email / Employee ID Field */}
+                        <div className="login-field">
+                            <label className="login-label">
+                                Email or Employee ID
                             </label>
-                            <div style={{ position: 'relative' }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '1rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: '#9ca3af',
-                                    pointerEvents: 'none'
-                                }}>
-                                    <Mail size={18} />
+                            <div className="login-helpText">
+                                Use your employee ID or email.
+                            </div>
+                            <div className="login-inputWrap">
+                                <div className="login-inputIcon">
+                                    <User size={18} />
                                 </div>
                                 <input
-                                    type="email"
-                                    value={formData.email}
-                                    onChange={(e) => handleInputChange('email', e.target.value)}
-                                    placeholder="you@example.com"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem 1rem 0.75rem 2.75rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.email ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.email) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.email) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }
-                                    }}
+                                    type="text"
+                                    value={formData.username}
+                                    onChange={(e) => handleInputChange('username', e.target.value)}
+                                    placeholder="admin@casper.local or admin"
+                                    autoComplete="username"
+                                    className={`login-input login-input--username ${errors.username ? 'is-error' : ''}`}
                                 />
                             </div>
-                            {errors.email && (
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.25rem',
-                                    marginTop: '0.375rem',
-                                    color: '#dc2626',
-                                    fontSize: '0.75rem'
-                                }}>
+                            {errors.username && (
+                                <div className="login-fieldError">
                                     <AlertCircle size={12} />
-                                    {errors.email}
+                                    {errors.username}
                                 </div>
                             )}
                         </div>
 
                         {/* Password Field */}
-                        <div style={{ marginBottom: '1.25rem' }}>
-                            <label style={{
-                                display: 'block',
-                                fontSize: '0.875rem',
-                                fontWeight: 500,
-                                color: '#374151',
-                                marginBottom: '0.5rem'
-                            }}>
+                        <div className="login-field">
+                            <label className="login-label">
                                 Password
                             </label>
-                            <div style={{ position: 'relative' }}>
-                                <div style={{
-                                    position: 'absolute',
-                                    left: '1rem',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: '#9ca3af',
-                                    pointerEvents: 'none'
-                                }}>
+                            <div className="login-inputWrap">
+                                <div className="login-inputIcon">
                                     <Lock size={18} />
                                 </div>
                                 <input
@@ -296,64 +231,18 @@ const LoginPage: React.FC = () => {
                                     value={formData.password}
                                     onChange={(e) => handleInputChange('password', e.target.value)}
                                     placeholder="Enter your password"
-                                    style={{
-                                        width: '100%',
-                                        padding: '0.75rem 3rem 0.75rem 2.75rem',
-                                        fontSize: '0.875rem',
-                                        border: `1px solid ${errors.password ? '#dc2626' : '#d1d5db'}`,
-                                        borderRadius: '0.5rem',
-                                        backgroundColor: 'white',
-                                        outline: 'none',
-                                        transition: 'border-color 0.2s, box-shadow 0.2s',
-                                        fontFamily: 'inherit',
-                                        boxSizing: 'border-box'
-                                    }}
-                                    onFocus={(e) => {
-                                        if (!errors.password) {
-                                            e.currentTarget.style.borderColor = '#3b82f6';
-                                            e.currentTarget.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                                        }
-                                    }}
-                                    onBlur={(e) => {
-                                        if (!errors.password) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }
-                                    }}
+                                    className={`login-input login-input--password ${errors.password ? 'is-error' : ''}`}
                                 />
                                 <button
                                     type="button"
                                     onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '1rem',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'none',
-                                        border: 'none',
-                                        color: '#9ca3af',
-                                        cursor: 'pointer',
-                                        padding: '0.25rem',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        transition: 'color 0.2s'
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.color = '#6b7280'}
-                                    onMouseLeave={(e) => e.currentTarget.style.color = '#9ca3af'}
+                                    className="login-passwordToggle"
                                 >
                                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                                 </button>
                             </div>
                             {errors.password && (
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '0.25rem',
-                                    marginTop: '0.375rem',
-                                    color: '#dc2626',
-                                    fontSize: '0.75rem'
-                                }}>
+                                <div className="login-fieldError">
                                     <AlertCircle size={12} />
                                     {errors.password}
                                 </div>
@@ -361,30 +250,13 @@ const LoginPage: React.FC = () => {
                         </div>
 
                         {/* Remember Me & Forgot Password */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            marginBottom: '1.5rem'
-                        }}>
-                            <label style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem',
-                                color: '#374151'
-                            }}>
+                        <div className="login-optionsRow">
+                            <label className="login-checkboxLabel">
                                 <input
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    style={{
-                                        width: '1rem',
-                                        height: '1rem',
-                                        cursor: 'pointer',
-                                        accentColor: '#3b82f6'
-                                    }}
+                                    className="login-checkbox"
                                 />
                                 Remember me
                             </label>
@@ -392,17 +264,9 @@ const LoginPage: React.FC = () => {
                                 href="#"
                                 onClick={(e) => {
                                     e.preventDefault();
-                                    alert('Password reset functionality would be implemented here');
                                 }}
-                                style={{
-                                    fontSize: '0.875rem',
-                                    color: '#3b82f6',
-                                    textDecoration: 'none',
-                                    fontWeight: 500,
-                                    transition: 'color 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.color = '#2563eb'}
-                                onMouseLeave={(e) => e.currentTarget.style.color = '#3b82f6'}
+                                className="login-disabledLink"
+                                title="Password reset is not enabled yet"
                             >
                                 Forgot password?
                             </a>
@@ -411,90 +275,28 @@ const LoginPage: React.FC = () => {
                         {/* Submit Button */}
                         <button
                             type="submit"
-                            disabled={isSubmitting}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '0.5rem',
-                                padding: '0.875rem 1.5rem',
-                                fontSize: '0.875rem',
-                                fontWeight: 600,
-                                color: 'white',
-                                background: isSubmitting
-                                    ? '#9ca3af'
-                                    : 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                                border: 'none',
-                                borderRadius: '0.5rem',
-                                cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                                transition: 'all 0.2s',
-                                fontFamily: 'inherit',
-                                boxShadow: isSubmitting ? 'none' : '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                            }}
-                            onMouseEnter={(e) => {
-                                if (!isSubmitting) {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)';
-                                    e.currentTarget.style.boxShadow = '0 6px 8px -1px rgba(0, 0, 0, 0.15)';
-                                    e.currentTarget.style.transform = 'translateY(-1px)';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!isSubmitting) {
-                                    e.currentTarget.style.background = 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)';
-                                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.1)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }
-                            }}
+                            disabled={isSubmitting || isCheckingOAuth}
+                            className="login-submit"
                         >
                             <LogIn size={18} />
-                            {isSubmitting ? 'Signing in...' : 'Sign In'}
+                            {isSubmitting ? 'Signing in...' : isCheckingOAuth ? 'Checking session...' : 'Sign In'}
                         </button>
                     </form>
 
                     {/* Divider */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        margin: '1.5rem 0',
-                        gap: '0.75rem'
-                    }}>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
-                        <span style={{ fontSize: '0.75rem', color: '#9ca3af', fontWeight: 500 }}>
+                    <div className="login-divider">
+                        <div className="login-dividerLine" />
+                        <span className="login-dividerText">
                             OR
                         </span>
-                        <div style={{ flex: 1, height: '1px', backgroundColor: '#e5e7eb' }} />
+                        <div className="login-dividerLine" />
                     </div>
 
                     {/* SSO Button (Optional) */}
                     <button
                         type="button"
-                        onClick={() => alert('SSO login would be implemented here')}
-                        style={{
-                            width: '100%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.5rem',
-                            padding: '0.875rem 1.5rem',
-                            fontSize: '0.875rem',
-                            fontWeight: 500,
-                            color: '#374151',
-                            backgroundColor: 'white',
-                            border: '1px solid #d1d5db',
-                            borderRadius: '0.5rem',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            fontFamily: 'inherit'
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
-                            e.currentTarget.style.borderColor = '#9ca3af';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'white';
-                            e.currentTarget.style.borderColor = '#d1d5db';
-                        }}
+                        disabled
+                        className="login-ssoButton"
                     >
                         <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M17.64 9.205c0-.639-.057-1.252-.164-1.841H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4" />
@@ -502,60 +304,33 @@ const LoginPage: React.FC = () => {
                             <path d="M3.964 10.71A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05" />
                             <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335" />
                         </svg>
-                        Sign in with Google SSO
+                        Google SSO is not enabled yet
                     </button>
                 </div>
 
                 {/* Footer */}
-                <div style={{
-                    padding: '1.5rem 2rem',
-                    backgroundColor: '#f9fafb',
-                    borderTop: '1px solid #e5e7eb',
-                    textAlign: 'center'
-                }}>
-                    <p style={{
-                        fontSize: '0.75rem',
-                        color: '#6b7280',
-                        margin: 0
-                    }}>
-                        © 2026 CES CASPER. All rights reserved.
+                <div className="login-footer">
+                    <p className="login-footerText">
+                        Authorized personnel only. Access and administrative actions are monitored and audited.
                     </p>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '1rem',
-                        marginTop: '0.5rem'
-                    }}>
+                    <div className="login-footerLinks">
                         <a
                             href="#"
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#3b82f6',
-                                textDecoration: 'none'
-                            }}
+                            className="login-footerLink"
                         >
-                            Privacy Policy
+                            Access Notice
                         </a>
-                        <span style={{ color: '#d1d5db' }}>•</span>
+                        <span className="login-footerSeparator">•</span>
                         <a
                             href="#"
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#3b82f6',
-                                textDecoration: 'none'
-                            }}
+                            className="login-footerLink"
                         >
-                            Terms of Service
+                            Usage Policy
                         </a>
-                        <span style={{ color: '#d1d5db' }}>•</span>
+                        <span className="login-footerSeparator">•</span>
                         <a
                             href="#"
-                            style={{
-                                fontSize: '0.75rem',
-                                color: '#3b82f6',
-                                textDecoration: 'none'
-                            }}
+                            className="login-footerLink"
                         >
                             Support
                         </a>

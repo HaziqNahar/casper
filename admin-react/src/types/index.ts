@@ -50,12 +50,22 @@ export interface AppRow extends TableData {
     adminUrl?: string;
 
     redirectUris: string[];
+    postLogoutRedirectUris?: string[];
     webOrigins: string[];
 
     clientSecretMasked?: string;
+    clientSecretStorage?: string;
+    clientSecretSecretName?: string;
+    clientSecretRotatedAtUtc?: string;
+    previousClientSecretExpiresAtUtc?: string;
     clientScopes: string[];
     realmRoles: string[];
     protocolMappers: Array<{ name: string; protocol: string; mapperType: string }>;
+    ownerRealm?: string;
+    linkedRealmCount?: number;
+    accessUserCount?: number;
+    updatedAt?: string;
+    description?: string;
 }
 
 // Keep legacy names for DataContext

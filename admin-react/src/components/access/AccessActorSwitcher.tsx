@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import {
     getAccessCurrentUser,
@@ -15,35 +15,80 @@ const USERS: AccessCurrentUser[] = [
 export default function AccessActorSwitcher() {
     const current = getAccessCurrentUser();
     const [value, setValue] = useState(current.username);
+    const [open, setOpen] = useState(false);
+    const containerRef = useRef<HTMLDivElement | null>(null);
+    const currentActor = useMemo(
+        () => USERS.find((candidate) => candidate.username === value) ?? current,
+        [current, value]
+    );
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (!containerRef.current?.contains(event.target as Node)) {
+                setOpen(false);
+            }
+        };
+
+        const handleEscape = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                setOpen(false);
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        window.addEventListener("keydown", handleEscape);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            window.removeEventListener("keydown", handleEscape);
+        };
+    }, []);
 
     return (
-        <div className="header-actor-switcher">
-            <span className="header-actor-label">Acting as</span>
-
-            <div className="header-actor-selectWrap">
-                <select
-                    className="header-actor-select"
-                    value={value}
-                    onChange={(e) => {
-                        const next = USERS.find((u) => u.username === e.target.value);
-                        if (!next) return;
-                        setAccessCurrentUser(next);
-                        setValue(next.username);
-                        window.location.reload();
-                    }}
-                    title="Current workflow actor"
-                >
-                    {USERS.map((u) => (
-                        <option key={u.username} value={u.username}>
-                            {u.displayName} ({u.username})
-                        </option>
-                    ))}
-                </select>
-
-                <span className="header-actor-selectIcon">
-                    <ChevronDown size={16} />
+        <div className="header-actor-switcher" ref={containerRef}>
+            <button
+                type="button"
+                className="header-actor-trigger"
+                title="Current workflow actor"
+                aria-label="Current workflow actor"
+                aria-haspopup="listbox"
+                aria-expanded={open}
+                onClick={() => setOpen((currentOpen) => !currentOpen)}
+            >
+                <span className="header-actor-triggerText">
+                    Acting as {currentActor.displayName} ({currentActor.username})
                 </span>
-            </div>
+                <ChevronDown
+                    size={16}
+                    className="header-actor-triggerIcon"
+                    style={{ transform: `rotate(${open ? 180 : 0}deg)` }}
+                />
+            </button>
+
+            {open ? (
+                <div className="header-actor-menu" role="listbox">
+                    {USERS.map((actor) => {
+                        const isActive = actor.username === value;
+                        return (
+                            <button
+                                key={actor.username}
+                                type="button"
+                                role="option"
+                                aria-selected={isActive}
+                                className={`header-actor-menuItem${isActive ? " is-active" : ""}`}
+                                onClick={() => {
+                                    setAccessCurrentUser(actor);
+                                    setValue(actor.username);
+                                    setOpen(false);
+                                    window.location.reload();
+                                }}
+                            >
+                                <span className="header-actor-menuName">{actor.displayName}</span>
+                                <span className="header-actor-menuMeta">{actor.username}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            ) : null}
         </div>
     );
 }

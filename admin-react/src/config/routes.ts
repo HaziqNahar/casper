@@ -16,7 +16,7 @@ export interface BreadcrumbConfig {
 // Route paths as constants for type safety
 export const ROUTES = {
     // Main
-    HOME: '/',
+    HOME: '/casper',
 
     REALMS: '/realms',
     MANAGE_REALMS: '/realms/manage',
@@ -24,14 +24,16 @@ export const ROUTES = {
 
     APPS: '/apps',
     REGISTER_APPS: '/apps/register',
-    MANAGE_APPS: '/apps/manage',
+    EQUIPMENT_ASSETS: '/inventory',
 
     USERS: '/users',
+    PROFILE: '/profile',
+    USERS_ALL: '/users',
     CREATE_USER: '/users/create-user',
-    MANAGE_USERS: '/users/manage',
 
     MFA_SETTINGS: '/mfa-settings',
     AUDIT_LOGS: '/audit-logs',
+    APPROVAL_REQUESTS: '/approval-requests',
     LOGIN: '/login',
 
     REALM_ACCESS_REQUEST: '/realms/access/request',
@@ -42,6 +44,10 @@ export const ROUTES = {
 } as const;
 
 export type RoutePath = typeof ROUTES[keyof typeof ROUTES];
+
+export const APP_OAUTH_ROUTE_PATTERN = '/apps/:appId/oauth';
+
+export const buildAppOAuthRoute = (appId: string): string => `/apps/${appId}/oauth`;
 
 // Route metadata for titles and breadcrumbs
 export const ROUTE_CONFIG: Record<string, RouteConfig> = {
@@ -90,6 +96,14 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
             { label: 'Users', path: ROUTES.USERS },
         ],
     },
+    [ROUTES.PROFILE]: {
+        path: ROUTES.PROFILE,
+        title: 'Profile',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Profile', path: ROUTES.PROFILE },
+        ],
+    },
     [ROUTES.CREATE_USER]: {
         path: ROUTES.CREATE_USER,
         title: 'Create User',
@@ -106,15 +120,6 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
             { label: 'Register Application', path: ROUTES.REGISTER_APPS },
         ],
     },
-    [ROUTES.MANAGE_APPS]: {
-        path: ROUTES.MANAGE_APPS,
-        title: 'Manage Application',
-        breadcrumbs: [
-            { label: 'Home', path: ROUTES.HOME },
-            { label: 'All Applications' },
-            { label: 'Manage Application', path: ROUTES.MANAGE_APPS },
-        ],
-    },
     [ROUTES.APPS]: {
         path: ROUTES.APPS,
         title: 'All Applications',
@@ -123,7 +128,15 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
             { label: 'All Applications', path: ROUTES.APPS },
         ],
     },
-    // MFA Settings
+    [ROUTES.EQUIPMENT_ASSETS]: {
+        path: ROUTES.EQUIPMENT_ASSETS,
+        title: 'Equipment & Asset Inventory',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Operations Inventory' },
+            { label: 'Equipment & Assets', path: ROUTES.EQUIPMENT_ASSETS },
+        ],
+    },
     [ROUTES.MFA_SETTINGS]: {
         path: ROUTES.MFA_SETTINGS,
         title: 'MFA Settings',
@@ -138,6 +151,14 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
         breadcrumbs: [
             { label: 'Home', path: ROUTES.HOME },
             { label: 'Audit Logs', path: ROUTES.AUDIT_LOGS },
+        ],
+    },
+    [ROUTES.APPROVAL_REQUESTS]: {
+        path: ROUTES.APPROVAL_REQUESTS,
+        title: 'Approval Requests',
+        breadcrumbs: [
+            { label: 'Home', path: ROUTES.HOME },
+            { label: 'Approval Requests', path: ROUTES.APPROVAL_REQUESTS },
         ],
     },
     [ROUTES.REALM_ACCESS_REQUEST]: {
@@ -174,8 +195,19 @@ export const ROUTE_CONFIG: Record<string, RouteConfig> = {
     },
 };
 
-// Helper function to get route config
 export const getRouteConfig = (path: string): RouteConfig => {
+    if (/^\/apps\/[^/]+\/oauth$/.test(path)) {
+        return {
+            path,
+            title: 'OAuth Client',
+            breadcrumbs: [
+                { label: 'Home', path: ROUTES.HOME },
+                { label: 'All Applications', path: ROUTES.APPS },
+                { label: 'OAuth Client', path },
+            ],
+        };
+    }
+
     return ROUTE_CONFIG[path] || {
         path,
         title: 'Dashboard',

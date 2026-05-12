@@ -157,7 +157,7 @@ body,
     --kc-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.15);
 
     --kc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-    --kc-shadow-md: 0 8px 20px rgba(0, 0, 0, 0.10);
+    --kc-shadow-md: 0 12px 32px rgba(15, 23, 42, 0.18);
 
     /* Activity badge colors */
     --kc-blue-bg: rgba(59, 130, 246, 0.14);
@@ -185,14 +185,12 @@ body,
 
     --kc-radius-md: 12px;
 
-    --kc-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
-
     /* ========== Dashboard Glass Tokens ========== */
-    --glass-bg: rgba(255, 255, 255, 0.72);
-    --glass-bg-soft: rgba(255, 255, 255, 0.55);
-    --glass-border: rgba(255, 255, 255, 0.35);
-    --glass-blur: 18px;
-    --glass-sat: 160%;
+    --glass-bg: rgba(255, 255, 255, 0.84);
+    --glass-bg-soft: rgba(255, 255, 255, 0.92);
+    --glass-border: rgba(255, 255, 255, 0.28);
+    --glass-blur: 14px;
+    --glass-sat: 140%;
 
     /* Optional aliases if older CSS uses these */
     --border: var(--kc-border);
@@ -235,17 +233,23 @@ body {
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
+    filter: saturate(0.85) brightness(0.72);
+    transform: scale(1.02);
     z-index: 0;
 }
 
-/* Soft wash to keep glass readable */
 .app-bg::after {
     content: "";
     position: absolute;
     inset: 0;
-    background: linear-gradient(180deg,
-            rgba(15, 23, 42, 0.25),
-            rgba(15, 23, 42, 0.06));
+    background:
+        radial-gradient(circle at top left,
+            rgba(99, 102, 241, 0.16),
+            transparent 38%),
+        linear-gradient(180deg,
+            rgba(15, 23, 42, 0.58) 0%,
+            rgba(15, 23, 42, 0.36) 48%,
+            rgba(15, 23, 42, 0.26) 100%);
 }
 
 /* =========================================================
@@ -641,11 +645,15 @@ body {
 }
 
 .kc-text-title {
-    font-size: 16px;
+    font-size: 18px;
+    font-weight: 900;
+    color: #0f172a;
 }
 
 .kc-text-subtitle {
     font-size: 13px;
+    font-weight: 600;
+    color: #64748b;
 }
 
 .kc-input-label {

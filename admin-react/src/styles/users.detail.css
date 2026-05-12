@@ -1,0 +1,306 @@
+.user-detail {
+    padding: 0.5rem;
+}
+
+.user-detailHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #e5e7eb;
+    flex-wrap: wrap;
+}
+
+.user-detailHeaderIntro {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.user-detailBackButton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #374151;
+    font-family: inherit;
+}
+
+.user-detailTitle {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.user-detailSubtitle {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.user-detailActions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.user-detailActions .btn[disabled].is-idle {
+    opacity: 0.55;
+    filter: grayscale(0.2);
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.user-detailBadges {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.user-detailBadge {
+    padding: 0.375rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.user-detailBanner {
+    margin-bottom: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    font-size: 0.875rem;
+}
+
+.user-detailBanner.is-error {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fecaca;
+}
+
+.user-detailBanner.is-info {
+    background: #eff6ff;
+    color: #1d4ed8;
+    border-color: #bfdbfe;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.user-detailBannerStrong {
+    color: #1e40af;
+    font-weight: 600;
+}
+
+.user-detailGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.user-detailCard {
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    border: 1px solid #e5e7eb;
+}
+
+.user-detailCard.is-editing {
+    background: #ffffff;
+    border-color: #bfdbfe;
+    box-shadow: 0 0 0 3px rgba(191, 219, 254, 0.45);
+}
+
+.user-detailCardTitle {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #374151;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.user-detailStack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.user-detailTwoCol {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+
+.user-detailLabel {
+    display: block;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.user-detailLabel.is-editing {
+    color: #374151;
+    font-weight: 600;
+}
+
+.user-detailValue {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: #1f2937;
+}
+
+.user-detailValue.is-strong {
+    font-weight: 600;
+}
+
+.user-detailInput {
+    width: 100%;
+    margin-top: 0.25rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    font-size: 0.875rem;
+    color: #1f2937;
+    background: #ffffff;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.user-detailInput.is-error {
+    border-color: #dc2626;
+}
+
+.user-detailFieldError {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: #b91c1c;
+}
+
+.user-detailInlineRow {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.user-detailAlignEnd {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 0.75rem;
+}
+
+.user-detailHelper {
+    margin: 0 0 0.75rem;
+    font-size: 0.8rem;
+    color: #64748b;
+}
+
+.user-detailMuted {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.user-detailMuted.is-error {
+    color: #b91c1c;
+}
+
+.user-detailRealmList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.user-detailRealmCard {
+    border: 1px solid #e5e7eb;
+    border-radius: 0.5rem;
+    padding: 0.75rem;
+    background: #ffffff;
+}
+
+.user-detailRealmName {
+    font-weight: 600;
+    color: #111827;
+}
+
+.user-detailChipRow {
+    margin-top: 0.5rem;
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.user-detailChip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #374151;
+}
+
+.user-detailChip.is-appEnabled {
+    border-color: #dbeafe;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.user-detailChip.is-appDisabled {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.user-detailTextarea {
+    width: 100%;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #d1d5db;
+    font-size: 0.875rem;
+    resize: vertical;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.user-detailModalText {
+    margin-bottom: 0.75rem;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
+.user-detailModalSubtext {
+    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: #6b7280;
+}
+
+.user-detailModalLabel {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+@media (max-width: 720px) {
+    .user-detailTwoCol {
+        grid-template-columns: 1fr;
+    }
+}

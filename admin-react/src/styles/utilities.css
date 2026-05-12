@@ -10,11 +10,22 @@
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-sat));
     border: 1px solid var(--glass-border);
     border-radius: var(--kc-radius-lg);
-    box-shadow: var(--kc-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+    box-shadow: var(--kc-shadow-md), inset 0 1px 0 rgba(255, 255, 255, 0.18);
     overflow: hidden;
 }
 
-.glass-surface--soft {
+.glass-surface::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg,
+            rgba(255, 255, 255, 0.18),
+            rgba(255, 255, 255, 0.04));
+    pointer-events: none;
+}
+
+.glass-surface-soft {
     background: var(--glass-bg-soft);
 }
 

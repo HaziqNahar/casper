@@ -1,448 +1,42 @@
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 
 import TabPanel from "../../components/common/tabs/TabPanel";
-import DataTable, { TableColumn } from "../../components/common/DataTable";
 import { useTabs } from "../../hooks/useTabs";
 import type { Tab } from "../../hooks/useTabs";
 
-import { Badge, LinkCell } from "../../components/common/Badge";
-import { ArrowLeft, Eye, Globe, Key, Layers, Shield } from "lucide-react";
+import { useData } from "../../context/DataContext";
+import type { AppRow } from "../../types";
+import ApplicationsContent from "./ApplicationsContent";
+import ApplicationDetailContent from "./ApplicationDetailContent";
+import type { ApplicationRow } from "./applicationTypes";
+import { ROUTES } from "../../config/routes";
+import { authApi } from "../../services/authApi";
 
-// ============================================================================
-// TYPES
-// ============================================================================
-export type AppStatus = "Enabled" | "Disabled";
-export type AppAuthMethod = "oidc" | "saml";
-
-export interface ApplicationRow {
-    id: string;
-    name: string;
-    clientId: string;
-    authMethod: AppAuthMethod;
-    status: AppStatus;
-    publicClient: boolean;
-
-    redirectUris: string[];
-    webOrigins: string[];
-
-    rootUrl?: string;
-    baseUrl?: string;
-    adminUrl?: string;
-
-    ownerRealm?: string;
-    updatedAt?: string; // ISO string recommended
-    description?: string;
-}
-
-// ============================================================================
-// MOCK DATA
-// ============================================================================
-const APPS_DATA: ApplicationRow[] = [
-    {
-        id: "app-ops-web",
-        name: "Ops Web Portal",
-        clientId: "ops-web",
-        authMethod: "oidc",
-        status: "Enabled",
-        publicClient: false,
-        redirectUris: ["https://ops.company.sg/*"],
-        webOrigins: ["https://ops.company.sg"],
-        rootUrl: "https://ops.company.sg",
-        baseUrl: "https://ops.company.sg/app",
-        adminUrl: "https://ops.company.sg/admin",
-        ownerRealm: "Operations Realm",
-        updatedAt: "2025-12-19T09:00:00.000Z",
-        description: "Operations web application (OIDC confidential client).",
-    },
-    {
-        id: "app-ops-mobile",
-        name: "Ops Mobile",
-        clientId: "ops-mobile",
-        authMethod: "oidc",
-        status: "Enabled",
-        publicClient: true,
-        redirectUris: ["com.company.ops://callback", "https://auth.company.sg/mobile/*"],
-        webOrigins: [],
-        rootUrl: "",
-        baseUrl: "",
-        adminUrl: "",
-        ownerRealm: "Operations Realm",
-        updatedAt: "2025-12-19T09:00:00.000Z",
-        description: "Mobile client (OIDC public client).",
-    },
-    {
-        id: "app-fin-web",
-        name: "Finance Web",
-        clientId: "fin-web",
-        authMethod: "oidc",
-        status: "Disabled",
-        publicClient: false,
-        redirectUris: ["https://fin.company.sg/*"],
-        webOrigins: ["https://fin.company.sg"],
-        rootUrl: "https://fin.company.sg",
-        baseUrl: "https://fin.company.sg/app",
-        adminUrl: "https://fin.company.sg/admin",
-        ownerRealm: "Finance Realm",
-        updatedAt: "2025-12-12T09:00:00.000Z",
-        description: "Finance portal (currently disabled).",
-    },
-    {
-        id: "app-hr-sso",
-        name: "HR SSO (SAML)",
-        clientId: "hr-sso",
-        authMethod: "saml",
-        status: "Enabled",
-        publicClient: false,
-        redirectUris: ["https://hr.company.sg/sso/*"],
-        webOrigins: ["https://hr.company.sg"],
-        rootUrl: "https://hr.company.sg",
-        baseUrl: "https://hr.company.sg",
-        adminUrl: "https://hr.company.sg/admin",
-        ownerRealm: "HR Realm",
-        updatedAt: "2025-12-01T09:00:00.000Z",
-        description: "SAML service provider integration.",
-    },
-];
-
-// ============================================================================
-// HELPERS
-// ============================================================================
-const appStatusVariant = (s: AppStatus): "success" | "error" | "default" => {
-    if (s === "Enabled") return "success";
-    if (s === "Disabled") return "error";
-    return "default";
-};
-
-const formatAbsolute = (dt: Date) =>
-    new Intl.DateTimeFormat("en-SG", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-        hour12: false,
-    }).format(dt);
-
-const formatFull = (dt: Date) =>
-    new Intl.DateTimeFormat("en-SG", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        second: "2-digit",
-        hour12: false,
-        timeZoneName: "short",
-    }).format(dt);
-
-const safeDate = (value?: string) => {
-    if (!value) return null;
-    const d = new Date(value);
-    return Number.isFinite(d.getTime()) ? d : null;
-};
-
-// ============================================================================
-// TABLE COLUMNS
-// ============================================================================
-const createApplicationColumns = (
-    onView: (row: ApplicationRow) => void
-): TableColumn<ApplicationRow>[] => [
-        {
-            key: "name",
-            label: "Application",
-            width: "280px",
-            render: (value, row) => (
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                    <LinkCell onClick={() => onView(row)}>{value as string}</LinkCell>
-                    <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{row.id}</span>
-                </div>
-            ),
-        },
-        {
-            key: "clientId",
-            label: "Client ID",
-            width: "210px",
-            render: (value) => (
-                <span
-                    style={{
-                        fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                        fontSize: "0.85rem",
-                    }}
-                >
-                    {value as string}
-                </span>
-            ),
-        },
-        {
-            key: "authMethod",
-            label: "Auth Method",
-            width: "140px",
-            align: "center",
-            render: (value) => (
-                <Badge variant="info">
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                        <Key size={12} />
-                        {String(value).toUpperCase()}
-                    </span>
-                </Badge>
-            ),
-        },
-        {
-            key: "status",
-            label: "Status",
-            width: "130px",
-            align: "center",
-            render: (value) => (
-                <Badge variant={appStatusVariant(value as AppStatus)}>{value as string}</Badge>
-            ),
-        },
-        {
-            key: "redirectUris",
-            label: "Redirect URIs",
-            width: "340px",
-            render: (_v, row) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    <span style={{ fontSize: "0.8rem", color: "#374151" }}>
-                        {row.redirectUris?.length ?? 0} configured
-                    </span>
-                    <span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-                        {row.redirectUris?.[0] ?? "-"}
-                        {(row.redirectUris?.length ?? 0) > 1 ? " …" : ""}
-                    </span>
-                </div>
-            ),
-        },
-        {
-            key: "updatedAt",
-            label: "Last Updated",
-            width: "180px",
-            render: (value) => {
-                const dt = safeDate(value as string | undefined);
-                if (!dt) return "-";
-                return (
-                    <time className="kc-datetime" dateTime={dt.toISOString()} title={formatFull(dt)}>
-                        {formatAbsolute(dt)}
-                    </time>
-                );
-            },
-        },
-        {
-            key: "id",
-            label: "Actions",
-            width: "80px",
-            align: "center",
-            sortable: false,
-            render: (_v, row) => (
-                <button
-                    type="button"
-                    className="icon-action"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onView(row);
-                    }}
-                    title="View Details"
-                >
-                    <Eye size={16} />
-                </button>
-            ),
-        },
-    ];
-
-// ============================================================================
-// LIST VIEW
-// ============================================================================
-const ApplicationsContent: React.FC<{
-    apps: ApplicationRow[];
-    loading: boolean;
-    error: string | null;
-    onRowClick: (app: ApplicationRow) => void;
-}> = ({ apps, loading, error, onRowClick }) => {
-    const columns = useMemo(() => createApplicationColumns(onRowClick), [onRowClick]);
-
-    return (
-        <div className="tab-table-container" style={{ position: "relative" }}>
-            <div className="table-card" style={{ flex: 1 }}>
-                <DataTable<ApplicationRow>
-                    data={Array.isArray(apps) ? apps : []}
-                    columns={columns}
-                    keyField="id"
-                    onRowClick={onRowClick}
-                    loading={loading}
-                    error={error}
-                    searchable
-                    searchPlaceholder="Search applications..."
-                    paginated
-                    pageSize={10}
-                    pageSizeOptions={[10, 25, 50, 100]}
-                    striped
-                    hoverable
-                    stickyHeader
-                    emptyMessage="No applications found"
-                    minHeight="100%"
-                />
-            </div>
-        </div>
-    );
-};
-
-// ============================================================================
-// DETAIL VIEW
-// ============================================================================
-
-const monoStyle: React.CSSProperties = {
-    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-};
-
-const Row: React.FC<{ label: string; value: string; mono?: boolean }> = ({ label, value, mono }) => (
-    <div style={{ display: "flex", justifyContent: "space-between", gap: 12, padding: "0.35rem 0" }}>
-        <span style={{ fontSize: "0.78rem", fontWeight: 800, color: "#6b7280" }}>{label}</span>
-        <span style={{ fontSize: "0.9rem", fontWeight: 700, color: "#111827", ...(mono ? monoStyle : {}) }}>
-            {value}
-        </span>
-    </div>
-);
-
-const ApplicationDetailContent: React.FC<{
-    app: ApplicationRow;
-    onBack?: () => void;
-}> = ({ app, onBack }) => {
-    const dt = safeDate(app.updatedAt);
-
-    return (
-        <div style={{ padding: "0.5rem" }}>
-            {/* Header */}
-            <div
-                style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    marginBottom: "1rem",
-                    paddingBottom: "0.75rem",
-                    borderBottom: "1px solid #e5e7eb",
-                }}
-            >
-                <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-                    {onBack && (
-                        <button
-                            onClick={onBack}
-                            style={{
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 8,
-                                padding: "0.5rem 0.9rem",
-                                background: "#f3f4f6",
-                                border: "1px solid #e5e7eb",
-                                borderRadius: 12,
-                                cursor: "pointer",
-                                fontWeight: 700,
-                                color: "#374151",
-                            }}
-                        >
-                            <ArrowLeft size={16} /> Back
-                        </button>
-                    )}
-
-                    <div>
-                        <div style={{ fontSize: "1.1rem", fontWeight: 800, color: "#111827" }}>{app.name}</div>
-                        <div style={{ display: "flex", gap: 10, marginTop: 6, flexWrap: "wrap" }}>
-                            <span className="pill pill-info">{app.authMethod.toUpperCase()}</span>
-                            <span className={`pill ${app.status === "Enabled" ? "pill-success" : "pill-error"}`}>
-                                {app.status}
-                            </span>
-                            <span className={`pill ${app.publicClient ? "pill-warn" : "pill-neutral"}`}>
-                                {app.publicClient ? "Public Client" : "Confidential Client"}
-                            </span>
-                            <span className="pill pill-neutral" style={monoStyle}>
-                                {app.clientId}
-                            </span>
-                            {app.ownerRealm && <span className="pill pill-neutral">{app.ownerRealm}</span>}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Cards */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1rem" }}>
-                <div className="cardStyle">
-                    <div className="cardTitleStyle">
-                        <Key size={16} /> Client Basics
-                    </div>
-                    <Row label="Client ID" value={app.clientId} mono />
-                    <Row label="Auth Method" value={app.authMethod.toUpperCase()} />
-                    <Row label="Status" value={app.status} />
-                    <Row label="Client Type" value={app.publicClient ? "Public" : "Confidential"} />
-                    <Row label="Last Updated" value={dt ? formatFull(dt) : "-"} />
-                </div>
-
-                <div className="cardStyle">
-                    <div className="cardTitleStyle">
-                        <Globe size={16} /> URLs
-                    </div>
-                    <Row label="Root URL" value={app.rootUrl || "—"} mono />
-                    <Row label="Base URL" value={app.baseUrl || "—"} mono />
-                    <Row label="Admin URL" value={app.adminUrl || "—"} mono />
-                </div>
-
-                <div className="cardStyle">
-                    <div className="cardTitleStyle">
-                        <Layers size={16} /> Redirect URIs
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {(app.redirectUris?.length ? app.redirectUris : ["—"]).slice(0, 6).map((u) => (
-                            <div
-                                key={u}
-                                style={{
-                                    padding: "0.6rem 0.75rem",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 12,
-                                    background: "#fafafa",
-                                    ...monoStyle,
-                                    fontSize: "0.85rem",
-                                }}
-                            >
-                                {u}
-                            </div>
-                        ))}
-                        {(app.redirectUris?.length ?? 0) > 6 && <div style={{ color: "#6b7280" }}>…</div>}
-                    </div>
-                </div>
-
-                <div className="cardStyle">
-                    <div className="cardTitleStyle">
-                        <Shield size={16} /> Web Origins
-                    </div>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {(app.webOrigins?.length ? app.webOrigins : ["—"]).slice(0, 6).map((o) => (
-                            <div
-                                key={o}
-                                style={{
-                                    padding: "0.6rem 0.75rem",
-                                    border: "1px solid #e5e7eb",
-                                    borderRadius: 12,
-                                    background: "#fafafa",
-                                    ...monoStyle,
-                                    fontSize: "0.85rem",
-                                }}
-                            >
-                                {o}
-                            </div>
-                        ))}
-                        {(app.webOrigins?.length ?? 0) > 6 && <div style={{ color: "#6b7280" }}>…</div>}
-                    </div>
-                </div>
-
-                {app.description && (
-                    <div className="cardStyle" style={{ gridColumn: "1 / -1" }}>
-                        <div className="cardTitleStyle">
-                            <Shield size={16} /> Description
-                        </div>
-                        <div style={{ color: "#374151", fontSize: "0.95rem", fontWeight: 600 }}>{app.description}</div>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
-};
+export const mapAppToApplication = (app: AppRow): ApplicationRow => ({
+    id: app.id,
+    name: app.name,
+    clientId: app.clientId,
+    authMethod: app.protocol === "saml" ? "saml" : "oidc",
+    status: app.enabled ? "Enabled" : "Disabled",
+    publicClient: app.publicClient,
+    redirectUris: app.redirectUris ?? [],
+    postLogoutRedirectUris: app.postLogoutRedirectUris ?? [],
+    webOrigins: app.webOrigins ?? [],
+    rootUrl: app.rootUrl,
+    baseUrl: app.baseUrl,
+    adminUrl: app.adminUrl,
+    updatedAt: app.updatedAt,
+    ownerRealm: app.ownerRealm,
+    linkedRealmCount: app.linkedRealmCount,
+    accessUserCount: app.accessUserCount,
+    description: app.description,
+    clientSecretMasked: app.clientSecretMasked,
+    clientSecretStorage: app.clientSecretStorage,
+    clientSecretSecretName: app.clientSecretSecretName,
+    clientSecretRotatedAtUtc: app.clientSecretRotatedAtUtc,
+    previousClientSecretExpiresAtUtc: app.previousClientSecretExpiresAtUtc,
+});
 
 // ============================================================================
 // TABS
@@ -455,23 +49,85 @@ const DEFAULT_TABS: Tab[] = [
 // MAIN PAGE
 // ============================================================================
 const AppsPage: React.FC = () => {
-    const [apps, setApps] = useState<ApplicationRow[]>(APPS_DATA);
+    const location = useLocation();
+    const initializedAppsTabRef = useRef(false);
+    const handledAppsResetRef = useRef<number | null>(null);
+    const [apps, setApps] = useState<ApplicationRow[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const { totalApps, loading: dataLoading, error: dataError, refreshData } = useData();
 
-    const { tabs, activeTab, setActiveTab, addTab, closeTab, reorderTabs } = useTabs({
+    useEffect(() => {
+        setApps((totalApps ?? []).map(mapAppToApplication));
+    }, [totalApps]);
+
+
+    useEffect(() => {
+        setLoading(dataLoading);
+    }, [dataLoading]);
+
+    useEffect(() => {
+        setError(dataError);
+    }, [dataError]);
+
+    useEffect(() => {
+        void (async () => {
+            try {
+                const me = await authApi.me();
+                setIsSuperAdmin(Boolean(me.isSuperAdmin));
+            } catch {
+                setIsSuperAdmin(false);
+            }
+        })();
+    }, []);
+
+    const queryRisk = useMemo(() => new URLSearchParams(location.search).get("risk"), [location.search]);
+
+    const scopedApps = useMemo(() => {
+        if (queryRisk !== "public-or-disabled") return apps;
+        return apps.filter((app) => app.status === "Disabled" || app.publicClient);
+    }, [apps, queryRisk]);
+
+    const { tabs, activeTab, setActiveTab, addTab, closeTab } = useTabs({
         storageKey: "apps-tabs",
         defaultTabs: DEFAULT_TABS,
     });
 
+    useEffect(() => {
+        const appsIndex = tabs.findIndex((tab: Tab) => tab.type === "applications");
+        if (appsIndex === -1) return;
+
+        const state = location.state as { resetAppsToList?: number } | null;
+        const resetToken = state?.resetAppsToList ?? null;
+        const shouldReset = resetToken !== null && handledAppsResetRef.current !== resetToken;
+        const shouldInitialize = location.pathname === ROUTES.APPS && !initializedAppsTabRef.current;
+
+        if (!shouldReset && !shouldInitialize) return;
+
+        if (resetToken !== null) handledAppsResetRef.current = resetToken;
+        initializedAppsTabRef.current = true;
+        setActiveTab(appsIndex);
+    }, [location.pathname, location.state, tabs, setActiveTab]);
+
     const handleRefresh = useCallback(() => {
-        setLoading(true);
-        window.setTimeout(() => {
-            setApps(APPS_DATA);
-            setError(null);
-            setLoading(false);
-        }, 350);
-    }, []);
+        void refreshData();
+    }, [refreshData]);
+
+    const handleAppStatusChanged = useCallback((appId: string, enabled: boolean, updatedAt?: string) => {
+        setApps((current) =>
+            current.map((app) =>
+                app.id === appId
+                    ? {
+                        ...app,
+                        status: enabled ? "Enabled" : "Disabled",
+                        updatedAt: updatedAt ?? app.updatedAt,
+                    }
+                    : app
+            )
+        );
+        void refreshData();
+    }, [refreshData]);
 
     const handleAppRowClick = useCallback(
         (app: ApplicationRow) => {
@@ -486,7 +142,7 @@ const AppsPage: React.FC = () => {
                 title: app.name,
                 type: "app-detail",
                 closable: true,
-                content: app,
+                content: { appId: app.id },
             });
         },
         [tabs, setActiveTab, addTab]
@@ -503,39 +159,58 @@ const AppsPage: React.FC = () => {
                 case "applications":
                     return (
                         <ApplicationsContent
-                            apps={apps}
+                            apps={scopedApps}
                             loading={loading}
                             error={error}
                             onRowClick={handleAppRowClick}
+                            onRefresh={handleRefresh}
                         />
                     );
 
                 case "app-detail":
-                    return <ApplicationDetailContent app={tab.content as ApplicationRow} onBack={backToApps} />;
+                    {
+                        const { appId } = (tab.content ?? {}) as { appId?: string };
+                        const selectedApp = apps.find((candidate) => candidate.id === appId);
+
+                        if (!selectedApp) {
+                            return (
+                                <div className="kc-tabMessage kc-tabMessage--compact">
+                                    Application not found: <b>{appId ?? "(missing id)"}</b>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <ApplicationDetailContent
+                                app={selectedApp}
+                                onBack={backToApps}
+                                onStatusChanged={handleAppStatusChanged}
+                                isSuperAdmin={isSuperAdmin}
+                            />
+                        );
+                    }
 
                 default:
                     return (
-                        <div style={{ padding: "2rem", textAlign: "center", color: "#9ca3af" }}>
-                            Content for "{tab.title}"
+                        <div className="kc-tabMessage">
+                            This application view is not available yet.
                         </div>
                     );
             }
         },
-        [apps, loading, error, handleAppRowClick, backToApps]
+        [apps, scopedApps, loading, error, handleAppRowClick, backToApps, handleAppStatusChanged, isSuperAdmin]
     );
 
     return (
-        <div className="users-page-wrapper" style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <div className="users-tab-wrapper" style={{ flex: 1, minHeight: 0 }}>
+        <div className="users-page-wrapper kc-pageShell">
+            <div className="users-tab-wrapper kc-pageStretch">
                 <TabPanel
                     tabs={tabs}
                     activeTab={activeTab}
                     onSelect={setActiveTab}
                     onAdd={() => { }}
                     onClose={closeTab}
-                    onReorder={reorderTabs}
-                    onRefresh={handleRefresh}
-                    showActions={true}
+                    showActions={false}
                     addButtonLabel=""
                     renderContent={renderTabContent}
                     minHeight="100%"

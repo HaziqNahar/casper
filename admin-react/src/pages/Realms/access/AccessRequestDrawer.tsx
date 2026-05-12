@@ -1,8 +1,11 @@
 // src/pages/Realms/access/AccessRequestDrawer.tsx
 import React, { useMemo, useEffect, useState } from "react";
 import { X } from "lucide-react";
-import { AccessRequest, AccessRequestEvent } from "./accessRequestsStore";
+import { AccessRequest, AccessRequestEvent, AccessRequestSla, getPendingAccessSla } from "./accessRequestsStore";
 import { evaluateGovernance, governanceSummary } from "./governancePolicy";
+import { REALM_ROLES } from "../realmTypes";
+import SearchableCombobox from "../../../components/common/SearchableCombobox";
+import { useUnsavedChangesGuard } from "../../../hooks/useUnsavedChangesGuard";
 
 type Mode = "request" | "approve" | "verify" | "audit";
 
@@ -44,6 +47,12 @@ function parseDateOnlyToUtc(dateStr?: string) {
     return new Date(Date.UTC(y, m - 1, d, 0, 0, 0));
 }
 
+function getTodayLocalDateIso() {
+    const now = new Date();
+    const local = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 10);
+}
+
 function diffHuman(ms: number) {
     const abs = Math.max(0, ms);
     const totalMin = Math.floor(abs / 60000);
@@ -53,62 +62,57 @@ function diffHuman(ms: number) {
     return `${h}h ${m}m`;
 }
 
-function pillStyle(kind: "neutral" | "info" | "success" | "danger" | "warn") {
-    const base: React.CSSProperties = {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 8,
-        padding: "6px 10px",
-        borderRadius: 999,
-        fontSize: "0.75rem",
-        fontWeight: 900,
-        letterSpacing: "0.02em",
-        border: "1px solid rgba(15,23,42,0.12)",
-        background: "rgba(15,23,42,0.04)",
-        color: "var(--kc-text, #0f172a)",
+function describeDrawerSla(sla?: AccessRequestSla | null) {
+    if (!sla) return null;
+
+    if (sla.outcome === "pending") {
+        const dueAt = new Date(sla.dueAt).getTime();
+        const remainingMs = dueAt - Date.now();
+        if (sla.breached) {
+            return {
+                kind: "danger" as const,
+                label: `${sla.stage === "verification" ? "Verification" : "Approval"} overdue by ${diffHuman(Math.abs(remainingMs))}`,
+            };
+        }
+
+        if (remainingMs <= 60 * 60 * 1000) {
+            return {
+                kind: "warn" as const,
+                label: `${sla.stage === "verification" ? "Verification" : "Approval"} due in ${diffHuman(remainingMs)}`,
+            };
+        }
+
+        return {
+            kind: "info" as const,
+            label: `${sla.stage === "verification" ? "Verification" : "Approval"} within SLA`,
+        };
+    }
+
+    return {
+        kind: sla.outcome === "after_sla_breach" ? ("danger" as const) : ("success" as const),
+        label:
+            sla.outcome === "after_sla_breach"
+                ? `${sla.stage === "verification" ? "Verification" : "Approval"} handled after SLA breach`
+                : `${sla.stage === "verification" ? "Verification" : "Approval"} handled within SLA`,
     };
+}
 
-    if (kind === "success") {
-        return {
-            ...base,
-            border: "1px solid rgba(72,187,120,0.40)",
-            background: "rgba(72,187,120,0.12)",
-        };
-    }
-
-    if (kind === "danger") {
-        return {
-            ...base,
-            border: "1px solid rgba(255,99,99,0.40)",
-            background: "rgba(255,99,99,0.12)",
-        };
-    }
-
-    if (kind === "warn") {
-        return {
-            ...base,
-            border: "1px solid rgba(255,193,7,0.42)",
-            background: "rgba(255,193,7,0.12)",
-        };
-    }
-
-    if (kind === "info") {
-        return {
-            ...base,
-            border: "1px solid rgba(56,189,248,0.40)",
-            background: "rgba(56,189,248,0.12)",
-        };
-    }
-
-    return base;
+function pillStyle(kind: "neutral" | "info" | "success" | "danger" | "warn") {
+    return `kcDrawerPill kcDrawerPill--${kind}`;
 }
 
 const ROLE_ORDER = ["realm_admin", "realm_manager", "realm_user"];
+const ROLE_LABELS = Object.fromEntries(REALM_ROLES.map((role) => [role.id, role.name])) as Record<string, string>;
 
 function roleRank(role?: string) {
     if (!role) return 999;
     const idx = ROLE_ORDER.indexOf(role);
     return idx === -1 ? 999 : idx;
+}
+
+function roleLabel(role?: string) {
+    if (!role) return "—";
+    return ROLE_LABELS[role] ?? role;
 }
 
 type StepState = "done" | "active" | "pending";
@@ -194,7 +198,21 @@ function modeTitle(mode: Mode) {
     return "Realm Access Audit";
 }
 
-export default function AccessRequestDrawer({
+function drawerPillTextClass(kind: "neutral" | "info" | "success" | "danger" | "warn") {
+    return `kcDrawerPillText kcDrawerPillText--${kind}`;
+}
+
+export default function AccessRequestDrawer(props: Props) {
+    if (!props.open || !props.request) return null;
+
+    return <AccessRequestDrawerContent key={`${props.mode}:${props.request.id}`} {...props} request={props.request} />;
+}
+
+type ContentProps = Omit<Props, "request"> & {
+    request: AccessRequest;
+};
+
+function AccessRequestDrawerContent({
     open,
     mode,
     request,
@@ -206,8 +224,8 @@ export default function AccessRequestDrawer({
     onApprove,
     onReject,
     onVerify,
-}: Props) {
-    if (!open || !request) return null;
+}: ContentProps) {
+    const closeMessage = "Are you sure you want to leave? Your decision changes will not be saved.";
 
     const reqEventsNewest = useMemo(() => {
         return events
@@ -235,24 +253,22 @@ export default function AccessRequestDrawer({
         return { label: "LOW RISK", kind: "success" as const, reason: "Time-bound + standard role" };
     }, [request.roleRequested, request.timeBound]);
 
-    const submittedAt = useMemo(() => {
-        const ev = reqEventsAsc.find((e) => e.type === "SUBMITTED");
-        return ev ? new Date(ev.at) : null;
-    }, [reqEventsAsc]);
-
-    const [, forceTick] = useState(0);
+    const [nowTs, setNowTs] = useState(() => Date.now());
     useEffect(() => {
         if (!open) return;
-        const t = window.setInterval(() => forceTick((x) => x + 1), 60_000);
+        const t = window.setInterval(() => setNowTs(Date.now()), 60_000);
         return () => window.clearInterval(t);
     }, [open]);
 
-    const slaText = useMemo(() => {
-        if (request.status !== "Submitted") return null;
-        if (!submittedAt || Number.isNaN(submittedAt.getTime())) return "Waiting approval";
-        const ms = Date.now() - submittedAt.getTime();
-        return `Waiting approval: ${diffHuman(ms)}`;
-    }, [request.status, submittedAt]);
+    const currentSla = useMemo(() => {
+        const pending = getPendingAccessSla(request, reqEventsAsc);
+        if (pending) return pending;
+
+        const latestResolved = reqEventsNewest.find((event) => event.sla)?.sla;
+        return latestResolved ?? null;
+    }, [request, reqEventsAsc, reqEventsNewest]);
+
+    const slaText = useMemo(() => describeDrawerSla(currentSla), [currentSla]);
 
     const expiryText = useMemo(() => {
         if (!request.timeBound || !request.endDate) return null;
@@ -260,13 +276,13 @@ export default function AccessRequestDrawer({
         if (!end) return null;
 
         const endInclusive = new Date(end.getTime() + 24 * 60 * 60 * 1000 - 1);
-        const ms = endInclusive.getTime() - Date.now();
+        const ms = endInclusive.getTime() - nowTs;
         const days = Math.ceil(ms / (24 * 60 * 60 * 1000));
 
         if (ms < 0) return { label: "Expired", kind: "danger" as const, sub: request.endDate };
         if (days <= 1) return { label: "Expires in 1 day", kind: "warn" as const, sub: request.endDate };
         return { label: `Expires in ${days} days`, kind: "info" as const, sub: request.endDate };
-    }, [request.timeBound, request.endDate]);
+    }, [request.timeBound, request.endDate, nowTs]);
 
     const canSubmit = mode === "request" && request.status === "Draft";
     const canCancel =
@@ -314,14 +330,34 @@ export default function AccessRequestDrawer({
     const [makeTimeBound, setMakeTimeBound] = useState<boolean>(!!request.timeBound);
     const [approvedEndDate, setApprovedEndDate] = useState<string>(request.endDate ?? "");
     const [approvalError, setApprovalError] = useState<string | null>(null);
-
-    useEffect(() => {
-        setApprovalComment("");
-        setSelectedRole(request.roleRequested);
-        setMakeTimeBound(!!request.timeBound);
-        setApprovedEndDate(request.endDate ?? "");
-        setApprovalError(null);
-    }, [request.id, request.roleRequested, request.timeBound, request.endDate]);
+    const todayIso = useMemo(() => getTodayLocalDateIso(), []);
+    const requiresTimeBoundApproval = useMemo(
+        () => roleRank(selectedRole) <= roleRank("realm_manager"),
+        [selectedRole]
+    );
+    const effectiveMakeTimeBound = makeTimeBound || requiresTimeBoundApproval;
+    const isDecisionDirty = useMemo(
+        () =>
+            mode === "approve" &&
+            (
+                approvalComment.trim().length > 0 ||
+                selectedRole !== request.roleRequested ||
+                makeTimeBound !== !!request.timeBound ||
+                approvedEndDate !== (request.endDate ?? "")
+            ),
+        [mode, approvalComment, selectedRole, request.roleRequested, makeTimeBound, request.timeBound, approvedEndDate, request.endDate]
+    );
+    const { allowNextNavigation } = useUnsavedChangesGuard({
+        when: isDecisionDirty,
+        message: closeMessage,
+    });
+    const closeSafely = () => {
+        if (isDecisionDirty && !window.confirm(closeMessage)) {
+            return;
+        }
+        allowNextNavigation();
+        onClose();
+    };
 
     const downgradeOptions = useMemo(() => {
         const reqRank = roleRank(request.roleRequested);
@@ -335,8 +371,18 @@ export default function AccessRequestDrawer({
             return "You can’t upgrade role during approval (only downgrade).";
         }
 
-        if (makeTimeBound) {
+        if (requiresTimeBoundApproval && !effectiveMakeTimeBound) {
+            return "High-privilege approvals must remain time-bound.";
+        }
+
+        if (effectiveMakeTimeBound) {
             if (!approvedEndDate) return "End date is required for time-bound approval.";
+            if (approvedEndDate < todayIso) {
+                return "Approved end date cannot be earlier than today.";
+            }
+            if (request.startDate && approvedEndDate < request.startDate) {
+                return "Approved end date cannot be earlier than the requested start date.";
+            }
             if (request.endDate && approvedEndDate > request.endDate) {
                 return "You can’t extend access beyond the requested end date.";
             }
@@ -350,12 +396,12 @@ export default function AccessRequestDrawer({
         parts.push(`Comment: ${approvalComment.trim()}`);
 
         if (selectedRole !== request.roleRequested) {
-            parts.push(`Role adjusted: ${request.roleRequested} → ${selectedRole}`);
+            parts.push(`Role adjusted: ${roleLabel(request.roleRequested)} → ${roleLabel(selectedRole)}`);
         } else {
-            parts.push(`Role kept: ${selectedRole}`);
+            parts.push(`Role kept: ${roleLabel(selectedRole)}`);
         }
 
-        if (makeTimeBound) {
+        if (effectiveMakeTimeBound) {
             const requested = request.endDate ? `requested end ${request.endDate}` : "requested end —";
             parts.push(`Time-bound: Yes (approved end ${approvedEndDate}) (${requested})`);
         } else {
@@ -423,7 +469,7 @@ export default function AccessRequestDrawer({
             className="kcDrawerOverlay"
             role="presentation"
             onMouseDown={(e) => {
-                if (e.target === e.currentTarget) onClose();
+                if (e.target === e.currentTarget) closeSafely();
             }}
         >
             <aside
@@ -434,69 +480,29 @@ export default function AccessRequestDrawer({
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <div className="kcDrawerHeader">
-                    <div style={{ minWidth: 0 }}>
+                    <div className="kcDrawerHeaderMain">
                         <div className="kcDrawerTitle">{modeTitle(mode)}</div>
 
-                        <div
-                            style={{
-                                marginTop: 8,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 8,
-                                flexWrap: "wrap",
-                            }}
-                        >
-                            <span
-                                style={{
-                                    fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
-                                    fontWeight: 800,
-                                    fontSize: "0.82rem",
-                                    color: "var(--kc-primary, #0b1f3a)",
-                                }}
-                            >
+                        <div className="kcDrawerMetaRow">
+                            <span className="kcDrawerRequestId">
                                 {request.id}
                             </span>
 
-                            <span style={pillStyle(statusKind(request.status))}>
+                            <span className={pillStyle(statusKind(request.status))}>
                                 {request.status}
                             </span>
                         </div>
 
-                        <div
-                            style={{
-                                marginTop: 10,
-                                display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
-                            }}
-                        >
-                            <div
-                                style={{
-                                    fontSize: "0.98rem",
-                                    fontWeight: 800,
-                                    color: "var(--kc-text, #0f172a)",
-                                    lineHeight: 1.2,
-                                }}
-                            >
+                        <div className="kcDrawerRequestMeta">
+                            <div className="kcDrawerRequestRealm">
                                 {request.realmName}
                             </div>
 
-                            <div
-                                style={{
-                                    fontSize: "0.9rem",
-                                    color: "var(--kc-text-muted, #64748b)",
-                                    lineHeight: 1.25,
-                                }}
-                            >
-                                {request.targetUser} → {request.roleRequested}
+                            <div className="kcDrawerRequestTarget">
+                                {request.targetUser} → {roleLabel(request.roleRequested)}
                             </div>
 
-                            <div
-                                style={{
-                                    fontSize: "0.8rem",
-                                    color: "var(--kc-text-muted, #64748b)",
-                                }}
-                            >
+                            <div className="kcDrawerRequestActor">
                                 Requested by <b>{request.requester}</b>
                             </div>
                         </div>
@@ -505,36 +511,30 @@ export default function AccessRequestDrawer({
                     <button
                         type="button"
                         className="kc-btn kc-btn-ghost"
-                        onClick={onClose}
+                        onClick={closeSafely}
                         aria-label="Close"
                     >
                         <X size={16} />
                     </button>
                 </div>
 
-                <div
-                    style={{
-                        padding: "12px 14px",
-                        borderBottom: "1px solid rgba(15,23,42,0.10)",
-                        background: "rgba(248,250,252,0.65)",
-                    }}
-                >
-                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                        <span style={pillStyle(risk.kind)}>
+                <div className="kcDrawerSummaryStrip">
+                    <div className="kcDrawerSummaryPills">
+                        <span className={pillStyle(risk.kind)}>
                             {risk.label}
-                            <span style={{ opacity: 0.7, fontWeight: 800 }}>{risk.reason}</span>
+                            <span className={drawerPillTextClass(risk.kind)}>{risk.reason}</span>
                         </span>
 
                         {slaText && (
-                            <span style={pillStyle("info")}>
-                                SLA <span style={{ opacity: 0.78, fontWeight: 800 }}>{slaText}</span>
+                            <span className={pillStyle(slaText.kind)}>
+                                SLA <span className={drawerPillTextClass(slaText.kind)}>{slaText.label}</span>
                             </span>
                         )}
 
                         {expiryText && (
-                            <span style={pillStyle(expiryText.kind)}>
-                                EXPIRY <span style={{ opacity: 0.78, fontWeight: 800 }}>{expiryText.label}</span>
-                                <span style={{ opacity: 0.55, fontWeight: 800 }}>{expiryText.sub}</span>
+                            <span className={pillStyle(expiryText.kind)}>
+                                EXPIRY <span className={drawerPillTextClass(expiryText.kind)}>{expiryText.label}</span>
+                                <span className="kcDrawerPillText kcDrawerPillText--subtle">{expiryText.sub}</span>
                             </span>
                         )}
                     </div>
@@ -556,22 +556,8 @@ export default function AccessRequestDrawer({
                     </div>
                 )}
 
-                <div
-                    className="kcWorkflow"
-                    style={{
-                        padding: "14px",
-                        borderBottom: "1px solid rgba(15,23,42,0.08)",
-                    }}
-                >
-                    <div
-                        className="kcWorkflowTitle"
-                        style={{
-                            fontWeight: 900,
-                            fontSize: "0.85rem",
-                            marginBottom: 10,
-                            color: "var(--kc-text,#0f172a)",
-                        }}
-                    >
+                <div className="kcWorkflow">
+                    <div className="kcWorkflowTitle">
                         Workflow
                     </div>
 
@@ -616,7 +602,7 @@ export default function AccessRequestDrawer({
 
                                     {!isLast && (
                                         <div className="kcWorkflowLineWrap" aria-hidden>
-                                            <div className="kcWorkflowLine" style={{ background: c.line }} />
+                                            <div className="kcWorkflowLine" style={{ ["--kc-workflow-line" as "--kc-workflow-line"]: c.line } as React.CSSProperties} />
                                         </div>
                                     )}
                                 </div>
@@ -631,26 +617,19 @@ export default function AccessRequestDrawer({
                             <div className="kcDrawerSectionTitle">Approval Conditions</div>
 
                             {approvalError && (
-                                <div
-                                    className="kcDrawerCard"
-                                    style={{
-                                        border: "1px solid rgba(255,99,99,0.30)",
-                                        background: "rgba(255,99,99,0.10)",
-                                        marginBottom: 12,
-                                    }}
-                                >
-                                    <div style={{ fontWeight: 900, fontSize: "0.85rem" }}>Fix this</div>
-                                    <div style={{ opacity: 0.85, marginTop: 6, fontSize: "0.82rem" }}>
+                                <div className="kcDrawerCard kcDrawerCard--error">
+                                    <div className="kcDrawerErrorTitle">Fix this</div>
+                                    <div className="kcDrawerErrorText">
                                         {approvalError}
                                     </div>
                                 </div>
                             )}
 
-                            <div className="kcDrawerCard" style={{ display: "grid", gap: 12 }}>
-                                <div style={{ display: "grid", gap: 6 }}>
+                            <div className="kcDrawerCard kcDrawerCard--stack">
+                                <div className="kcDrawerField">
                                     <div className="kcFieldLabel">Approval comment (required)</div>
                                     <textarea
-                                        className="kc-input"
+                                        className="kc-input kcDrawerTextarea"
                                         rows={3}
                                         value={approvalComment}
                                         onChange={(e) => {
@@ -658,59 +637,62 @@ export default function AccessRequestDrawer({
                                             setApprovalError(null);
                                         }}
                                         placeholder="Explain why approving/rejecting, and any conditions..."
-                                        style={{ resize: "vertical" }}
                                     />
                                 </div>
 
-                                <div style={{ display: "grid", gap: 6 }}>
+                                <div className="kcDrawerField">
                                     <div className="kcFieldLabel">Role (same or downgrade only)</div>
-                                    <select
-                                        className="kc-input"
+                                    <SearchableCombobox
                                         value={selectedRole}
-                                        onChange={(e) => {
-                                            setSelectedRole(e.target.value);
+                                        onChange={(next) => {
+                                            setSelectedRole(next);
                                             setApprovalError(null);
                                         }}
-                                    >
-                                        {downgradeOptions.map((r) => (
-                                            <option key={r} value={r}>
-                                                {r}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        options={downgradeOptions.map((r) => ({
+                                            value: r,
+                                            label: roleLabel(r),
+                                        }))}
+                                        placeholder="Select approval role"
+                                        inputClassName="kc-input"
+                                    />
                                 </div>
 
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div className="kcDrawerCheckboxRow">
                                     <input
                                         id="makeTimeBound"
                                         type="checkbox"
-                                        checked={makeTimeBound}
+                                        className="kc-checkbox"
+                                        checked={effectiveMakeTimeBound}
+                                        disabled={requiresTimeBoundApproval}
                                         onChange={(e) => {
                                             setMakeTimeBound(e.target.checked);
                                             setApprovalError(null);
                                             if (!e.target.checked) setApprovedEndDate("");
                                         }}
                                     />
-                                    <label htmlFor="makeTimeBound" style={{ fontWeight: 800, opacity: 0.9 }}>
-                                        Make time-bound (cannot extend beyond requested end)
+                                    <label htmlFor="makeTimeBound" className="kcDrawerCheckboxLabel">
+                                        {requiresTimeBoundApproval
+                                            ? "Time-bound approval required for this role"
+                                            : "Make time-bound (cannot extend beyond requested end)"}
                                     </label>
                                 </div>
 
-                                {makeTimeBound && (
-                                    <div style={{ display: "grid", gap: 6 }}>
+                                {effectiveMakeTimeBound && (
+                                    <div className="kcDrawerField">
                                         <div className="kcFieldLabel">
                                             Approved end date {request.endDate ? `(requested: ${request.endDate})` : ""}
                                         </div>
                                         <input
                                             className="kc-input"
                                             type="date"
+                                            min={request.startDate && request.startDate > todayIso ? request.startDate : todayIso}
                                             value={approvedEndDate}
                                             onChange={(e) => {
                                                 setApprovedEndDate(e.target.value);
                                                 setApprovalError(null);
                                             }}
                                         />
-                                        <div className="kc-text-muted" style={{ fontSize: "0.78rem" }}>
+                                        <div className="kcDrawerHelpText">
                                             If the requester asked for an end date, you can only shorten it or keep the same.
                                         </div>
                                     </div>
@@ -720,24 +702,12 @@ export default function AccessRequestDrawer({
                     )}
 
                     <div className="kcDrawerSectionTitle">Access Summary</div>
-                    <div
-                        className="kcSectionCard"
-                        style={{
-                            padding: 0,
-                            overflow: "hidden",
-                        }}
-                    >
-                        <div
-                            style={{
-                                display: "grid",
-                                gridTemplateColumns: "1fr 1fr",
-                                gap: 0,
-                            }}
-                        >
+                    <div className="kcSectionCard kcDrawerSummaryCard">
+                        <div className="kcDrawerSummaryGrid">
                             {[
                                 { label: "Realm", value: request.realmName },
                                 { label: "Target User", value: request.targetUser },
-                                { label: "Requested Role", value: request.roleRequested },
+                                { label: "Requested Role", value: roleLabel(request.roleRequested) },
                                 { label: "Status", value: request.status },
                                 { label: "Requester", value: request.requester },
                                 { label: "Approver", value: request.approver ?? "—" },
@@ -746,28 +716,12 @@ export default function AccessRequestDrawer({
                             ].map((item, index) => (
                                 <div
                                     key={item.label}
-                                    style={{
-                                        padding: "14px 16px",
-                                        borderRight: index % 2 === 0 ? "1px solid rgba(15,23,42,0.08)" : "none",
-                                        borderBottom:
-                                            index < 6 ? "1px solid rgba(15,23,42,0.08)" : "none",
-                                        background: index % 2 === 0 ? "rgba(248,250,252,0.45)" : "#fff",
-                                    }}
+                                    className={`kcDrawerSummaryItem${index % 2 === 0 ? " is-alt" : ""}${index < 6 ? " has-divider" : ""}`}
                                 >
-                                    <div
-                                        className="kcFieldLabel"
-                                        style={{ marginBottom: 6 }}
-                                    >
+                                    <div className="kcFieldLabel kcDrawerSummaryLabel">
                                         {item.label}
                                     </div>
-                                    <div
-                                        className="kcFieldValue"
-                                        style={{
-                                            fontWeight: 700,
-                                            lineHeight: 1.3,
-                                            wordBreak: "break-word",
-                                        }}
-                                    >
+                                    <div className="kcFieldValue kcDrawerSummaryValue">
                                         {item.value}
                                     </div>
                                 </div>
@@ -777,7 +731,7 @@ export default function AccessRequestDrawer({
 
                     <div className="kcDrawerSectionTitle">Justification</div>
                     <div className="kcSectionCard">
-                        <div style={{ whiteSpace: "pre-wrap", lineHeight: 1.5, fontSize: "0.92rem" }}>
+                        <div className="kcDrawerBodyText">
                             {request.justification || "—"}
                         </div>
                     </div>
@@ -805,49 +759,28 @@ export default function AccessRequestDrawer({
                         {reqEventsNewest.length === 0 ? (
                             <div className="kc-text-muted">No events yet.</div>
                         ) : (
-                            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            <div className="kcDrawerTimeline">
                                 {reqEventsNewest.map((e) => (
-                                    <div
-                                        key={e.id}
-                                        className="kcTimelineRow"
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            gap: 12,
-                                            padding: "12px 14px",
-                                            borderRadius: 12,
-                                            border: "1px solid rgba(15,23,42,0.10)",
-                                            background: "#fff",
-                                        }}
-                                    >
-                                        <div style={{ minWidth: 0 }}>
-                                            <div
-                                                className="kcTimelineType"
-                                                style={{
-                                                    fontWeight: 900,
-                                                    fontSize: "0.84rem",
-                                                    marginBottom: 4,
-                                                }}
-                                            >
+                                    <div key={e.id} className="kcTimelineRow">
+                                        <div className="kcTimelineMain">
+                                            <div className="kcTimelineType">
                                                 {e.type}
                                             </div>
-                                            <div
-                                                className="kc-text-muted"
-                                                style={{
-                                                    fontSize: "0.82rem",
-                                                    lineHeight: 1.35,
-                                                }}
-                                            >
+                                            {e.sla && (
+                                                <div className="kcTimelinePillRow">
+                                                    <span className={pillStyle(describeDrawerSla(e.sla)?.kind ?? "neutral")}>
+                                                        {describeDrawerSla(e.sla)?.label}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="kcTimelineMessage kc-text-muted">
                                                 {e.message ?? "—"}
                                             </div>
                                         </div>
 
-                                        <div style={{ textAlign: "right", flex: "0 0 auto" }}>
-                                            <div style={{ fontWeight: 800, fontSize: "0.8rem" }}>{e.actor}</div>
-                                            <div
-                                                className="kc-text-muted"
-                                                style={{ fontSize: "0.76rem", marginTop: 3 }}
-                                            >
+                                        <div className="kcTimelineMeta">
+                                            <div className="kcTimelineActor">{e.actor}</div>
+                                            <div className="kcTimelineAt kc-text-muted">
                                                 {fmt(e.at)}
                                             </div>
                                         </div>
@@ -901,9 +834,10 @@ export default function AccessRequestDrawer({
                                         onApprove?.(request.id, {
                                             note,
                                             roleRequested: selectedRole,
-                                            timeBound: makeTimeBound,
-                                            endDate: makeTimeBound ? approvedEndDate : "",
+                                            timeBound: effectiveMakeTimeBound,
+                                            endDate: effectiveMakeTimeBound ? approvedEndDate : "",
                                         });
+                                        allowNextNavigation();
                                     }}
                                 >
                                     Approve
@@ -923,6 +857,7 @@ export default function AccessRequestDrawer({
                                         }
 
                                         onReject?.(request.id, `Rejection: ${approvalComment.trim()}`);
+                                        allowNextNavigation();
                                     }}
                                 >
                                     Reject
@@ -938,6 +873,7 @@ export default function AccessRequestDrawer({
                                 title={!govCanProceed(govVerify) ? governanceSummary(govVerify) : "Verify"}
                                 onClick={() => {
                                     if (!govCanProceed(govVerify)) return;
+                                    allowNextNavigation();
                                     onVerify?.(request.id);
                                 }}
                             >

@@ -28,6 +28,12 @@ namespace Api.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("AdminUrl")
+                        .HasColumnType("text");
+
+                    b.Property<string>("BaseUrl")
+                        .HasColumnType("text");
+
                     b.Property<string>("ClientId")
                         .IsRequired()
                         .HasColumnType("text");
@@ -36,11 +42,32 @@ namespace Api.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("text");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.PrimitiveCollection<string[]>("PostLogoutRedirectUris")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("Protocol")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<bool>("PublicClient")
+                        .HasColumnType("boolean");
+
                     b.PrimitiveCollection<string[]>("RedirectUris")
+                        .IsRequired()
+                        .HasColumnType("text[]");
+
+                    b.Property<string>("RootUrl")
+                        .HasColumnType("text");
+
+                    b.PrimitiveCollection<string[]>("WebOrigins")
                         .IsRequired()
                         .HasColumnType("text[]");
 
@@ -218,7 +245,14 @@ namespace Api.Migrations
                     b.Property<DateTime>("CreateTimeUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<string>("Department")
+                        .HasColumnType("text");
+
                     b.Property<string>("DisplayName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
 
@@ -231,6 +265,9 @@ namespace Api.Migrations
 
                     b.Property<DateTime>("UpdateTimeUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("UserType")
+                        .HasColumnType("text");
 
                     b.Property<string>("Username")
                         .IsRequired()

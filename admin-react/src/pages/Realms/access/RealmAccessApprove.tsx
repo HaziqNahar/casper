@@ -1,5 +1,5 @@
 // src/pages/Realms/access/RealmAccessApprove.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
@@ -12,9 +12,9 @@ import AccessRequestDrawer from "./AccessRequestDrawer";
 import { useAccessRequestsLive } from "./useAccessRequestsLive";
 
 import {
-  loadAccessEvents,
-  loadAccessRequests,
+  loadAccessSnapshot,
   updateRequest,
+  getPendingAccessSla,
   AccessRequest,
   AccessRequestEvent,
 } from "./accessRequestsStore";
@@ -46,17 +46,28 @@ import {
   isSelfApproval,
 } from "./accessActorRules";
 
+type AccessRequestWithAppDetails = AccessRequest & {
+  applicationName?: string;
+  appName?: string;
+  application?: string;
+  service?: string;
+  createdAt?: string;
+};
+
+type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
+
 type ApproveRow = AccessRequest & {
   applicationName?: string;
   sortTimeISO?: string;
-  slaMinutes?: number | null;
+  slaLabel?: string;
+  slaVariant?: BadgeVariant;
 };
 
-const statusVariant = (s: string) => {
+const statusVariant = (s: string): BadgeVariant => {
   if (s === "Approved") return "success";
-  if (s === "Rejected" || s === "Cancelled") return "danger";
+  if (s === "Rejected" || s === "Cancelled") return "error";
   if (s === "Submitted") return "info";
-  return "neutral";
+  return "default";
 };
 
 function diffHuman(ms: number) {
@@ -68,13 +79,45 @@ function diffHuman(ms: number) {
   return `${h}h ${m}m`;
 }
 
+function getPendingSlaBadge(request: AccessRequest, events: AccessRequestEvent[]) {
+  const pending = getPendingAccessSla(request, events);
+  if (!pending) {
+    return {
+      label: "-",
+      variant: "default" as const,
+    };
+  }
+
+  const dueAt = new Date(pending.dueAt).getTime();
+  const remainingMs = dueAt - Date.now();
+
+  if (pending.breached) {
+    return {
+      label: `Overdue by ${diffHuman(Math.abs(remainingMs))}`,
+      variant: "error" as const,
+    };
+  }
+
+  if (remainingMs <= 60 * 60 * 1000) {
+    return {
+      label: `Due in ${diffHuman(remainingMs)}`,
+      variant: "warning" as const,
+    };
+  }
+
+  return {
+    label: "Within SLA",
+    variant: "success" as const,
+  };
+}
+
 export default function RealmAccessApprove() {
   const actor = getAccessActor();
   const { pushToast } = useToast();
   const todayISO = useMemo(() => getTodayISO(), []);
 
-  const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
-  const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
+  const [requests, setRequests] = useState<AccessRequest[]>([]);
+  const [events, setEvents] = useState<AccessRequestEvent[]>([]);
 
   const [selected, setSelected] = useState<AccessRequest | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -100,10 +143,31 @@ export default function RealmAccessApprove() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [dateMenuOpen]);
 
-  const refresh = () => {
-    setRequests(loadAccessRequests());
-    setEvents(loadAccessEvents());
-  };
+  const refresh = useCallback(async () => {
+    const snapshot = await loadAccessSnapshot();
+    setRequests(snapshot.requests);
+    setEvents(snapshot.events);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadAccessSnapshot()
+      .then((snapshot) => {
+        if (cancelled) return;
+        setRequests(snapshot.requests);
+        setEvents(snapshot.events);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setRequests([]);
+          setEvents([]);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useAccessRequestsLive(refresh);
 
@@ -124,40 +188,25 @@ export default function RealmAccessApprove() {
     return m;
   }, [requests]);
 
-  const submittedAtByReqId = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const e of events) {
-      if (String(e.type) !== "SUBMITTED") continue;
-      const id = String(e.requestId);
-      const prev = m.get(id);
-      if (!prev || String(e.at) < prev) m.set(id, String(e.at));
-    }
-    return m;
-  }, [events]);
-
   const rows: ApproveRow[] = useMemo(() => {
     const base = requests.map((r) => {
       const app =
-        (r as any).applicationName ||
-        (r as any).appName ||
-        (r as any).application ||
-        (r as any).service ||
+        (r as AccessRequestWithAppDetails).applicationName ||
+        (r as AccessRequestWithAppDetails).appName ||
+        (r as AccessRequestWithAppDetails).application ||
+        (r as AccessRequestWithAppDetails).service ||
         "";
 
-      const sortTimeISO = (r.updatedAt || (r as any).createdAt || r.startDate || "") as string;
-
-      const submittedAt = submittedAtByReqId.get(String(r.id));
-      let slaMinutes: number | null = null;
-      if (r.status === "Submitted" && submittedAt) {
-        const t = new Date(submittedAt).getTime();
-        if (!Number.isNaN(t)) slaMinutes = Math.floor((Date.now() - t) / 60000);
-      }
+      const sortTimeISO = (r.updatedAt || (r as AccessRequestWithAppDetails).createdAt || r.startDate || "") as string;
+      const requestEvents = events.filter((event) => String(event.requestId) === String(r.id));
+      const pendingSla = getPendingSlaBadge(r, requestEvents);
 
       return {
         ...r,
         applicationName: app,
         sortTimeISO: sortTimeISO || r.updatedAt || "",
-        slaMinutes,
+        slaLabel: pendingSla.label,
+        slaVariant: pendingSla.variant,
       };
     });
 
@@ -168,7 +217,7 @@ export default function RealmAccessApprove() {
     if (!canViewApprovalQueue(actor)) return [];
 
     return submittedOnly;
-  }, [requests, submittedAtByReqId, statusFilter.length, actor]);
+  }, [requests, events, statusFilter.length, actor]);
 
   const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
 
@@ -183,9 +232,7 @@ export default function RealmAccessApprove() {
     [rows, realmFilter]
   );
 
-  useEffect(() => {
-    setAppFilter((prev) => pruneSelectedByOptions(prev, appOptions));
-  }, [appOptions]);
+  const effectiveAppFilter = useMemo(() => pruneSelectedByOptions(appFilter, appOptions), [appFilter, appOptions]);
 
   const targetUserOptions = useMemo(() => buildOptions(rows, (r) => r.targetUser), [rows]);
   const roleOptions = useMemo(() => buildOptions(rows, (r) => r.roleRequested), [rows]);
@@ -197,7 +244,7 @@ export default function RealmAccessApprove() {
       rows,
       multi: {
         realm: { selected: realmFilter, getValue: (r) => r.realmName },
-        app: { selected: appFilter, getValue: (r) => r.applicationName },
+        app: { selected: effectiveAppFilter, getValue: (r) => r.applicationName },
         targetUser: { selected: targetUserFilter, getValue: (r) => r.targetUser },
         role: { selected: roleFilter, getValue: (r) => r.roleRequested },
         requester: { selected: requesterFilter, getValue: (r) => r.requester },
@@ -208,16 +255,7 @@ export default function RealmAccessApprove() {
         getValue: (r) => r.sortTimeISO,
       },
     });
-  }, [
-    rows,
-    realmFilter,
-    appFilter,
-    targetUserFilter,
-    roleFilter,
-    requesterFilter,
-    statusFilter,
-    dateRange,
-  ]);
+  }, [rows, realmFilter, effectiveAppFilter, targetUserFilter, roleFilter, requesterFilter, statusFilter, dateRange]);
   const ensureCanApprove = (req?: AccessRequest | null) => {
     if (!req) {
       pushToast("Request not found", "warning");
@@ -242,7 +280,7 @@ export default function RealmAccessApprove() {
     return true;
   };
 
-  const openRequest = (requestId: string) => {
+  const openRequest = useCallback((requestId: string) => {
     const req = reqById.get(String(requestId)) || null;
 
     if (!req) {
@@ -257,7 +295,7 @@ export default function RealmAccessApprove() {
 
     setSelected(req);
     setDrawerOpen(true);
-  };
+  }, [reqById, actor, pushToast]);
 
   const columns: TableColumn<ApproveRow>[] = useMemo(
     () => [
@@ -295,7 +333,7 @@ export default function RealmAccessApprove() {
         width: "130px",
         align: "center",
         render: (v) => (
-          <Badge variant={statusVariant(String(v)) as any}>
+          <Badge variant={statusVariant(String(v))}>
             {String(v)}
           </Badge>
         ),
@@ -308,12 +346,9 @@ export default function RealmAccessApprove() {
         sortable: false,
         render: (_v, row) => {
           if (row.status !== "Submitted") {
-            return <span className="kc-text-muted">—</span>;
+            return <span className="kc-text-muted">-</span>;
           }
-          if (row.slaMinutes == null) {
-            return <span className="kc-text-muted">—</span>;
-          }
-          return <span className="kc-requestSlaValue">{diffHuman(row.slaMinutes * 60_000)}</span>;
+          return <Badge variant={row.slaVariant ?? "default"}>{row.slaLabel}</Badge>;
         },
       },
       {
@@ -324,24 +359,24 @@ export default function RealmAccessApprove() {
         sortable: false,
         render: (_v, row) => {
           if (!canActOnApproval(actor)) {
-            return <Badge variant={"info" as any}>View Only</Badge>;
+            return <Badge variant="info">View Only</Badge>;
           }
 
           if (isSelfApproval(actor, row.requester)) {
-            return <Badge variant={"warning" as any}>Self Request</Badge>;
+            return <Badge variant="warning">Self Request</Badge>;
           }
 
           const g = evaluateGovernance({ request: row, actor, action: "approve" });
           const txt = governanceSummary(g);
 
-          const variant =
+          const variant: BadgeVariant =
             g.blocks.length > 0
-              ? ("danger" as any)
+              ? "error"
               : g.requires.length > 0
-                ? ("warning" as any)
+                ? "warning"
                 : g.warns.length > 0
-                  ? ("info" as any)
-                  : ("success" as any);
+                  ? "info"
+                  : "success";
 
           const label =
             g.blocks.length > 0
@@ -426,7 +461,7 @@ export default function RealmAccessApprove() {
         },
       },
     ],
-    [reqById, actor]
+    [actor, openRequest, pushToast]
   );
 
   const dateChipText = useMemo(() => dateChipTextUtil(dateRange), [dateRange]);
@@ -636,7 +671,7 @@ export default function RealmAccessApprove() {
                 timeBound: payload.timeBound,
                 endDate: payload.timeBound ? payload.endDate || "" : "",
                 approver: actor,
-                status: "Approved",
+                status: "Approved" as const,
               };
 
               const g = evaluateGovernance({ request: nextReq, actor, action: "approve" });
@@ -645,10 +680,10 @@ export default function RealmAccessApprove() {
                 return;
               }
 
-              updateRequest(
+              void updateRequest(
                 id,
                 {
-                  status: "Approved",
+                  status: "Approved" as const,
                   approver: actor,
                   roleRequested: payload.roleRequested,
                   timeBound: payload.timeBound,
@@ -657,11 +692,13 @@ export default function RealmAccessApprove() {
                 actor,
                 "APPROVED",
                 payload.note || "Approved by approver."
-              );
-
-              refresh();
-              setDrawerOpen(false);
-              pushToast("Access request approved", "success");
+              ).then(() => {
+                void refresh();
+                setDrawerOpen(false);
+                pushToast("Access request approved", "success");
+              }).catch((err) => {
+                pushToast(err instanceof Error ? err.message : "Failed to approve access request", "error");
+              });
             }}
             onReject={(id, note) => {
               const req = reqById.get(String(id));
@@ -673,17 +710,19 @@ export default function RealmAccessApprove() {
                 return;
               }
 
-              updateRequest(
+              void updateRequest(
                 id,
                 { status: "Rejected", approver: actor },
                 actor,
                 "REJECTED",
                 note || "Rejected by approver."
-              );
-
-              refresh();
-              setDrawerOpen(false);
-              pushToast("Access request rejected", "warning");
+              ).then(() => {
+                void refresh();
+                setDrawerOpen(false);
+                pushToast("Access request rejected", "warning");
+              }).catch((err) => {
+                pushToast(err instanceof Error ? err.message : "Failed to reject access request", "error");
+              });
             }}
           />
         </div>

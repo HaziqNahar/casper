@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import {
     Search,
     ChevronUp,
@@ -7,21 +7,22 @@ import {
     ChevronRight,
     RefreshCw,
     Columns3,
-    Check,
 } from "lucide-react";
+
+const ColumnVisibilityMenu = lazy(() => import("./ColumnVisibilityMenu"));
 
 // ==========================================
 // TYPES
 // ==========================================
 export type TableData = Record<string, unknown>;
 
-export interface TableColumn<T extends TableData, K extends keyof T = keyof T> {
+export interface TableColumn<T extends object, K extends keyof T | string = keyof T | string> {
     key: K;
     label: string;
     width?: string;
     sortable?: boolean;
     align?: "left" | "center" | "right";
-    render?: (value: T[K], row: T) => React.ReactNode;
+    render?: (value: unknown, row: T) => React.ReactNode;
 
     /** Optional: set to true if you don't want this column to be toggled off */
     lockVisible?: boolean;
@@ -30,10 +31,10 @@ export interface TableColumn<T extends TableData, K extends keyof T = keyof T> {
     hiddenByDefault?: boolean;
 }
 
-export interface DataTableProps<T extends TableData> {
+export interface DataTableProps<T extends object> {
     data: T[];
     columns: TableColumn<T>[];
-    keyField?: keyof T;
+    keyField?: keyof T | string;
 
     onRowClick?: (row: T) => void;
     onRefresh?: () => void;
@@ -43,10 +44,18 @@ export interface DataTableProps<T extends TableData> {
 
     searchable?: boolean;
     searchPlaceholder?: string;
+    searchValue?: string;
+    onSearchChange?: (value: string) => void;
+    manualSearch?: boolean;
 
     paginated?: boolean;
     pageSize?: number;
     pageSizeOptions?: number[];
+    page?: number;
+    totalRows?: number;
+    onPageChange?: (page: number) => void;
+    onPageSizeChange?: (pageSize: number) => void;
+    manualPagination?: boolean;
 
     className?: string;
     minHeight?: string;
@@ -104,7 +113,7 @@ const compareValues = (a: unknown, b: unknown) => {
 // ==========================================
 // COMPONENT
 // ==========================================
-export default function DataTable<T extends TableData>({
+export default function DataTable<T extends object>({
     data,
     columns,
     keyField = "id" as keyof T,
@@ -117,10 +126,18 @@ export default function DataTable<T extends TableData>({
 
     searchable = true,
     searchPlaceholder = "Search...",
+    searchValue,
+    onSearchChange,
+    manualSearch = false,
 
     paginated = true,
     pageSize: initialPageSize = 10,
     pageSizeOptions = [10, 25, 50, 100],
+    page,
+    totalRows,
+    onPageChange,
+    onPageSizeChange,
+    manualPagination = false,
 
     className = "",
     minHeight = "400px",
@@ -135,6 +152,7 @@ export default function DataTable<T extends TableData>({
     emptyMessage = "No records found",
     emptyIcon,
     toolbarFilters,
+    rowClassName: customRowClassName,
 }: DataTableProps<T>): React.ReactElement {
     const rootRef = useRef<HTMLDivElement | null>(null);
     const toolbarRef = useRef<HTMLDivElement | null>(null);
@@ -142,7 +160,7 @@ export default function DataTable<T extends TableData>({
     const colsMenuRef = useRef<HTMLDivElement | null>(null);
 
     const [searchTerm, setSearchTerm] = useState("");
-    const [sortField, setSortField] = useState<keyof T | null>(null);
+    const [sortField, setSortField] = useState<string | null>(null);
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(initialPageSize);
@@ -176,6 +194,13 @@ export default function DataTable<T extends TableData>({
         window.addEventListener("scroll", onScroll, { passive: true });
         return () => window.removeEventListener("scroll", onScroll);
     }, [stickyToolbar]);
+
+    useEffect(() => {
+        setPageSize(initialPageSize);
+    }, [initialPageSize]);
+
+    const effectiveSearchTerm = searchValue ?? searchTerm;
+    const effectiveCurrentPage = page ?? currentPage;
 
     // ============ (4) Column visibility ============
     const allKeys = useMemo(() => columns.map((c) => String(c.key)), [columns]);
@@ -246,40 +271,42 @@ export default function DataTable<T extends TableData>({
 
     // Filter
     const filteredData = useMemo(() => {
-        const q = searchTerm.trim().toLowerCase();
+        if (manualSearch) return data;
+        const q = effectiveSearchTerm.trim().toLowerCase();
         if (!q) return data;
 
         return data.filter((row) =>
-            columnsToRender.some((col) => toStr(row[col.key]).toLowerCase().includes(q))
+            columnsToRender.some((col) => toStr((row as TableData)[String(col.key)]).toLowerCase().includes(q))
         );
-    }, [data, columnsToRender, searchTerm]);
+    }, [data, columnsToRender, effectiveSearchTerm, manualSearch]);
 
     // Sort
     const sortedData = useMemo(() => {
         if (!sortField) return filteredData;
 
         return [...filteredData].sort((a, b) => {
-            const c = compareValues(a[sortField], b[sortField]);
+            const c = compareValues((a as TableData)[sortField], (b as TableData)[sortField]);
             return sortDirection === "asc" ? c : -c;
         });
     }, [filteredData, sortField, sortDirection]);
 
     // Pagination
-    const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
-    const startIndex = (currentPage - 1) * pageSize;
-    const paginatedData = paginated ? sortedData.slice(startIndex, startIndex + pageSize) : sortedData;
+    const totalRowCount = manualPagination ? (totalRows ?? sortedData.length) : sortedData.length;
+    const totalPages = Math.max(1, Math.ceil(totalRowCount / pageSize));
+    const startIndex = (effectiveCurrentPage - 1) * pageSize;
+    const paginatedData = paginated ? (manualPagination ? sortedData : sortedData.slice(startIndex, startIndex + pageSize)) : sortedData;
 
-    const startItem = sortedData.length === 0 ? 0 : startIndex + 1;
-    const endItem = Math.min(startIndex + pageSize, sortedData.length);
+    const startItem = totalRowCount === 0 ? 0 : startIndex + 1;
+    const endItem = Math.min(startIndex + pageSize, totalRowCount);
 
     // Events
-    const toggleSort = (field: keyof T, sortable?: boolean) => {
+    const toggleSort = (field: keyof T | string, sortable?: boolean) => {
         if (sortable === false) return;
 
         if (sortField === field) {
             setSortDirection((p) => (p === "asc" ? "desc" : "asc"));
         } else {
-            setSortField(field);
+            setSortField(String(field));
             setSortDirection("asc");
         }
     };
@@ -287,29 +314,32 @@ export default function DataTable<T extends TableData>({
     const goToPage = (page: number) => {
         const safe = Math.min(Math.max(1, page), totalPages);
         setCurrentPage(safe);
+        onPageChange?.(safe);
         setPageInputValue(String(safe));
     };
 
     // Reset page on search or pageSize change
     useEffect(() => {
         setCurrentPage(1);
+        onPageChange?.(1);
         setPageInputValue("1");
-    }, [searchTerm, pageSize]);
+    }, [effectiveSearchTerm, pageSize, onPageChange]);
 
     // Keep input in sync when page changes from buttons
     useEffect(() => {
-        setPageInputValue(String(currentPage));
-    }, [currentPage]);
+        setPageInputValue(String(effectiveCurrentPage));
+    }, [effectiveCurrentPage]);
 
     // Row class rules (CSS handles hover/zebra)
-    const rowClassName = (rowIndex: number) => {
+    const getRowClassName = (row: T, rowIndex: number) => {
         const classes = ["kc-table-tr"];
         if (striped && rowIndex % 2 === 1) classes.push("is-striped");
         if (hoverable) classes.push("is-hoverable");
         if (onRowClick) classes.push("is-clickable");
-        return classes.join(" ");
+        if (typeof customRowClassName === "function") classes.push(customRowClassName(row, rowIndex));
+        else if (customRowClassName) classes.push(customRowClassName);
+        return classes.filter(Boolean).join(" ");
     };
-
     // ==========================================
     // STATES
     // ==========================================
@@ -366,16 +396,20 @@ export default function DataTable<T extends TableData>({
                                 <input
                                     className="kc_searchInput"
                                     value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                    onChange={(e) => {
+                                        const next = e.target.value;
+                                        if (onSearchChange) onSearchChange(next);
+                                        else setSearchTerm(next);
+                                    }}
                                     placeholder={searchPlaceholder || "Search..."}
                                 />
                             </div>
                         )}
 
                         {toolbarFilters?.left}
+                    </div>
 
-                        <div className="kc_tableToolbar_spacer" />
-
+                    <div className="kc_tableToolbar_right">
                         {toolbarFilters?.right}
 
                         {/* (4) Columns toggle */}
@@ -393,75 +427,22 @@ export default function DataTable<T extends TableData>({
                                 </button>
 
                                 {showCols && (
-                                    <div ref={colsMenuRef} className="kc-colsDropdown" role="menu" aria-label="Column visibility">
-                                        <div className="kc-colsHeader">
-                                            <span>Columns</span>
-                                            <span className="kc-colsMeta">{visibleCountLabel}</span>
-                                        </div>
-
-                                        <div className="kc-colsList">
-                                            {columns.map((c) => {
-                                                const key = String(c.key);
-                                                const locked = Boolean(c.lockVisible);
-                                                const checked = visibleKeys.has(key);
-
-                                                return (
-                                                    <button
-                                                        key={key}
-                                                        type="button"
-                                                        className="kc-colsItem"
-                                                        role="menuitemcheckbox"
-                                                        aria-checked={checked}
-                                                        disabled={locked}
-                                                        onClick={() => {
-                                                            setVisibleKeys((prev) => {
-                                                                const next = new Set(prev);
-                                                                if (next.has(key)) {
-                                                                    // don't allow hiding last visible col
-                                                                    if (next.size <= 1) return next;
-                                                                    next.delete(key);
-                                                                } else {
-                                                                    next.add(key);
-                                                                }
-                                                                // enforce locked cols visible
-                                                                for (const cc of columns) if (cc.lockVisible) next.add(String(cc.key));
-                                                                return next;
-                                                            });
-                                                        }}
-                                                    >
-                                                        <span className={`kc-colsCheck ${checked ? "is-on" : ""}`}>
-                                                            {checked ? <Check size={14} /> : null}
-                                                        </span>
-                                                        <span className="kc-colsLabel">{c.label}</span>
-                                                        {locked && <span className="kc-colsLocked">Locked</span>}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-
-                                        <div className="kc-colsFooter">
-                                            <button
-                                                type="button"
-                                                className="kc-btn kc-btn-ghost"
-                                                onClick={() => setVisibleKeys(new Set(Array.from(initialVisibleKeys)))}
-                                            >
-                                                Reset
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="kc-btn kc-btn-ghost"
-                                                onClick={() => setVisibleKeys(new Set(allKeys))}
-                                            >
-                                                Show all
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="kc-btn kc-btn-primary"
-                                                onClick={() => setShowCols(false)}
-                                            >
-                                                Done
-                                            </button>
-                                        </div>
+                                    <div ref={colsMenuRef}>
+                                        <Suspense fallback={<div className="kc-colsDropdown" aria-hidden="true" />}>
+                                            <ColumnVisibilityMenu
+                                                columns={columns.map((c) => ({
+                                                    key: String(c.key),
+                                                    label: c.label,
+                                                    lockVisible: c.lockVisible,
+                                                }))}
+                                                visibleCountLabel={visibleCountLabel}
+                                                visibleKeys={visibleKeys}
+                                                initialVisibleKeys={initialVisibleKeys}
+                                                allKeys={allKeys}
+                                                onVisibleKeysChange={setVisibleKeys}
+                                                onClose={() => setShowCols(false)}
+                                            />
+                                        </Suspense>
                                     </div>
                                 )}
                             </div>
@@ -529,7 +510,7 @@ export default function DataTable<T extends TableData>({
                                         <div>
                                             <div className="kc-table-emptyTitle">{emptyMessage}</div>
                                             {searchTerm && (
-                                                <div className="kc-table-emptySub">No records match “{searchTerm}”. Try adjusting your search.</div>
+                                                <div className="kc-table-emptySub">No records match "{searchTerm}". Try adjusting your search.</div>
                                             )}
                                         </div>
                                     </div>
@@ -537,18 +518,11 @@ export default function DataTable<T extends TableData>({
                             </tr>
                         ) : (
                             paginatedData.map((row, rowIndex) => {
-                                const rowKey = row[keyField] !== undefined ? String(row[keyField]) : String(rowIndex);
-                                const baseRowClassName = (rowIndex: number) => {
-                                    const classes = ["kc-table-tr"];
-                                    if (striped && rowIndex % 2 === 1) classes.push("is-striped");
-                                    if (hoverable) classes.push("is-hoverable");
-                                    if (onRowClick) classes.push("is-clickable");
-                                    return classes.join(" ");
-                                };
+                                const rowKey = (row as TableData)[String(keyField)] !== undefined ? String((row as TableData)[String(keyField)]) : String(rowIndex);
                                 return (
                                     <tr
                                         key={rowKey}
-                                        className={rowClassName(rowIndex)}
+                                        className={getRowClassName(row, rowIndex)}
                                         onClick={() => onRowClick?.(row)}
                                     >
                                         {columnsToRender.map((col) => (
@@ -556,9 +530,9 @@ export default function DataTable<T extends TableData>({
                                                 key={String(col.key)}
                                                 className="kc-table-td"
                                                 style={{ textAlign: col.align ?? "left" }}
-                                                title={toStr(row[col.key])}
+                                                title={toStr((row as TableData)[String(col.key)])}
                                             >
-                                                {col.render ? col.render(row[col.key], row) : toDisplay(row[col.key])}
+                                                {col.render ? col.render((row as TableData)[String(col.key)], row) : toDisplay((row as TableData)[String(col.key)])}
                                             </td>
                                         ))}
                                     </tr>
@@ -582,7 +556,11 @@ export default function DataTable<T extends TableData>({
                             <select
                                 className="kc-table-select"
                                 value={pageSize}
-                                onChange={(e) => setPageSize(Number(e.target.value))}
+                                onChange={(e) => {
+                                    const next = Number(e.target.value);
+                                    setPageSize(next);
+                                    onPageSizeChange?.(next);
+                                }}
                             >
                                 {pageSizeOptions.map((s) => (
                                     <option key={s} value={s}>
@@ -594,11 +572,11 @@ export default function DataTable<T extends TableData>({
                     </div>
 
                     <div className="kc-table-pagerRight">
-                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(1)} disabled={currentPage === 1}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(1)} disabled={effectiveCurrentPage === 1}>
                             First
                         </button>
 
-                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 1}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(effectiveCurrentPage - 1)} disabled={effectiveCurrentPage === 1}>
                             <ChevronLeft size={14} />
                         </button>
 
@@ -614,12 +592,12 @@ export default function DataTable<T extends TableData>({
                                 onBlur={() => {
                                     const n = Number(pageInputValue);
                                     if (!Number.isNaN(n) && n >= 1 && n <= totalPages) goToPage(n);
-                                    else setPageInputValue(String(currentPage));
+                                    else setPageInputValue(String(effectiveCurrentPage));
                                 }}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                                     if (e.key === "Escape") {
-                                        setPageInputValue(String(currentPage));
+                                        setPageInputValue(String(effectiveCurrentPage));
                                         (e.target as HTMLInputElement).blur();
                                     }
                                 }}
@@ -627,11 +605,11 @@ export default function DataTable<T extends TableData>({
                             <span>of {totalPages}</span>
                         </div>
 
-                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(currentPage + 1)} disabled={currentPage === totalPages}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(effectiveCurrentPage + 1)} disabled={effectiveCurrentPage === totalPages}>
                             <ChevronRight size={14} />
                         </button>
 
-                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(totalPages)} disabled={currentPage === totalPages}>
+                        <button className="kc-btn kc-btn-ghost" onClick={() => goToPage(totalPages)} disabled={effectiveCurrentPage === totalPages}>
                             Last
                         </button>
                     </div>

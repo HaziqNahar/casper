@@ -1,10 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-
 import { useLocation, useNavigate } from "react-router-dom";
-import { Menu, Clock, Calendar, ChevronRight } from "lucide-react";
-import { LayoutGrid } from "lucide-react";
+import { Menu, Clock, Calendar, ChevronRight, LayoutGrid, Bell, AlertTriangle } from "lucide-react";
 import { ROUTES } from "../../config/routes";
 import AccessActorSwitcher from "../access/AccessActorSwitcher";
+import { authApi } from "../../services/authApi";
+import { governanceApi } from "../../services/governanceApi";
+import { useToast } from "../../context/ToastContext";
+import { useAuth } from "../../context/AuthContext";
 
 const FONT_FAMILY =
     "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif";
@@ -23,16 +25,29 @@ interface HeaderProps {
     activePath?: string;
 }
 
+type HeaderApprovalRequest = {
+    id: string;
+    requestedAt: string;
+    status: string;
+    slaHours: number;
+};
+
 const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuClick, tabs, activePath }) => {
     const navigate = useNavigate();
-    const location = useLocation();
+    const { user } = useAuth();
+    const { pushToast } = useToast();
     const [currentTime, setCurrentTime] = useState(new Date());
     const [isMobile, setIsMobile] = useState(window.innerWidth < 480);
+    const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+    const [pendingApprovalCount, setPendingApprovalCount] = useState(0);
+    const [overdueApprovalCount, setOverdueApprovalCount] = useState(0);
+    const notificationInitRef = useRef(false);
+    const previousPendingRef = useRef(0);
+    const previousOverdueRef = useRef(0);
 
     const { pathname } = useLocation();
     const currentPath = activePath ?? pathname;
 
-    // ===== Portal quick menu state =====
     const [showQuickMenu, setShowQuickMenu] = useState(false);
     const quickMenuRef = useRef<HTMLDivElement>(null);
 
@@ -52,13 +67,11 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
             hour12: false,
         });
 
-    // Update time
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
 
-    // Mobile breakpoint
     useEffect(() => {
         const onResize = () => setIsMobile(window.innerWidth < 480);
         window.addEventListener("resize", onResize);
@@ -71,10 +84,9 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                 setShowQuickMenu(false);
             }
         };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
 
     const closeQuickMenu = useCallback(() => {
         setShowQuickMenu(false);
@@ -96,19 +108,110 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
         navigate(path);
     };
 
+    const quickMenuItems = [
+        { label: "Home", icon: "📊", path: ROUTES.HOME, visible: true },
+        { label: "Create User", icon: "👤", path: ROUTES.CREATE_USER, visible: user?.role === "Admin" || Boolean(user?.isSuperAdmin) },
+        { label: "Register App", icon: "🗺️", path: ROUTES.REGISTER_APPS, visible: user?.role === "Admin" || Boolean(user?.isSuperAdmin) },
+        { label: "Approval Queue", icon: "📝", path: ROUTES.APPROVAL_REQUESTS, visible: Boolean(user?.isSuperAdmin) },
+    ].filter((item) => item.visible);
+
+    const loadGovernanceAlerts = useCallback(async () => {
+        if (!user) {
+            setIsSuperAdmin(false);
+            setPendingApprovalCount(0);
+            setOverdueApprovalCount(0);
+            notificationInitRef.current = false;
+            previousPendingRef.current = 0;
+            previousOverdueRef.current = 0;
+            return;
+        }
+
+        try {
+            const me = await authApi.me();
+            const nextIsSuperAdmin = Boolean(me.isSuperAdmin);
+            setIsSuperAdmin(nextIsSuperAdmin);
+
+            if (!nextIsSuperAdmin) {
+                setPendingApprovalCount(0);
+                setOverdueApprovalCount(0);
+                notificationInitRef.current = false;
+                previousPendingRef.current = 0;
+                previousOverdueRef.current = 0;
+                return;
+            }
+
+            const requests = await governanceApi.approvalRequests<HeaderApprovalRequest[]>();
+            const now = Date.now();
+            const pending = requests.filter((row) => row.status === "Pending");
+            const overdue = pending.filter((row) => {
+                const requestedAtMs = new Date(row.requestedAt).getTime();
+                const slaHours = Math.max(1, row.slaHours || 4);
+                const dueAtMs = requestedAtMs + slaHours * 60 * 60 * 1000;
+                return dueAtMs <= now;
+            });
+
+            const nextPending = pending.length;
+            const nextOverdue = overdue.length;
+
+            setPendingApprovalCount(nextPending);
+            setOverdueApprovalCount(nextOverdue);
+
+            if (notificationInitRef.current) {
+                if (nextPending > previousPendingRef.current) {
+                    const delta = nextPending - previousPendingRef.current;
+                    pushToast(
+                        delta === 1
+                            ? "1 new approval request is waiting for review"
+                            : `${delta} new approval requests are waiting for review`,
+                        "info"
+                    );
+                }
+
+                if (nextOverdue > previousOverdueRef.current) {
+                    const delta = nextOverdue - previousOverdueRef.current;
+                    pushToast(
+                        delta === 1
+                            ? "1 approval request has breached SLA"
+                            : `${delta} approval requests have breached SLA`,
+                        "warning"
+                    );
+                }
+            } else {
+                notificationInitRef.current = true;
+            }
+
+            previousPendingRef.current = nextPending;
+            previousOverdueRef.current = nextOverdue;
+        } catch {
+            // Keep header resilient if approval APIs are unavailable.
+        }
+    }, [pushToast, user]);
+
+    useEffect(() => {
+        const immediate = window.setTimeout(() => {
+            void loadGovernanceAlerts();
+        }, 0);
+        const timer = window.setInterval(() => {
+            void loadGovernanceAlerts();
+        }, 60000);
+        return () => {
+            window.clearTimeout(immediate);
+            window.clearInterval(timer);
+        };
+    }, [loadGovernanceAlerts]);
+
+    const approvalBadgeCount = overdueApprovalCount > 0 ? overdueApprovalCount : pendingApprovalCount;
+    const approvalButtonTitle = overdueApprovalCount > 0
+        ? `${overdueApprovalCount} overdue approval ${overdueApprovalCount === 1 ? "request" : "requests"}`
+        : pendingApprovalCount > 0
+            ? `${pendingApprovalCount} pending approval ${pendingApprovalCount === 1 ? "request" : "requests"}`
+            : "No pending approval requests";
+
     const renderBreadcrumbs = () => {
         if (!breadcrumbs || breadcrumbs.length === 0) {
-            // Fall back to subtitle if no breadcrumbs
             if (subtitle) {
                 return (
-                    <p style={{
-                        margin: 0,
-                        marginTop: '0.5rem',
-                        fontSize: '0.75rem',
-                        fontWeight: 500,
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        letterSpacing: '0.03em',
-                    }}>
+                    <p className="header-subtitle">
                         {subtitle}
                     </p>
                 );
@@ -117,12 +220,7 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
         }
 
         return (
-            <nav style={{
-                display: 'flex',
-                alignItems: 'center',
-                marginTop: '0.375rem',
-                fontSize: '0.75rem',
-            }}>
+            <nav className="header-breadcrumbTrail">
                 {breadcrumbs.map((crumb, index) => {
                     const isLast = index === breadcrumbs.length - 1;
                     const isClickable = crumb.path && !isLast;
@@ -132,53 +230,20 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                             {isClickable ? (
                                 <button
                                     onClick={() => handleBreadcrumbClick(crumb.path!)}
-                                    style={{
-                                        background: 'none',
-                                        border: 'none',
-                                        padding: 0,
-                                        margin: 0,
-                                        fontSize: '0.75rem',
-                                        fontWeight: 500,
-                                        color: '#7dd3fc',
-                                        cursor: 'pointer',
-                                        textDecoration: 'none',
-                                        transition: 'color 0.2s',
-                                        fontFamily: 'inherit',
-                                    }}
-                                    onMouseEnter={(e) => e.currentTarget.style.color = '#bae6fd'}
-                                    onMouseLeave={(e) => e.currentTarget.style.color = '#7dd3fc'}
+                                    className="header-breadcrumbLink"
                                 >
                                     {crumb.label}
                                 </button>
                             ) : (
-                                <span style={{
-                                    fontWeight: isLast ? 600 : 500,
-                                    color: isLast ? '#F68D2E' : '#ffffff',
-                                }}>
+                                <span className={isLast ? "header-breadcrumbCurrent" : "header-breadcrumbText"}>
                                     {crumb.label}
                                 </span>
                             )}
                             {!isLast && (
-                                <>
-                                    <ChevronRight
-                                        size={14}
-                                        style={{
-                                            marginLeft: '0.375rem',
-                                            marginRight: '-0.6rem',
-                                            color: 'rgba(255, 255, 255, 1)',
-                                            flexShrink: 0
-                                        }}
-                                    />
-                                    <ChevronRight
-                                        size={14}
-                                        style={{
-                                            marginRight: '0.375rem',
-                                            marginLeft: '0',
-                                            color: 'rgba(255, 255, 255, 1)',
-                                            flexShrink: 0
-                                        }}
-                                    />
-                                </>
+                                <span className="header-breadcrumbChevronPair" aria-hidden="true">
+                                    <ChevronRight size={14} className="header-breadcrumbChevron header-breadcrumbChevron--tight" />
+                                    <ChevronRight size={14} className="header-breadcrumbChevron" />
+                                </span>
                             )}
                         </React.Fragment>
                     );
@@ -187,64 +252,27 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
         );
     };
 
-    {
-        tabs && tabs.length > 0 && (
-            <div
-                style={{
-                    display: "flex",
-                    gap: "0.5rem",
-                    marginTop: "0.65rem",
-                    flexWrap: "wrap",
-                }}
-            >
+    const renderTabs = () =>
+        tabs && tabs.length > 0 ? (
+            <div className="header-tabsRow">
                 {tabs.map((t) => {
                     const isActive = currentPath === t.path;
                     return (
                         <button
                             key={t.path}
                             onClick={() => navigate(t.path)}
-                            style={{
-                                border: "1px solid rgba(255,255,255,0.22)",
-                                background: isActive ? "rgba(255,255,255,0.28)" : "rgba(255,255,255,0.14)",
-                                backdropFilter: "blur(10px)",
-                                WebkitBackdropFilter: "blur(10px)",
-                                color: "#ffffff",
-                                padding: "0.45rem 0.7rem",
-                                borderRadius: "0.65rem",
-                                cursor: "pointer",
-                                fontSize: "0.78rem",
-                                fontWeight: 700,
-                                letterSpacing: "0.02em",
-                                boxShadow: isActive ? "inset 0 1px 0 rgba(255,255,255,0.22)" : "none",
-                            }}
+                            className={`header-tabButton ${isActive ? "is-active" : ""}`}
                         >
                             {t.label}
                         </button>
                     );
                 })}
             </div>
-        )
-    }
+        ) : null;
 
     return (
-        <header
-            className="app-header-glass"
-            style={{
-                fontFamily: FONT_FAMILY,
-                position: "sticky",
-                top: 0,
-                zIndex: 30,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                padding: "0.75rem 1.25rem",
-                marginLeft: "-1px",
-                paddingLeft: "calc(1.25rem + 1px)",
-                boxSizing: "border-box",
-            }}
-        >
-            {/* Left */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.85rem", flex: 1, minWidth: 0 }}>
+        <header className="app-header-glass" style={{ fontFamily: FONT_FAMILY }}>
+            <div className="header-mainRow">
                 {isMobile && (
                     <button
                         onClick={onMenuClick}
@@ -255,66 +283,58 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                     </button>
                 )}
 
-                <div style={{ minWidth: 0 }}>
+                <div className="header-titleBlock">
                     <h2 className="header-title">{title}</h2>
                     {renderBreadcrumbs()}
+                    {renderTabs()}
                 </div>
             </div>
 
-            {/* Right */}
-            <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexShrink: 0 }}>
-                {/* Enterprise toolbar grouping (doesn't change your dropdown) */}
-                <div
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "0.5rem",
-                        padding: "0.35rem",
-                        borderRadius: "0.9rem",
-                        background: "linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.12))",
-                        border: "1px solid rgba(255,255,255,0.20)",
-                        backdropFilter: "blur(16px) saturate(150%)",
-                        WebkitBackdropFilter: "blur(16px) saturate(150%)",
-                        boxShadow: "inset 0 1px 0 rgba(255,255,255,0.30), 0 8px 18px rgba(0,0,0,0.12)",
-                    }}
-                >
-                    <div
-                        style={{
-                            display: "flex",
-                            alignItems: "center",
-                            marginRight: "0.25rem",
-                        }}
-                    >
+            <div className="header-actionsSide">
+                <div className="header-toolbarGlass">
+                    <div className="header-actorSlot">
                         <AccessActorSwitcher />
                     </div>
-                    {/* Date/Time widget (KEEP orange icons + blue text) */}
                     <div className="widgetstyle">
-                        <Calendar style={{ height: "0.9rem", width: "0.9rem", color: "#F68D2E" }} />
-                        <span style={{ color: "#002855" }}>{formatDate(currentTime)}</span>
+                        <Calendar className="header-widgetIcon" />
+                        <span className="header-widgetText">{formatDate(currentTime)}</span>
 
-                        <div
-                            style={{
-                                width: "1px",
-                                height: "1rem",
-                                backgroundColor: "rgba(0,40,85,0.35)",
-                                margin: "0 0.125rem",
-                            }}
-                        />
+                        <div className="header-widgetDivider" />
 
-                        <Clock style={{ height: "0.9rem", width: "0.9rem", color: "#F68D2E" }} />
-                        <span
-                            style={{
-                                fontFamily: "'Inter', monospace",
-                                minWidth: "60px",
-                                color: "#002855",
-                            }}
-                        >
+                        <Clock className="header-widgetIcon" />
+                        <span className="header-widgetTime">
                             {formatTime(currentTime)}
                         </span>
                     </div>
 
-                    {/* Quick Menu (dropdown kept EXACTLY as-is) */}
-                    <div ref={quickMenuRef} style={{ position: "relative" }}>
+                    {isSuperAdmin && (
+                        <button
+                            type="button"
+                            className="iconButtonStyle"
+                            onClick={() => navigate(ROUTES.APPROVAL_REQUESTS)}
+                            title={approvalButtonTitle}
+                            style={{
+                                backgroundColor: overdueApprovalCount > 0 ? "rgba(248, 113, 113, 0.22)" : "rgba(255, 255, 255, 0.15)",
+                                borderColor: overdueApprovalCount > 0 ? "rgba(248, 113, 113, 0.45)" : undefined,
+                            }}
+                        >
+                            {overdueApprovalCount > 0 ? (
+                                <AlertTriangle size={18} color="#dc2626" />
+                            ) : (
+                                <Bell size={18} color={"var(--kc-primary, #3b82f6)"} />
+                            )}
+                            {approvalBadgeCount > 0 && (
+                                <span
+                                    className="header-approvalBadge"
+                                    style={{ background: overdueApprovalCount > 0 ? "#dc2626" : "#0f766e" }}
+                                >
+                                    {approvalBadgeCount > 99 ? "99+" : approvalBadgeCount}
+                                </span>
+                            )}
+                        </button>
+                    )}
+
+                    <div ref={quickMenuRef} className="header-quickMenuWrap">
                         <button
                             className="iconButtonStyle"
                             onClick={() => setShowQuickMenu(!showQuickMenu)}
@@ -322,59 +342,18 @@ const Header: React.FC<HeaderProps> = ({ title, subtitle, breadcrumbs, onMenuCli
                                 backgroundColor: showQuickMenu ? "rgba(255, 255, 255, 0.3)" : "rgba(255, 255, 255, 0.15)",
                             }}
                             title="Quick Menu"
-                            onMouseEnter={(e) => {
-                                if (!showQuickMenu) e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.25)";
-                            }}
-                            onMouseLeave={(e) => {
-                                if (!showQuickMenu) e.currentTarget.style.backgroundColor = "rgba(255, 255, 255, 0.15)";
-                            }}
                         >
                             <LayoutGrid size={18} color={"var(--kc-primary, #3b82f6)"} />
                         </button>
 
                         {showQuickMenu && (
-                            <div
-                                style={{
-                                    position: "absolute",
-                                    top: "100%",
-                                    right: 0,
-                                    marginTop: "0.5rem",
-                                    width: "200px",
-                                    backgroundColor: "white",
-                                    borderRadius: "0.5rem",
-                                    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
-                                    border: "1px solid #e5e7eb",
-                                    zIndex: 50,
-                                    overflow: "hidden",
-                                }}
-                            >
-                                <div style={{ padding: "0.5rem" }}>
-                                    {[
-                                        { label: "Home", icon: "📊", path: ROUTES.HOME },
-                                        { label: "Manage Users", icon: "📝", path: ROUTES.MANAGE_USERS },
-                                        { label: "Manage Apps", icon: "🗺️", path: ROUTES.MANAGE_APPS },
-                                    ].map((item, index) => (
+                            <div className="header-quickMenu">
+                                <div className="header-quickMenuList">
+                                    {quickMenuItems.map((item, index) => (
                                         <button
                                             key={index}
                                             onClick={() => handleQuickMenuClick(item.path)}
-                                            style={{
-                                                width: "100%",
-                                                display: "flex",
-                                                alignItems: "center",
-                                                gap: "0.75rem",
-                                                padding: "0.625rem 0.75rem",
-                                                fontSize: "0.85rem",
-                                                color: "#000000",
-                                                backgroundColor: "transparent",
-                                                border: "none",
-                                                borderRadius: "0.375rem",
-                                                cursor: "pointer",
-                                                textAlign: "left",
-                                                transition: "background-color 0.2s",
-                                                fontFamily: "inherit",
-                                            }}
-                                            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#f3f4f6")}
-                                            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+                                            className="header-quickMenuItem"
                                         >
                                             <span>{item.icon}</span>
                                             <span>{item.label}</span>

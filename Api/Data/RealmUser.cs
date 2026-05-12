@@ -7,4 +7,5 @@ public class RealmUser
     public Realm Realm { get; set; } = null!;
     public Guid UserId { get; set; }
     public User User { get; set; } = null!;
+    public string RoleId { get; set; } = "realm_user";
 }

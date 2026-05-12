@@ -1,4 +1,9 @@
-import type { RealmMembership } from "../../../types";
+type RealmMembership = {
+    userUuid: string;
+    roleId: string;
+    assignedAt: string;
+    assignedBy: string;
+};
 
 export type RealmUserMap = Record<string, RealmMembership[]>;
 

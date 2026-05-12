@@ -1,0 +1,200 @@
+.create-user-page {
+    width: 100%;
+    max-width: 100%;
+}
+
+.create-user-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.create-user-headerIntro {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.create-user-headerIcon {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.5rem;
+    background-color: #dbeafe;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #2563eb;
+}
+
+.create-user-title {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #111827;
+}
+
+.create-user-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    color: #6b7280;
+}
+
+.create-user-card {
+    max-width: 800px;
+    padding: 2rem;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.create-user-section {
+    margin-bottom: 2rem;
+}
+
+.create-user-sectionTitle {
+    margin: 0 0 1rem;
+    padding-bottom: 0.5rem;
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: #111827;
+    border-bottom: 2px solid #e5e7eb;
+}
+
+.create-user-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.25rem;
+}
+
+.create-user-gridColSpan2 {
+    grid-column: span 2;
+}
+
+.create-user-fieldLabel {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #374151;
+}
+
+.create-user-required {
+    color: #dc2626;
+}
+
+.create-user-input {
+    width: 100%;
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.5rem;
+    background-color: #ffffff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-family: inherit;
+    box-sizing: border-box;
+}
+
+.create-user-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+}
+
+.create-user-input.is-error {
+    border-color: #dc2626;
+    box-shadow: none;
+}
+
+.create-user-comboboxInput {
+    cursor: pointer;
+}
+
+.create-user-error {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin-top: 0.25rem;
+    color: #dc2626;
+    font-size: 0.75rem;
+}
+
+.create-user-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.75rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e5e7eb;
+}
+
+.create-user-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    border-radius: 0.5rem;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.create-user-button--secondary {
+    font-weight: 500;
+    color: #374151;
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+}
+
+.create-user-button--secondary:hover:not(:disabled) {
+    background-color: #f3f4f6;
+}
+
+.create-user-button--primary {
+    font-weight: 600;
+    color: #ffffff;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    border: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.create-user-button--primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.create-user-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.create-user-button--primary:disabled {
+    background: #9ca3af;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    opacity: 1;
+}
+
+@media (max-width: 900px) {
+    .create-user-card {
+        max-width: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .create-user-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .create-user-gridColSpan2 {
+        grid-column: auto;
+    }
+
+    .create-user-actions {
+        flex-direction: column-reverse;
+    }
+
+    .create-user-button {
+        width: 100%;
+        justify-content: center;
+    }
+}

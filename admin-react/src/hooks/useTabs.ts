@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 
 export interface Tab {
@@ -20,20 +19,16 @@ export interface UseTabsReturn {
   setActiveTab: (index: number) => void;
   addTab: (tab?: Partial<Tab>) => void;
   closeTab: (index: number) => void;
-  reorderTabs: (sourceIndex: number, destIndex: number) => void;
   updateTab: (index: number, updates: Partial<Tab>) => void;
   getActiveTabData: () => Tab | undefined;
 }
 
 const DEFAULT_TABS: Tab[] = [
-  { id: 'active-cases', title: 'Active Cases', type: 'active-cases', closable: false },
+  { id: "active-cases", title: "Active Cases", type: "active-cases", closable: false },
 ];
 
 export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
-  const {
-    storageKey = 'ces-ccms-tabs',
-    defaultTabs = DEFAULT_TABS
-  } = options;
+  const { storageKey = "ces-ccms-tabs", defaultTabs = DEFAULT_TABS } = options;
 
   // Initialize tabs from localStorage
   const [tabs, setTabs] = useState<Tab[]>(() => {
@@ -42,6 +37,22 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
       if (savedTabsRaw) {
         const savedTabs = JSON.parse(savedTabsRaw);
         if (Array.isArray(savedTabs) && savedTabs.length > 0) {
+          const defaultTypes = new Set(
+            (defaultTabs ?? [])
+              .map((t) => t.type)
+              .filter((t): t is string => typeof t === "string" && t.length > 0)
+          );
+
+          if (defaultTypes.size > 0) {
+            const hasKnownType = savedTabs.some(
+              (t) => t && typeof t === "object" && defaultTypes.has((t as Tab).type ?? "")
+            );
+
+            if (!hasKnownType) {
+              return defaultTabs;
+            }
+          }
+
           return savedTabs;
         }
       }
@@ -82,7 +93,7 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
     setTabs((prev) => {
       const id = tab?.id ?? Date.now();
 
-      const existingIndex = prev.findIndex(t => t.id === id);
+      const existingIndex = prev.findIndex((t) => t.id === id);
       if (existingIndex !== -1) {
         setActiveTab(existingIndex);
         return prev;
@@ -129,20 +140,6 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
     });
   };
 
-  // Reorder tabs by drag-and-drop
-  const reorderTabs = (sourceIndex: number, destIndex: number) => {
-    if (sourceIndex === destIndex) return;
-
-    setTabs((prevTabs) => {
-      const updated = [...prevTabs];
-      const [moved] = updated.splice(sourceIndex, 1);
-      updated.splice(destIndex, 0, moved);
-      return updated;
-    });
-
-    setActiveTab(destIndex);
-  };
-
   // Update a specific tab
   const updateTab = (index: number, updates: Partial<Tab>) => {
     setTabs((prevTabs) => {
@@ -163,7 +160,6 @@ export function useTabs(options: UseTabsOptions = {}): UseTabsReturn {
     setActiveTab,
     addTab,
     closeTab,
-    reorderTabs,
     updateTab,
     getActiveTabData,
   };

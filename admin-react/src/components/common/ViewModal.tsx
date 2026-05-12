@@ -9,7 +9,7 @@ interface ViewModalProps<T> {
     onClose: () => void;
 }
 
-function ViewModal<T extends Record<string, any>>({
+function ViewModal<T extends Record<string, unknown>>({
     isOpen,
     title,
     data,
@@ -34,57 +34,25 @@ function ViewModal<T extends Record<string, any>>({
 
     return (
         <div
-            style={{
-                position: 'fixed',
-                inset: 0,
-                backgroundColor: 'rgba(0, 0, 0, 0.5)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                zIndex: 9999,
-            }}
+            className="recordModal-overlay"
             onClick={onClose}
         >
             <div
-                style={{
-                    backgroundColor: 'white',
-                    borderRadius: '0.5rem',
-                    boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-                    maxWidth: '48rem',
-                    width: '100%',
-                    margin: '0 1rem',
-                    maxHeight: '90vh',
-                    overflowY: 'auto',
-                }}
+                className="recordModal recordModal--wide"
                 onClick={(e) => e.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-label={title}
             >
-                <div style={{ padding: '1.5rem' }}>
-                    <h2
-                        style={{
-                            fontSize: '1.25rem',
-                            fontWeight: 'bold',
-                            marginBottom: '0.5rem',
-                        }}
-                    >
-                        {title}
-                    </h2>
-                    <p
-                        style={{
-                            fontSize: '0.875rem',
-                            color: '#6b7280',
-                            marginBottom: '1.25rem',
-                        }}
-                    >
-                        Read-only view of record details
-                    </p>
+                <div className="recordModal-header">
+                    <div>
+                        <h2 className="recordModal-title">{title}</h2>
+                        <p className="recordModal-subtitle">Read-only view of record details.</p>
+                    </div>
+                </div>
 
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                            gap: '1rem',
-                        }}
-                    >
+                <div className="recordModal-body">
+                    <div className="recordModal-detailGrid">
                         {fields.map((field) => {
                             const rawValue = data[field.key as keyof T];
                             const value = formatValue(rawValue);
@@ -97,48 +65,18 @@ function ViewModal<T extends Record<string, any>>({
                             return (
                                 <div
                                     key={field.key}
-                                    style={{
-                                        border: '1px solid #e5e7eb',
-                                        borderRadius: '0.5rem',
-                                        padding: '0.75rem 0.9rem',
-                                        backgroundColor: '#f9fafb',
-                                    }}
+                                    className="recordModal-detailCard"
                                 >
-                                    <div
-                                        style={{
-                                            fontSize: '0.75rem',
-                                            fontWeight: 600,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.05em',
-                                            color: '#6b7280',
-                                            marginBottom: '0.35rem',
-                                        }}
-                                    >
+                                    <div className="recordModal-detailLabel">
                                         {field.label}
                                     </div>
                                     {isMultiline ? (
-                                        <pre
-                                            style={{
-                                                margin: 0,
-                                                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                                                fontSize: '0.75rem',
-                                                whiteSpace: 'pre-wrap',
-                                                wordBreak: 'break-word',
-                                                maxHeight: '200px',
-                                                overflowY: 'auto',
-                                            }}
-                                        >
+                                        <pre className="recordModal-detailPre">
                                             {value}
                                         </pre>
                                     ) : (
                                         <div
-                                            style={{
-                                                fontSize: '0.875rem',
-                                                color: '#111827',
-                                                whiteSpace: 'nowrap',
-                                                overflow: 'hidden',
-                                                textOverflow: 'ellipsis',
-                                            }}
+                                            className="recordModal-detailValue"
                                             title={value}
                                         >
                                             {value}
@@ -148,28 +86,12 @@ function ViewModal<T extends Record<string, any>>({
                             );
                         })}
                     </div>
+                </div>
 
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            marginTop: '1.5rem',
-                        }}
-                    >
-                        <button
-                            onClick={onClose}
-                            style={{
-                                padding: '0.5rem 1.25rem',
-                                borderRadius: '0.375rem',
-                                border: '1px solid #d1d5db',
-                                backgroundColor: 'white',
-                                cursor: 'pointer',
-                                fontSize: '0.875rem',
-                            }}
-                        >
-                            Close
-                        </button>
-                    </div>
+                <div className="recordModal-footer">
+                    <button onClick={onClose} className="kc-btn kc-btn-ghost">
+                        Close
+                    </button>
                 </div>
             </div>
         </div>

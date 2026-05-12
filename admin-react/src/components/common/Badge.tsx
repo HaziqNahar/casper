@@ -20,13 +20,7 @@ export const LinkCell: React.FC<{
         <button
             type="button"
             onClick={onClick}
-            className="kc-linkcell"
-            style={{
-                background: "transparent",
-                border: 0,
-                padding: 0,
-                cursor: onClick ? "pointer" : "default",
-            }}
+            className={["kc-linkcell", onClick ? "" : "is-static"].filter(Boolean).join(" ")}
         >
             {children}
         </button>

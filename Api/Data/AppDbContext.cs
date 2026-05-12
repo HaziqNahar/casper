@@ -17,7 +17,11 @@ public class AppDbContext : DbContext
     public DbSet<RealmApp> RealmApps => Set<RealmApp>();
     public DbSet<RealmUser> RealmUsers => Set<RealmUser>();
     public DbSet<AppUser> AppUsers => Set<AppUser>();
-
+    public DbSet<ScimGroupMapping> ScimGroupMappings => Set<ScimGroupMapping>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+    public DbSet<RealmAccessRequest> RealmAccessRequests => Set<RealmAccessRequest>();
+    public DbSet<RealmAccessRequestEvent> RealmAccessRequestEvents => Set<RealmAccessRequestEvent>();
 
     protected override void OnModelCreating(ModelBuilder b)
     {
@@ -33,6 +37,9 @@ public class AppDbContext : DbContext
         b.Entity<User>()
             .HasIndex(u => u.Username)
             .IsUnique();
+
+        b.Entity<User>()
+            .HasIndex(u => u.ScimExternalId);
 
         // Realm unique name
         b.Entity<Realm>()
@@ -54,10 +61,53 @@ public class AppDbContext : DbContext
         .HasIndex(ru => new { ru.RealmId, ru.UserId })
         .IsUnique();
 
+        b.Entity<ScimGroupMapping>()
+            .HasIndex(g => g.ScimExternalId);
+
+        b.Entity<ScimGroupMapping>()
+            .HasIndex(g => new { g.RealmId, g.RoleId, g.DisplayName })
+            .IsUnique();
+
         // AppUser unique per realmApp+user
         b.Entity<AppUser>()
         .HasIndex(au => new { au.RealmAppId, au.UserId })
         .IsUnique();
+
+        b.Entity<AuditLogEntry>()
+            .HasIndex(a => a.CreatedAtUtc);
+
+        b.Entity<AuditLogEntry>()
+            .HasIndex(a => new { a.EntityType, a.Action });
+
+        b.Entity<ApprovalRequest>()
+            .HasIndex(a => a.RequestedAtUtc);
+
+        b.Entity<ApprovalRequest>()
+            .HasIndex(a => new { a.Status, a.Action });
+
+        b.Entity<RealmAccessRequest>()
+            .HasIndex(r => r.UpdatedAtUtc);
+
+        b.Entity<RealmAccessRequest>()
+            .HasIndex(r => new { r.Status, r.RealmId });
+
+        b.Entity<RealmAccessRequestEvent>()
+            .HasIndex(e => e.AtUtc);
+
+        b.Entity<RealmAccessRequestEvent>()
+            .HasIndex(e => new { e.RequestId, e.Type });
+
+        b.Entity<RealmAccessRequestEvent>()
+            .HasOne(e => e.Request)
+            .WithMany(r => r.Events)
+            .HasForeignKey(e => e.RequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        b.Entity<ScimGroupMapping>()
+            .HasOne(g => g.Realm)
+            .WithMany()
+            .HasForeignKey(g => g.RealmId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         b.Entity<AuthorizationCode>()
             .HasOne(ac => ac.App)

@@ -1,5 +1,5 @@
 // src/pages/Realms/access/RealmAccessVerify.tsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, ChevronDown, ChevronUp } from "lucide-react";
 
 import WorkflowLayout from "../../../components/workflow/WorkflowLayout";
@@ -13,9 +13,9 @@ import { useAccessRequestsLive } from "./useAccessRequestsLive";
 import { canActOnVerify, canViewVerifyQueue } from "./accessActorRules";
 
 import {
-    loadAccessRequests,
-    loadAccessEvents,
+    loadAccessSnapshot,
     updateRequest,
+    getPendingAccessSla,
     AccessRequest,
     AccessRequestEvent,
 } from "./accessRequestsStore";
@@ -38,50 +38,76 @@ import { getAccessActor } from "../../../context/accessCurrentUser";
 import "../../../styles/browserTabs.css";
 import "../../../styles/component.css";
 
-const statusVariant = (s: string) => {
-    if (s === "Draft") return "neutral";
+const statusVariant = (s: string): BadgeVariant => {
+    if (s === "Draft") return "default";
     if (s === "Submitted") return "info";
     if (s === "Approved") return "success";
-    if (s === "Rejected") return "danger";
+    if (s === "Rejected") return "error";
     if (s === "Verified") return "success";
-    if (s === "Cancelled") return "danger";
-    return "neutral";
+    if (s === "Cancelled") return "error";
+    return "default";
 };
 
-function normActor(v?: string) {
-    return String(v || "").trim().toLowerCase();
-}
+type AccessRequestWithAppName = AccessRequest & {
+    applicationName?: string;
+    appName?: string;
+};
 
-function isAdminActor(actor: string) {
-    return normActor(actor).includes("admin");
-}
-
-function isApproverActor(actor: string) {
-    return normActor(actor).includes("approver");
-}
-
-function isVerifierActor(actor: string) {
-    return normActor(actor).includes("verifier");
-}
-
-function canViewVerify(actor: string) {
-    return isAdminActor(actor) || isApproverActor(actor) || isVerifierActor(actor);
-}
-
-function canVerify(actor: string) {
-    return isVerifierActor(actor);
-}
+type BadgeVariant = "default" | "success" | "warning" | "error" | "info";
 
 type VerifyRow = AccessRequest & {
     applicationName?: string;
+    slaLabel?: string;
+    slaVariant?: BadgeVariant;
 };
+
+function diffHuman(ms: number) {
+    const abs = Math.max(0, ms);
+    const totalMin = Math.floor(abs / 60000);
+    const h = Math.floor(totalMin / 60);
+    const m = totalMin % 60;
+    if (h <= 0) return `${m}m`;
+    return `${h}h ${m}m`;
+}
+
+function getVerifySlaBadge(request: AccessRequest, events: AccessRequestEvent[]) {
+    const pending = getPendingAccessSla(request, events);
+    if (!pending || pending.stage !== "verification") {
+        return {
+            label: "Pending verification",
+            variant: "info" as const,
+        };
+    }
+
+    const dueAt = new Date(pending.dueAt).getTime();
+    const remainingMs = dueAt - Date.now();
+
+    if (pending.breached) {
+        return {
+            label: `Overdue by ${diffHuman(Math.abs(remainingMs))}`,
+            variant: "error" as const,
+        };
+    }
+
+    if (remainingMs <= 60 * 60 * 1000) {
+        return {
+            label: `Due in ${diffHuman(remainingMs)}`,
+            variant: "warning" as const,
+        };
+    }
+
+    return {
+        label: "Within SLA",
+        variant: "success" as const,
+    };
+}
 
 const RealmAccessVerify: React.FC = () => {
     const actor = getAccessActor();
     const { pushToast } = useToast();
 
-    const [requests, setRequests] = useState<AccessRequest[]>(() => loadAccessRequests());
-    const [events, setEvents] = useState<AccessRequestEvent[]>(() => loadAccessEvents());
+    const [requests, setRequests] = useState<AccessRequest[]>([]);
+    const [events, setEvents] = useState<AccessRequestEvent[]>([]);
 
     const [selected, setSelected] = useState<AccessRequest | null>(null);
     const [drawerOpen, setDrawerOpen] = useState(false);
@@ -111,10 +137,31 @@ const RealmAccessVerify: React.FC = () => {
         return () => document.removeEventListener("mousedown", onDown);
     }, [dateMenuOpen]);
 
-    const refresh = () => {
-        setRequests(loadAccessRequests());
-        setEvents(loadAccessEvents());
-    };
+    const refresh = useCallback(async () => {
+        const snapshot = await loadAccessSnapshot();
+        setRequests(snapshot.requests);
+        setEvents(snapshot.events);
+    }, []);
+
+    useEffect(() => {
+        let cancelled = false;
+        loadAccessSnapshot()
+            .then((snapshot) => {
+                if (cancelled) return;
+                setRequests(snapshot.requests);
+                setEvents(snapshot.events);
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    setRequests([]);
+                    setEvents([]);
+                }
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, []);
     useAccessRequestsLive(refresh);
 
     const clearAllFilters = () => {
@@ -137,9 +184,10 @@ const RealmAccessVerify: React.FC = () => {
     const rows: VerifyRow[] = useMemo(() => {
         return requests.map((r) => ({
             ...r,
-            applicationName: norm((r as any)?.applicationName || (r as any)?.appName || ""),
+            applicationName: norm((r as AccessRequestWithAppName).applicationName || (r as AccessRequestWithAppName).appName || ""),
+            ...getVerifySlaBadge(r, events.filter((event) => String(event.requestId) === String(r.id))),
         }));
-    }, [requests]);
+    }, [requests, events]);
 
     const realmOptions = useMemo(() => buildOptions(rows, (r) => r.realmName), [rows]);
 
@@ -159,11 +207,7 @@ const RealmAccessVerify: React.FC = () => {
     const requesterOptions = useMemo(() => buildOptions(rows, (r) => r.requester), [rows]);
     const statusOptions = useMemo(() => buildOptions(rows, (r) => r.status), [rows]);
 
-    useEffect(() => {
-        if (!appFilter.length) return;
-        const next = pruneSelectedByOptions(appFilter, appOptions);
-        if (next.length !== appFilter.length) setAppFilter(next);
-    }, [realmFilter, appOptions, appFilter]);
+    const effectiveAppFilter = useMemo(() => pruneSelectedByOptions(appFilter, appOptions), [appFilter, appOptions]);
 
     const filteredRows = useMemo(() => {
         const effectiveStatus = statusFilter.length ? statusFilter : ["Approved"];
@@ -172,7 +216,7 @@ const RealmAccessVerify: React.FC = () => {
             rows,
             multi: {
                 realm: { selected: realmFilter, getValue: (r) => r.realmName },
-                app: { selected: appFilter, getValue: (r) => (r as VerifyRow).applicationName },
+                app: { selected: effectiveAppFilter, getValue: (r) => r.applicationName },
                 target: { selected: targetUserFilter, getValue: (r) => r.targetUser },
                 role: { selected: roleFilter, getValue: (r) => r.roleRequested },
                 requester: { selected: requesterFilter, getValue: (r) => r.requester },
@@ -182,7 +226,7 @@ const RealmAccessVerify: React.FC = () => {
         });
 
         return out.slice().sort((a, b) => (String(a.updatedAt) < String(b.updatedAt) ? 1 : -1));
-    }, [rows, realmFilter, appFilter, targetUserFilter, roleFilter, requesterFilter, statusFilter, dateRange]);
+    }, [rows, realmFilter, effectiveAppFilter, targetUserFilter, roleFilter, requesterFilter, statusFilter, dateRange]);
 
     const dateText = useMemo(() => dateChipText(dateRange), [dateRange]);
 
@@ -196,7 +240,7 @@ const RealmAccessVerify: React.FC = () => {
         dateRange.from ||
         dateRange.to;
 
-    const openRequest = (req: AccessRequest) => {
+    const openRequest = useCallback((req: AccessRequest) => {
         if (!canViewVerifyQueue(actor)) {
             pushToast("Current actor cannot view verification items.", "warning");
             return;
@@ -204,7 +248,7 @@ const RealmAccessVerify: React.FC = () => {
 
         setSelected(req);
         setDrawerOpen(true);
-    };
+    }, [actor, pushToast]);
 
     const onVerify = (id: string) => {
         const req = requests.find((r) => r.id === id);
@@ -221,7 +265,7 @@ const RealmAccessVerify: React.FC = () => {
             return;
         }
 
-        updateRequest(
+        void updateRequest(
             id,
             {
                 status: "Verified",
@@ -230,11 +274,13 @@ const RealmAccessVerify: React.FC = () => {
             actor,
             "VERIFIED",
             "Verified by verifier"
-        );
-
-        setDrawerOpen(false);
-        refresh();
-        pushToast("Access request verified", "success");
+        ).then(() => {
+            setDrawerOpen(false);
+            void refresh();
+            pushToast("Access request verified", "success");
+        }).catch((err) => {
+            pushToast(err instanceof Error ? err.message : "Failed to verify access request", "error");
+        });
     };
 
     const columns: TableColumn<VerifyRow>[] = useMemo(
@@ -272,12 +318,26 @@ const RealmAccessVerify: React.FC = () => {
                 ),
             },
             {
+                key: "sla",
+                label: "SLA",
+                width: "170px",
+                align: "center",
+                sortable: false,
+                render: (_v, row) => {
+                    if (row.status !== "Approved") {
+                        return <span className="kc-text-muted">-</span>;
+                    }
+
+                    return <Badge variant={row.slaVariant ?? "default"}>{row.slaLabel}</Badge>;
+                },
+            },
+            {
                 key: "status",
                 label: "Status",
                 width: "130px",
                 align: "center",
                 render: (v) => (
-                    <Badge variant={statusVariant(String(v)) as any}>
+                    <Badge variant={statusVariant(String(v))}>
                         {String(v)}
                     </Badge>
                 ),
@@ -291,7 +351,7 @@ const RealmAccessVerify: React.FC = () => {
                     if (!canActOnVerify(actor)) {
                         return (
                             <div className="kc-governanceCell" title="Current actor can view but cannot verify">
-                                <Badge variant={"info" as any}>View Only</Badge>
+                                <Badge variant="info">View Only</Badge>
                                 <div className="kc-governanceSub">Verifier action required</div>
                             </div>
                         );
@@ -306,13 +366,7 @@ const RealmAccessVerify: React.FC = () => {
                     return (
                         <div className="kc-governanceCell" title={summary}>
                             <Badge
-                                variant={
-                                    isBlocked
-                                        ? ("danger" as any)
-                                        : isWarn
-                                            ? ("warning" as any)
-                                            : ("success" as any)
-                                }
+                                variant={isBlocked ? "error" : isWarn ? "warning" : "success"}
                             >
                                 {isBlocked ? "Blocked" : isWarn ? "Warning" : "Ready"}
                             </Badge>
@@ -370,7 +424,7 @@ const RealmAccessVerify: React.FC = () => {
                 },
             }
         ],
-        []
+        [actor, openRequest]
     );
 
     return (
