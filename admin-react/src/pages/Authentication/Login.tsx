@@ -8,7 +8,7 @@ import '../../styles/auth.login.css';
 
 // Import the Certis Diamond Icon
 import CertisDiamondIcon from '../../assets/logos/Certis Diamond Iconsmall.png';
-import CertisBackground from '../../assets/backgrounds/certis-paya-lebar-green.jpg';
+import CertisBackground from '../../assets/backgrounds/certis_bg_new.jpg';
 
 const CERTIS_BLUE = '#002855';
 const CERTIS_BLUE_DARK = '#001d3d';

@@ -229,7 +229,7 @@ body {
 .app-bg {
     position: fixed;
     inset: 0;
-    background-image: url("../assets/backgrounds/certis-paya-lebar-green.jpg");
+    background-image: url("../assets/backgrounds/certis_bg_new.jpg");
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
